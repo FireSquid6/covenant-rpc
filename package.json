@@ -1,0 +1,15 @@
+{
+  "name": "covenant-rpc",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@standard-schema/spec": "^1.0.0",
+    "zod": "^4.0.14"
+  }
+}
