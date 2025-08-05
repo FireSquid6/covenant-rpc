@@ -9,7 +9,7 @@ export const procedureErrorSchema = z.object({
 export type ProcedureError = z.infer<typeof procedureErrorSchema>;
 
 export function getResponseSchema<T extends StandardSchemaV1>(result: T) {
-  return z.union([
+  return z.discriminatedUnion("result", [
     z.object({
       result: z.literal("OK"),
       error: z.undefined(),

@@ -30,9 +30,9 @@ export class CovenantClient<T extends RouteMap> {
     const validation = await responseSchema["~standard"].validate(body);
 
     if (validation.issues) {
-      // @ts-expect-error trust me on this one
       return {
         status: "ERROR",
+        // @ts-expect-error trust me on this one
         messsage: `Error validating: ${validation.issues}`,
         httpCode: 400,
         fault: "client",

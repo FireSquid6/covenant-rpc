@@ -1,7 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { z } from "zod";
 import { CovenantError } from ".";
-import type { Flatten } from "./utils";
 
 export function getResponseSchema<T extends StandardSchemaV1>(result: T) {
   return z.discriminatedUnion("status", [
@@ -18,16 +17,7 @@ export function getResponseSchema<T extends StandardSchemaV1>(result: T) {
   ])
 }
 
-const test = z.object({
-  hello: z.string(),
-})
-type k = typeof test extends StandardSchemaV1 ? "ADF" : never;
-
-type t = StandardSchemaV1.InferOutput<Flatten<ReturnType<typeof getResponseSchema<typeof test>>>>
-
 export type CovenantResponse<T extends StandardSchemaV1> = StandardSchemaV1.InferOutput<ReturnType<typeof getResponseSchema<T>>>
-
-
 
 export function covenantResponseToJsResonse(res: CovenantResponse<any>, headers: Headers): Response {
   switch (res.status) {
