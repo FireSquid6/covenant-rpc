@@ -163,38 +163,6 @@ export class Covenant<
   getSchema(): T {
     return this.schema;
   }
-
-  // getClient(fetcher: Fetcher): CovenantClient<T> {
-  //   return async (func, inputs): Promise<InferRouteResponse<T[F]>> => {
-  //     const req: CovenantRequest = {
-  //       function: func,
-  //       inputs: inputs,
-  //     }
-  //
-  //     const res = await fetcher(req)
-  //     const outputSchema = this.schema[func].output;
-  //     
-  //     const body = await res.json();
-  //     const responseSchema = getResponseSchema(outputSchema);
-  //
-  //     const validation = await responseSchema["~standard"].validate(body);
-  //
-  //     if (validation.issues) {
-  //       return {
-  //         status: "ERROR",
-  //         httpCode: res.status,
-  //         fault: "server",
-  //         message: `Bad response with validation issues: ${validation.issues}`
-  //       }
-  //     }
-  //
-  //     // we know more than the typescript compiler in this case
-  //     // so we can force a typecast here. Don't worry--we do test
-  //     // this code
-  //     return validation.value as InferRouteResponse<T[F]>;
-  //   }
-  //
-  // }
 }
 
 
@@ -221,7 +189,6 @@ export class CovenantError {
     return new CovenantError(`Unknown error: ${k}`, "server", 500);
   }
 }
-
 
 
 

@@ -1,9 +1,8 @@
 import { Covenant } from "../lib";
 import { z } from "zod";
-import { CovenantClient, httpFetcher } from "../lib/client";
 
 
-const covenant = new Covenant({
+export const covenant = new Covenant({
   findUser: {
     input: z.object({
       username: z.string(),
@@ -12,22 +11,15 @@ const covenant = new Covenant({
       username: z.string(),
       image: z.string(),
     }))
-  }
+  },
+  // createUser: {
+  //   input: z.object({
+  //     username: z.string(),
+  //     password: z.string(),
+  //   }),
+  //   output: z.object({
+  //     type: z.union([z.literal("succes"), z.literal("failure")]),
+  //   }),
+  // }
 }, () => {}, null)
 
-covenant.define("findUser", ({ inputs }) => {
-  console.log(inputs.username);
-
-  return [
-    {
-      username: "Hunter Green",
-      image: "2girls1cup.jpg",
-    }
-  ]
-});
-
-
-covenant.assertDefined();
-
-
-export const crpc = new CovenantClient(covenant.getSchema(), httpFetcher("http://localhost:4200"))
