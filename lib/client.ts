@@ -30,16 +30,16 @@ export class CovenantClient<T extends RouteMap> {
     const validation = await responseSchema["~standard"].validate(body);
 
     if (validation.issues) {
-      // @ts-ignore
+      // @ts-expect-error trust me on this one
       return {
         status: "ERROR",
         messsage: `Error validating: ${validation.issues}`,
         httpCode: 400,
         fault: "client",
-      } as InferRouteResponse<T[K]>
+      }
     }
 
-    // @ts-ignore
+    // @ts-expect-error and this one
     return validation.value;
   }
 

@@ -27,12 +27,12 @@ export type RouteDefinition<T, Context, Store> = T extends RouteDeclaration<infe
   : never
 
 
-export type InferRouteInput<T> = T extends RouteDeclaration<infer Input, any> ? StandardSchemaV1.InferInput<Input> : never;
-export type InferRouteResponse<T> = T extends RouteDeclaration<any, infer Output> 
+export type InferRouteInput<T> = Flatten<T extends RouteDeclaration<infer Input, any> ? StandardSchemaV1.InferInput<Input> : never>;
+export type InferRouteResponse<T> = Flatten<T extends RouteDeclaration<any, infer Output> 
   ? Output extends StandardSchemaV1
-  ? Flatten<CovenantResponse<Output>>
+  ? CovenantResponse<Output>
   : never
-  : never;
+  : never>;
 
 export type MaybePromise<T> = Promise<T> | T;
 
