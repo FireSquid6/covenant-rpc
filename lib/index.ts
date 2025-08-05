@@ -1,6 +1,7 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import { parseRequest } from "./request";
-import { handleCatch, covenantResponseToJsResonse, type CovenantResponse } from "./response";
+import { parseRequest, type CovenantRequest } from "./request";
+import { handleCatch, covenantResponseToJsResonse, type CovenantResponse, getResponseSchema } from "./response";
+import type { Fetcher } from "./client";
 
 
 export interface RouteDeclaration<
@@ -18,7 +19,7 @@ export interface HandlerInputs<Inputs, Context, Store> {
   store: Store;
   setHeader: (name: string, value: string) => void;
   error: (cause: "server" | "client", message: string, httpCode?: number) => never;
-  redirect: () => never;  // TODO
+  redirect: (to: string, type: "permanent" | "temporary") => never;  // TODO
 
 }
 
@@ -112,11 +113,11 @@ export class Covenant<
         request: parsed,
         ctx: undefined,
         store: this.store,
-        redirect() {
-          throw new CovenantError("Redirect not implemented yet", "server")
+        redirect(to, type) {
+          throw new CovenantRedirect(to, type)
         },
-        setHeader() {
-          throw new CovenantError("Set header not implemented yet", "server");
+        setHeader(name: string, value: string) {
+          newHeaders.set(name, value);
         },
         error(cause, message, code) {
           throw new CovenantError(message, cause, code);
@@ -157,6 +158,38 @@ export class Covenant<
 
   getSchema(): T {
     return this.schema;
+  }
+
+  getClient(fetcher: Fetcher): CovenantClient<F, T> {
+    return async (func, inputs): Promise<InferRouteResponse<T[F]>> => {
+      const req: CovenantRequest = {
+        function: func,
+        inputs: inputs,
+      }
+
+      const res = await fetcher(req)
+      const outputSchema = this.schema[func].output;
+      
+      const body = await res.json();
+      const responseSchema = getResponseSchema(outputSchema);
+
+      const validation = await responseSchema["~standard"].validate(body);
+
+      if (validation.issues) {
+        return {
+          status: "ERROR",
+          httpCode: res.status,
+          fault: "server",
+          message: `Bad response with validation issues: ${validation.issues}`
+        } as InferRouteResponse<T[F]>;
+      }
+
+      // we know more than the typescript compiler in this case
+      // so we can force a typecast here. Don't worry--we do test
+      // this code
+      return validation.value as InferRouteResponse<T[F]>;
+    }
+
   }
 }
 

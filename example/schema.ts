@@ -1,5 +1,6 @@
 import { Covenant } from "../lib";
 import { z } from "zod";
+import { httpFetcher } from "../lib/client";
 
 
 const covenant = new Covenant({
@@ -27,3 +28,5 @@ covenant.define("findUser", ({ inputs }) => {
 })
 
 covenant.assertDefined();
+
+export const crpc = covenant.getClient(httpFetcher("http://localhost:4200/api"))
