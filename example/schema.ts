@@ -1,6 +1,6 @@
 import { Covenant } from "../lib";
 import { z } from "zod";
-import { httpFetcher } from "../lib/client";
+import { CovenantClient, httpFetcher } from "../lib/client";
 
 
 const covenant = new Covenant({
@@ -15,18 +15,19 @@ const covenant = new Covenant({
   }
 }, () => {}, null)
 
-
 covenant.define("findUser", ({ inputs }) => {
   console.log(inputs.username);
 
   return [
     {
-      username: "hello",
-      image: "image!",
+      username: "Hunter Green",
+      image: "2girls1cup.jpg",
     }
   ]
-})
+});
+
 
 covenant.assertDefined();
 
-export const crpc = covenant.getClient(httpFetcher("http://localhost:4200/api"))
+
+export const crpc = new CovenantClient(covenant.getSchema(), httpFetcher("http://localhost:4200"))

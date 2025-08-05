@@ -1,7 +1,7 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import { parseRequest, type CovenantRequest } from "./request";
-import { handleCatch, covenantResponseToJsResonse, type CovenantResponse, getResponseSchema } from "./response";
-import type { Fetcher } from "./client";
+import { parseRequest } from "./request";
+import { handleCatch, covenantResponseToJsResonse, type CovenantResponse } from "./response";
+import type { Flatten } from "./utils";
 
 
 export interface RouteDeclaration<
@@ -19,8 +19,6 @@ export interface HandlerInputs<Inputs, Context, Store> {
   store: Store;
   setHeader: (name: string, value: string) => void;
   error: (cause: "server" | "client", message: string, httpCode?: number) => never;
-  redirect: (to: string, type: "permanent" | "temporary") => never;  // TODO
-
 }
 
 
@@ -29,10 +27,19 @@ export type RouteDefinition<T, Context, Store> = T extends RouteDeclaration<infe
   : never
 
 
-export type InferRouteInput<T> = T extends RouteDeclaration<infer Input, any> ? Input : never;
-export type InferRouteResponse<T> = T extends RouteDeclaration<any, infer Output> ? CovenantResponse<Output> : never;
+export type InferRouteInput<T> = T extends RouteDeclaration<infer Input, any> ? StandardSchemaV1.InferInput<Input> : never;
+export type InferRouteResponse<T> = T extends RouteDeclaration<any, infer Output> 
+  ? Output extends StandardSchemaV1
+  ? Flatten<CovenantResponse<Output>>
+  : never
+  : never;
 
 export type MaybePromise<T> = Promise<T> | T;
+
+export type RouteMap = { [key: string]: RouteDeclaration<StandardSchemaV1, StandardSchemaV1> }
+export type DefinitionMap<T extends RouteMap, Context, Store> = { 
+  [key in keyof T]: RouteDefinition<T[key], Context, Store> | undefined 
+}
 
 
 export interface ParsedRequest {
@@ -46,19 +53,19 @@ export interface ParsedRequest {
 
 
 export class Covenant<
-  F extends string,
-  T extends Record<F, RouteDeclaration<StandardSchemaV1, StandardSchemaV1>>,
+  T extends RouteMap,
   Context,
   Store,
 > {
   private schema: T;
-  private contextFn: (i: HandlerInputs<unknown, undefined, Store>) => MaybePromise<Context>
-  private definitions: Record<string, RouteDefinition<RouteDeclaration<any, any>, Context, Store>>;
+  private contextFn: (i: HandlerInputs<unknown, undefined, Store>) => MaybePromise<Context>;
+  private definitions: DefinitionMap<T, Context, Store>;
   store: Store;
 
   constructor(schema: T, contextFn: (i: HandlerInputs<unknown, undefined, Store>) => MaybePromise<Context>, store: Store) {
     this.schema = schema;
     this.contextFn = contextFn;
+    // @ts-expect-error yeah it's not supposed to fill the type yet
     this.definitions = {};
     this.store = store;
   }
@@ -78,9 +85,9 @@ export class Covenant<
 
   }
 
-  define<D extends F>(func: D, definition: RouteDefinition<T[D], Context, Store>) {
+  define<D extends keyof T>(func: D, definition: RouteDefinition<T[D], Context, Store>) {
     if (this.definitions[func] !== undefined) {
-      throw new Error(`Tried to define ${func} twice!`);
+      throw new Error(`Tried to define ${String(func)} twice!`);
     }
 
     this.definitions[func] = definition;
@@ -92,7 +99,7 @@ export class Covenant<
     try {
       const parsed = await parseRequest(request);
 
-      const route = this.schema[parsed.functionName as F];
+      const route = this.schema[parsed.functionName];
       const handler = this.definitions[parsed.functionName];
 
       if (!route || !handler) {
@@ -113,9 +120,6 @@ export class Covenant<
         request: parsed,
         ctx: undefined,
         store: this.store,
-        redirect(to, type) {
-          throw new CovenantRedirect(to, type)
-        },
         setHeader(name: string, value: string) {
           newHeaders.set(name, value);
         },
@@ -139,7 +143,7 @@ export class Covenant<
       return [
         {
           status: "OK",
-          body: result,
+          data: result,
         },
         newHeaders,
       ]
@@ -160,37 +164,37 @@ export class Covenant<
     return this.schema;
   }
 
-  getClient(fetcher: Fetcher): CovenantClient<F, T> {
-    return async (func, inputs): Promise<InferRouteResponse<T[F]>> => {
-      const req: CovenantRequest = {
-        function: func,
-        inputs: inputs,
-      }
-
-      const res = await fetcher(req)
-      const outputSchema = this.schema[func].output;
-      
-      const body = await res.json();
-      const responseSchema = getResponseSchema(outputSchema);
-
-      const validation = await responseSchema["~standard"].validate(body);
-
-      if (validation.issues) {
-        return {
-          status: "ERROR",
-          httpCode: res.status,
-          fault: "server",
-          message: `Bad response with validation issues: ${validation.issues}`
-        } as InferRouteResponse<T[F]>;
-      }
-
-      // we know more than the typescript compiler in this case
-      // so we can force a typecast here. Don't worry--we do test
-      // this code
-      return validation.value as InferRouteResponse<T[F]>;
-    }
-
-  }
+  // getClient(fetcher: Fetcher): CovenantClient<T> {
+  //   return async (func, inputs): Promise<InferRouteResponse<T[F]>> => {
+  //     const req: CovenantRequest = {
+  //       function: func,
+  //       inputs: inputs,
+  //     }
+  //
+  //     const res = await fetcher(req)
+  //     const outputSchema = this.schema[func].output;
+  //     
+  //     const body = await res.json();
+  //     const responseSchema = getResponseSchema(outputSchema);
+  //
+  //     const validation = await responseSchema["~standard"].validate(body);
+  //
+  //     if (validation.issues) {
+  //       return {
+  //         status: "ERROR",
+  //         httpCode: res.status,
+  //         fault: "server",
+  //         message: `Bad response with validation issues: ${validation.issues}`
+  //       }
+  //     }
+  //
+  //     // we know more than the typescript compiler in this case
+  //     // so we can force a typecast here. Don't worry--we do test
+  //     // this code
+  //     return validation.value as InferRouteResponse<T[F]>;
+  //   }
+  //
+  // }
 }
 
 
@@ -218,18 +222,6 @@ export class CovenantError {
   }
 }
 
-export class CovenantRedirect {
-  type: "permanent" | "temporary";
-  to: string;
-
-  constructor(to: string, type: "temporary" | "permanent") {
-    this.to = to;
-    this.type = type;
-  }
-}
 
 
-export type CovenantClient<F extends string, T extends Record<F, RouteDeclaration<any, any>>> = (
-  func: F,
-  inputs: InferRouteInput<T[F]>,
-) => Promise<InferRouteResponse<T[F]>>;
+

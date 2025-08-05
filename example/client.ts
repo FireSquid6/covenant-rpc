@@ -1,6 +1,6 @@
 import { crpc } from "./schema";
 
 
-const res = await crpc("findUser", {
-  username: "hello!",
+const res = await crpc.fetch("findUser", {
+  username: "Jonathan"
 })
