@@ -12,7 +12,14 @@ export type ProcedureRequest = z.infer<typeof procedureRequestSchema>;
 export async function parseRequest(req: Request): Promise<ParsedRequest> {
   const url = new URL(req.url);
 
-  const { data, error, success } = procedureRequestSchema.safeParse(await req.json());
+  let jsonData;
+  try {
+    jsonData = await req.json();
+  } catch (e) {
+    throw new CovenantError("Invalid JSON in request body", 400);
+  }
+
+  const { data, error, success } = procedureRequestSchema.safeParse(jsonData);
 
 
   if (!success) {

@@ -109,7 +109,7 @@ export class CovenantServer<
 
       let ctx = this.contextGenerator(initialInputs);
       if (ctx instanceof Promise) {
-        await ctx;
+        ctx = await ctx;
       }
 
       const finalInputs: ProcedureInputs<any, Context> = {
@@ -117,7 +117,7 @@ export class CovenantServer<
         ctx,
       }
 
-      const result = handler(finalInputs);
+      const result = await handler(finalInputs);
 
       return {
         result: "OK",
