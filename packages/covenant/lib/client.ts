@@ -1,7 +1,7 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ProcedureMap, ChannelMap, Covenant, ProcedureDeclaration } from ".";
 import type { Flatten } from "./utils";
-import { getResponseSchema, type ProcedureResponse } from "./response";
+import { getResponseSchema, type ProcedureError, type ProcedureResponse } from "./response";
 import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
 
@@ -62,6 +62,24 @@ export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
 
     //@ts-expect-error types are too deep for tsc to understand properly
     return validation.value;
+  }
+
+  async callUnwrap<K extends keyof P>(
+    procedure: K,
+    inputs: InferProcedureInputs<P[K]>,
+    thrower?: (error: ProcedureError) => never,
+  ): Promise<StandardSchemaV1.InferOutput<P[K]["output"]>> {
+    const { result, error, data } = await this.call(procedure, inputs);
+
+    if (result === "ERROR") {
+      if (thrower) {
+        // not sure why this isn't inferred to be not null but whatever
+        thrower(error!);
+      }
+      throw new Error(`Unwrapped an error calling ${String(procedure)} (${error?.httpCode}): ${error?.message}`);
+    }
+
+    return data;
   }
 }
 
