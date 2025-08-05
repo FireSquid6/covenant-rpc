@@ -1,5 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { parseRequest } from "./request";
+import { handleCatch, covenantResponseToJsResonse, type CovenantResponse } from "./response";
 
 
 export interface RouteDeclaration<
@@ -16,7 +17,7 @@ export interface HandlerInputs<Inputs, Context, Store> {
   request: ParsedRequest;
   store: Store;
   setHeader: (name: string, value: string) => void;
-  error: (cause: "server" | "client", message: string) => never;
+  error: (cause: "server" | "client", message: string, httpCode?: number) => never;
   redirect: () => never;  // TODO
 
 }
@@ -27,11 +28,8 @@ export type RouteDefinition<T, Context, Store> = T extends RouteDeclaration<infe
   : never
 
 
-export type InferRouteResponse<T> = T extends RouteDeclaration<any, infer Output>
-  ? { status: "OK", data: StandardSchemaV1.InferOutput<Output> }
-  : { status: "ERROR", fault: "server" | "client", message: string }
-
-export type InferRouteInput<T> = T extends RouteDeclaration<infer Input, any> ? Input : any;
+export type InferRouteInput<T> = T extends RouteDeclaration<infer Input, any> ? Input : never;
+export type InferRouteResponse<T> = T extends RouteDeclaration<any, infer Output> ? CovenantResponse<Output> : never;
 
 export type MaybePromise<T> = Promise<T> | T;
 
@@ -53,7 +51,6 @@ export class Covenant<
   Store,
 > {
   private schema: T;
-  // TODO - this should probably work differently than taking in a raw request
   private contextFn: (i: HandlerInputs<unknown, undefined, Store>) => MaybePromise<Context>
   private definitions: Record<string, RouteDefinition<RouteDeclaration<any, any>, Context, Store>>;
   store: Store;
@@ -65,7 +62,6 @@ export class Covenant<
     this.store = store;
   }
 
-  // TODO - ensure that everything is defined
   assertDefined() {
     const notImplemented: string[] = []
     for (const name of Object.keys(this.schema)) {
@@ -89,26 +85,24 @@ export class Covenant<
     this.definitions[func] = definition;
   }
 
-  async handle(request: Request): Promise<Response> {
+  private async getResponse(request: Request): Promise<[CovenantResponse<any>, Headers]> {
+    const newHeaders: Headers = { ...request.headers };
+
     try {
       const parsed = await parseRequest(request);
-
-      if (parsed instanceof Response) {
-        return parsed
-      }
 
       const route = this.schema[parsed.functionName as F];
       const handler = this.definitions[parsed.functionName];
 
       if (!route || !handler) {
         // TODO - better handling
-        throw new Error("Route not found")
+        throw new CovenantError("Route not found", "client", 404);
       }
 
       const validationResult = await route.input["~standard"].validate(parsed.input);
       if (validationResult.issues) {
         // TODO - better handling
-        throw new Error("issues");
+        throw new CovenantError(`Error parsing the inputs: ${validationResult.issues}`, "client", 400);
       }
 
       // any is fine here because in this case we know more than
@@ -119,17 +113,17 @@ export class Covenant<
         ctx: undefined,
         store: this.store,
         redirect() {
-          throw new Error("Redirect not implemented");
+          throw new CovenantError("Redirect not implemented yet", "server")
         },
         setHeader() {
-          throw new Error("Set header not implemented");
+          throw new CovenantError("Set header not implemented yet", "server");
         },
-        error() {
-          throw new Error("Error not implemented");
+        error(cause, message, code) {
+          throw new CovenantError(message, cause, code);
         },
       }
 
-      let context = this.contextFn(initialInputs) ;
+      let context = this.contextFn(initialInputs);
       if (context instanceof Promise) {
         context = await context;
       }
@@ -141,11 +135,24 @@ export class Covenant<
 
       const result = handler(finalInputs);
 
-      return Response.json({ hello: "world" });
+      return [
+        {
+          status: "OK",
+          body: result,
+        },
+        newHeaders,
+      ]
+
     } catch (e) {
-      // TODO - handle errors
-      return new Response();
+      const res = handleCatch(e);
+      return [res, newHeaders];
     }
+  }
+
+  async handle(request: Request): Promise<Response> {
+    const [response, headers] = await this.getResponse(request);
+    return covenantResponseToJsResonse(response, headers);
+
   }
 
   getSchema(): T {
@@ -153,6 +160,40 @@ export class Covenant<
   }
 }
 
+
+export class CovenantError {
+  fault: "server" | "client";
+  message: string;
+  httpCode: number;
+
+  constructor(message: string, fault: "server" | "client", httpCode?: number) {
+    this.message = message;
+    this.fault = fault;
+    this.httpCode = httpCode === undefined
+      ? fault === "server"
+        ? 500
+        : 400
+      : httpCode;
+  }
+
+  static fromError(error: Error): CovenantError {
+    return new CovenantError(error.message, "server", 500);
+  }
+
+  static fromUnknown(k: unknown): CovenantError {
+    return new CovenantError(`Unknown error: ${k}`, "server", 500);
+  }
+}
+
+export class CovenantRedirect {
+  type: "permanent" | "temporary";
+  to: string;
+
+  constructor(to: string, type: "temporary" | "permanent") {
+    this.to = to;
+    this.type = type;
+  }
+}
 
 
 export type CovenantClient<F extends string, T extends Record<F, RouteDeclaration<any, any>>> = (

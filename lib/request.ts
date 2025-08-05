@@ -1,4 +1,4 @@
-import type { ParsedRequest } from ".";
+import { CovenantError, type ParsedRequest } from ".";
 import { z } from "zod";
 
 
@@ -7,15 +7,15 @@ export const covenantRequestSchema = z.object({
   inputs: z.any(),
 });
 
-export type CovenantResponse = z.infer<typeof covenantRequestSchema>;
+export type CovenantRequest = z.infer<typeof covenantRequestSchema>;
 
-export async function parseRequest(req: Request): Promise<ParsedRequest | Response> {
+export async function parseRequest(req: Request): Promise<ParsedRequest> {
   const url = new URL(req.url);
 
-  const { data, success } = covenantRequestSchema.safeParse(await req.json());
+  const { data, error, success } = covenantRequestSchema.safeParse(await req.json());
 
   if (!success) {
-    return new Response("Improper covenant request schema", { status: 400 })
+    throw new CovenantError(`Didn't recieve expected schema: ${error.message}`, "client");
   }
   
   return {
