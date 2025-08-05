@@ -1,15 +1,15 @@
-# covenant-rpc
+# Covenant
 
-To install dependencies:
+Covenant is a way to have a typesafe rpc.
 
-```bash
-bun install
-```
 
-To run:
+# Quick Start
 
-```bash
-bun run index.ts
-```
+Start by defining your covenant. This is all of the functions your frontend can call from your backend
 
-This project was created using `bun init` in bun v1.2.19. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+!! Important: Make sure you don't import anything into the interface file that is not safe on the frontend.
+
+Then create the server on the backend
+
+
+Now create the client on the frontend.
