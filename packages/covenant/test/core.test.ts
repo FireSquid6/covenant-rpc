@@ -6,6 +6,7 @@ test("declareCovenant should return the same covenant object", () => {
   const testCovenant = {
     procedures: {
       getUser: {
+        type: "query" as const,
         input: z.object({ id: z.string() }),
         output: z.object({ name: z.string() })
       }
@@ -32,14 +33,17 @@ test("declareCovenant should work with multiple procedures", () => {
   const multiProcedureCovenant = {
     procedures: {
       getUser: {
+        type: "query" as const,
         input: z.object({ id: z.string() }),
         output: z.object({ name: z.string(), email: z.string() })
       },
       createUser: {
+        type: "mutation" as const,
         input: z.object({ name: z.string(), email: z.string() }),
         output: z.object({ id: z.string(), created: z.boolean() })
       },
       deleteUser: {
+        type: "mutation" as const,
         input: z.object({ id: z.string() }),
         output: z.object({ deleted: z.boolean() })
       }
@@ -72,6 +76,7 @@ test("declareCovenant should work with both procedures and channels", () => {
   const fullCovenant = {
     procedures: {
       auth: {
+        type: "mutation" as const,
         input: z.object({ token: z.string() }),
         output: z.object({ valid: z.boolean() })
       }
@@ -94,6 +99,7 @@ test("covenant types should be properly inferred", () => {
   const covenant = declareCovenant({
     procedures: {
       test: {
+        type: "query" as const,
         input: z.object({ value: z.number() }),
         output: z.object({ result: z.string() })
       }

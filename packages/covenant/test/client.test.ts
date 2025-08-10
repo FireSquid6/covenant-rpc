@@ -9,14 +9,17 @@ import type { ProcedureRequest } from "../lib/request";
 const testCovenant = declareCovenant({
   procedures: {
     getUser: {
+      type: "query" as const,
       input: z.object({ id: z.string() }),
       output: z.object({ id: z.string(), name: z.string() })
     },
     createUser: {
+      type: "mutation" as const,
       input: z.object({ name: z.string(), email: z.string() }),
       output: z.object({ id: z.string(), created: z.boolean() })
     },
     deleteUser: {
+      type: "mutation" as const,
       input: z.object({ id: z.string() }),
       output: z.object({ deleted: z.boolean() })
     }
@@ -167,13 +170,13 @@ test("CovenantClient.callUnwrap should use custom thrower", async () => {
 });
 
 test("httpMessenger should make HTTP requests", async () => {
-  const procedureUrl = "http://localhost:3000/api";
-  const messenger = httpMessenger({ procedureUrl });
+  const httpUrl = "http://localhost:3000/api";
+  const messenger = httpMessenger({ httpUrl });
   
   // Mock fetch globally
   const originalFetch = globalThis.fetch;
   const mockFetch = mock(() => Promise.resolve(Response.json({ result: "OK" })));
-  globalThis.fetch = mockFetch;
+  globalThis.fetch = mockFetch as any;
   
   try {
     const request: ProcedureRequest = {
@@ -184,7 +187,7 @@ test("httpMessenger should make HTTP requests", async () => {
     await messenger.fetch(request);
     
     expect(mockFetch).toHaveBeenCalledWith(
-      procedureUrl,
+      expect.stringContaining(httpUrl),
       expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },

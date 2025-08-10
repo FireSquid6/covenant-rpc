@@ -81,13 +81,21 @@ export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
 
     return data;
   }
+
+  listen() {
+
+  }
 }
 
 // TODO - add the ability to set the headers on a fetch
-export function httpMessenger({ procedureUrl }: { procedureUrl: string }): ClientMessenger {
+export function httpMessenger({ httpUrl }: { httpUrl: string }): ClientMessenger {
   return {
     fetch(request: ProcedureRequest): Promise<Response> {
-      return fetch(procedureUrl, {
+      const url = new URL(httpUrl)
+      url.searchParams.set("type", "procedure")
+
+
+      return fetch(url.toString(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

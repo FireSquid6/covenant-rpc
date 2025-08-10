@@ -9,6 +9,7 @@ import { CovenantError } from "../lib/error";
 const integrationCovenant = declareCovenant({
   procedures: {
     getUser: {
+      type: "query" as const,
       input: z.object({ id: z.string() }),
       output: z.object({ 
         id: z.string(), 
@@ -18,6 +19,7 @@ const integrationCovenant = declareCovenant({
       })
     },
     createUser: {
+      type: "mutation" as const,
       input: z.object({ 
         name: z.string().min(1), 
         email: z.string().email() 
@@ -29,6 +31,7 @@ const integrationCovenant = declareCovenant({
       })
     },
     updateUser: {
+      type: "mutation" as const,
       input: z.object({ 
         id: z.string(),
         name: z.string().optional(),
@@ -40,10 +43,12 @@ const integrationCovenant = declareCovenant({
       })
     },
     deleteUser: {
+      type: "mutation" as const,
       input: z.object({ id: z.string() }),
       output: z.object({ deleted: z.boolean() })
     },
     listUsers: {
+      type: "query" as const,
       input: z.object({ 
         limit: z.number().min(1).max(100).optional(),
         offset: z.number().min(0).optional()
@@ -59,6 +64,7 @@ const integrationCovenant = declareCovenant({
       })
     },
     authRequired: {
+      type: "mutation" as const,
       input: z.object({ action: z.string() }),
       output: z.object({ authorized: z.boolean(), user: z.string() })
     }
@@ -85,7 +91,7 @@ function createTestServer() {
   const server = new CovenantServer(integrationCovenant, { contextGenerator });
 
   // Define all procedures
-  server.defineProcedure("getUser", async ({ inputs }) => {
+  server.defineProcedure("getUser", async ({ inputs }: any) => {
     const user = mockUsers.get(inputs.id);
     if (!user) {
       throw new CovenantError("User not found", 404);
@@ -93,7 +99,7 @@ function createTestServer() {
     return user;
   });
 
-  server.defineProcedure("createUser", async ({ inputs, ctx }) => {
+  server.defineProcedure("createUser", async ({ inputs, ctx }: any) => {
     const id = `user${mockUsers.size + 1}`;
     const user = {
       id,
@@ -110,7 +116,7 @@ function createTestServer() {
     };
   });
 
-  server.defineProcedure("updateUser", async ({ inputs }) => {
+  server.defineProcedure("updateUser", async ({ inputs }: any) => {
     const user = mockUsers.get(inputs.id);
     if (!user) {
       throw new CovenantError("User not found", 404);
@@ -123,12 +129,12 @@ function createTestServer() {
     return { id: inputs.id, updated: true };
   });
 
-  server.defineProcedure("deleteUser", async ({ inputs }) => {
+  server.defineProcedure("deleteUser", async ({ inputs }: any) => {
     const existed = mockUsers.delete(inputs.id);
     return { deleted: existed };
   });
 
-  server.defineProcedure("listUsers", async ({ inputs }) => {
+  server.defineProcedure("listUsers", async ({ inputs }: any) => {
     const allUsers = Array.from(mockUsers.values());
     const limit = inputs.limit ?? 10;
     const offset = inputs.offset ?? 0;
@@ -141,14 +147,14 @@ function createTestServer() {
     };
   });
 
-  server.defineProcedure("authRequired", async ({ inputs, ctx, error }) => {
+  server.defineProcedure("authRequired", async ({ inputs, ctx, error }: any) => {
     if (!ctx.userId) {
       error("Authentication required", 401);
     }
     
     return {
       authorized: true,
-      user: ctx.userId
+      user: ctx.userId!
     };
   });
 
@@ -195,18 +201,18 @@ test("End-to-end user creation and retrieval", async () => {
   });
   
   expect(createResult.result).toBe("OK");
-  expect(createResult.data?.created).toBe(true);
-  expect(typeof createResult.data?.id).toBe("string");
-  expect(typeof createResult.data?.timestamp).toBe("number");
+  expect((createResult.data as any)?.created).toBe(true);
+  expect(typeof (createResult.data as any)?.id).toBe("string");
+  expect(typeof (createResult.data as any)?.timestamp).toBe("number");
   
   // Retrieve the created user
-  const userId = createResult.data!.id;
+  const userId = (createResult.data as any)!.id;
   const getResult = await client.call("getUser", { id: userId });
   
   expect(getResult.result).toBe("OK");
-  expect(getResult.data?.name).toBe("David Wilson");
-  expect(getResult.data?.email).toBe("david@example.com");
-  expect(getResult.data?.active).toBe(true);
+  expect((getResult.data as any)?.name).toBe("David Wilson");
+  expect((getResult.data as any)?.email).toBe("david@example.com");
+  expect((getResult.data as any)?.active).toBe(true);
 });
 
 test("End-to-end user update flow", async () => {
@@ -221,14 +227,14 @@ test("End-to-end user update flow", async () => {
   });
   
   expect(updateResult.result).toBe("OK");
-  expect(updateResult.data?.updated).toBe(true);
+  expect((updateResult.data as any)?.updated).toBe(true);
   
   // Verify the update
   const getResult = await client.call("getUser", { id: "user2" });
   
   expect(getResult.result).toBe("OK");
-  expect(getResult.data?.name).toBe("Robert Johnson");
-  expect(getResult.data?.email).toBe("robert@example.com");
+  expect((getResult.data as any)?.name).toBe("Robert Johnson");
+  expect((getResult.data as any)?.email).toBe("robert@example.com");
 });
 
 test("End-to-end user deletion", async () => {
@@ -239,7 +245,7 @@ test("End-to-end user deletion", async () => {
   const deleteResult = await client.call("deleteUser", { id: "user3" });
   
   expect(deleteResult.result).toBe("OK");
-  expect(deleteResult.data?.deleted).toBe(true);
+  expect((deleteResult.data as any)?.deleted).toBe(true);
   
   // Verify user is gone
   const getResult = await client.call("getUser", { id: "user3" });
@@ -256,12 +262,12 @@ test("End-to-end list users with pagination", async () => {
   const listResult = await client.call("listUsers", { limit: 2, offset: 0 });
   
   expect(listResult.result).toBe("OK");
-  expect(listResult.data?.users).toHaveLength(2);
-  expect(listResult.data?.total).toBeGreaterThanOrEqual(2);
-  expect(typeof listResult.data?.hasMore).toBe("boolean");
+  expect((listResult.data as any)?.users).toHaveLength(2);
+  expect((listResult.data as any)?.total).toBeGreaterThanOrEqual(2);
+  expect(typeof (listResult.data as any)?.hasMore).toBe("boolean");
   
   // Verify user structure
-  const firstUser = listResult.data?.users[0];
+  const firstUser = (listResult.data as any)?.users[0];
   expect(firstUser).toHaveProperty("id");
   expect(firstUser).toHaveProperty("name");
   expect(firstUser).toHaveProperty("email");
@@ -305,8 +311,7 @@ test("Input validation integration test", async () => {
   // Test invalid email format
   const result = await client.call("createUser", {
     name: "Test User",
-    // @ts-expect-error Testing runtime validation
-    email: "invalid-email"
+    email: "invalid-email" as any // Testing runtime validation
   });
   
   expect(result.result).toBe("ERROR");
@@ -325,9 +330,9 @@ test("Complex data structures integration test", async () => {
   const listResult = await client.call("listUsers", { limit: 10, offset: 0 });
   
   expect(listResult.result).toBe("OK");
-  expect(Array.isArray(listResult.data?.users)).toBe(true);
-  expect(typeof listResult.data?.total).toBe("number");
-  expect(typeof listResult.data?.hasMore).toBe("boolean");
+  expect(Array.isArray((listResult.data as any)?.users)).toBe(true);
+  expect(typeof (listResult.data as any)?.total).toBe("number");
+  expect(typeof (listResult.data as any)?.hasMore).toBe("boolean");
 });
 
 test("Server context integration test", async () => {
@@ -347,7 +352,7 @@ test("Server context integration test", async () => {
   });
   
   const response = await server.handleProcedure(request);
-  const json = await response.json();
+  const json = await response.json() as any;
   
   expect(response.status).toBe(201);
   expect(json.result).toBe("OK");

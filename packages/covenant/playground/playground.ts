@@ -1,4 +1,4 @@
-import { declareCovenant } from "..";
+import { declareCovenant } from "../lib";
 import { CovenantClient, httpMessenger } from "../lib/client";
 import { z } from "zod";
 import { CovenantServer } from "../lib/server";
@@ -7,6 +7,7 @@ import { CovenantServer } from "../lib/server";
 export const covenant = declareCovenant({
   procedures: {
     findUser: {
+      type: "query",
       input: z.object({
         id: z.string(),
       }),
@@ -25,7 +26,7 @@ export const covenant = declareCovenant({
 
 
 export const client = new CovenantClient(covenant, httpMessenger({ 
-  procedureUrl: "http://localhost:4320/api" 
+  httpUrl: "http://localhost:4320/api" 
 }));
 
 

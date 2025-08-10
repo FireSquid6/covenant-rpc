@@ -1,5 +1,7 @@
+import fs from "fs";
+import path from "path";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import type { ChannelMap, ProcedureMap, Covenant, ProcedureDeclaration } from ".";
+import type { ChannelMap, ProcedureMap, Covenant, ProcedureDeclaration, ProcedureType } from ".";
 import type { MaybePromise } from "./utils";
 import { parseRequest } from "./request";
 import { CovenantError } from "./error";
@@ -45,7 +47,7 @@ export class CovenantServer<
 > {
   private covenant: Covenant<P, C>;
   private procedureDefinitions: DefinitionMap<P, Context>;
-    contextGenerator: ContextGenerator<Context>;
+  private contextGenerator: ContextGenerator<Context>;
 
 
   constructor(covenant: Covenant<P, C>, { contextGenerator }: {
@@ -58,13 +60,39 @@ export class CovenantServer<
     this.contextGenerator = contextGenerator;
   }
 
+  assertAllDefined(): void {
+    for (const p of Object.keys(this.covenant.procedures)) {
+      if (this.procedureDefinitions[p] === undefined) {
+        throw new Error(`${p} was not defined`)
+      }
+    }
 
-  defineChannel() {
-    throw new Error("Channels not implemented yet");
   }
 
-  assertAllDefined(): void {
+  // directory must be an absolute path or this will fail
+  async runDefaultInDirectory(directory: string) {
+    const validExtensions = [".ts", ".tsx", ".js", ".jsx"];
 
+    await Promise.all(fs.readdirSync(directory, { recursive: true }).map(async (f) => {
+      const filepath = path.join(directory, f.toString());
+      const extension = path.extname(filepath);
+
+      if (validExtensions.find(e => e === extension) === undefined) {
+        console.log(`${f} is not a source file`);
+        return;
+      }
+
+      try {
+        const mod = await import(filepath);
+        mod.default()
+      } catch (e) {
+        console.log(`${f} had an error:`)
+        console.log(e);
+
+        // we want to quit if there's an error
+        process.exit(1);
+      }
+    }));
   }
 
   defineProcedure<N extends keyof P>(name: N, definition: ProcedureDefinition<P[N], Context>) {
@@ -75,7 +103,7 @@ export class CovenantServer<
     this.procedureDefinitions[name] = definition;
   }
 
-  private async getResponse(request: Request, newHeaders: Headers): Promise<ProcedureResponse<any>> {
+  private async processProcedure(request: Request, newHeaders: Headers): Promise<ProcedureResponse<any>> {
     try {
       const parsed = await parseRequest(request);
 
@@ -146,7 +174,7 @@ export class CovenantServer<
     const headers = new Headers();
     headers.set("Content-Type", "application/json");
 
-    const response = await this.getResponse(request, headers);
+    const response = await this.processProcedure(request, headers);
     return procedureResponseToJs(response, headers);
   }
 }

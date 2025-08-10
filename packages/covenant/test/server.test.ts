@@ -8,18 +8,22 @@ import { CovenantError } from "../lib/error";
 const testCovenant = declareCovenant({
   procedures: {
     getUser: {
+      type: "query" as const,
       input: z.object({ id: z.string() }),
       output: z.object({ id: z.string(), name: z.string(), email: z.string() })
     },
     createUser: {
+      type: "mutation" as const,
       input: z.object({ name: z.string(), email: z.string() }),
       output: z.object({ id: z.string(), success: z.boolean() })
     },
     noInputs: {
+      type: "query" as const,
       input: z.object({}),
       output: z.object({ message: z.string() })
     },
     errorTest: {
+      type: "mutation" as const,
       input: z.object({ shouldError: z.boolean() }),
       output: z.object({ result: z.string() })
     }
@@ -32,7 +36,6 @@ test("CovenantServer constructor should initialize properly", () => {
   const server = new CovenantServer(testCovenant, { contextGenerator });
   
   expect(server).toBeInstanceOf(CovenantServer);
-  expect(server.contextGenerator).toBe(contextGenerator);
 });
 
 test("defineProcedure should register procedure handlers", () => {
@@ -82,7 +85,7 @@ test("handleProcedure should process valid requests", async () => {
   });
   
   const response = await server.handleProcedure(request);
-  const json = await response.json();
+  const json = await response.json() as any;
   
   expect(response.status).toBe(201);
   expect(json.result).toBe("OK");
@@ -108,7 +111,7 @@ test("handleProcedure should return 404 for unknown procedure", async () => {
   });
   
   const response = await server.handleProcedure(request);
-  const json = await response.json();
+  const json = await response.json() as any;
   
   expect(response.status).toBe(404);
   expect(json.result).toBe("ERROR");
@@ -132,7 +135,7 @@ test("handleProcedure should return 400 for invalid input", async () => {
   });
   
   const response = await server.handleProcedure(request);
-  const json = await response.json();
+  const json = await response.json() as any;
   
   expect(response.status).toBe(400);
   expect(json.result).toBe("ERROR");
@@ -159,7 +162,7 @@ test("handleProcedure should handle CovenantError from procedures", async () => 
   });
   
   const response = await server.handleProcedure(request);
-  const json = await response.json();
+  const json = await response.json() as any;
   
   expect(response.status).toBe(422);
   expect(json.result).toBe("ERROR");
@@ -184,7 +187,7 @@ test("handleProcedure should handle regular Error from procedures", async () => 
   });
   
   const response = await server.handleProcedure(request);
-  const json = await response.json();
+  const json = await response.json() as any;
   
   expect(response.status).toBe(500);
   expect(json.result).toBe("ERROR");
@@ -209,7 +212,7 @@ test("handleProcedure should handle unknown errors", async () => {
   });
   
   const response = await server.handleProcedure(request);
-  const json = await response.json();
+  const json = await response.json() as any;
   
   expect(response.status).toBe(500);
   expect(json.result).toBe("ERROR");
@@ -299,7 +302,7 @@ test("handleProcedure should provide error helper", async () => {
   });
   
   const response = await server.handleProcedure(request);
-  const json = await response.json();
+  const json = await response.json() as any;
   
   expect(response.status).toBe(418);
   expect(json.result).toBe("ERROR");
@@ -332,15 +335,16 @@ test("handleProcedure should handle async context generator", async () => {
   });
   
   const response = await server.handleProcedure(request);
-  const json = await response.json();
+  const json = await response.json() as any;
   
   expect(response.status).toBe(201);
   expect(json.result).toBe("OK");
   expect(asyncContextGenerator).toHaveBeenCalledTimes(1);
 });
 
-test("defineChannel should throw not implemented error", () => {
+test("server should be extensible", () => {
   const server = new CovenantServer(testCovenant, { contextGenerator: () => ({}) });
   
-  expect(() => server.defineChannel()).toThrow("Channels not implemented yet");
+  // Test that assertAllDefined works
+  expect(() => server.assertAllDefined()).toThrow("getUser was not defined");
 });

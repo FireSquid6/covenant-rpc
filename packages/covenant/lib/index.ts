@@ -1,11 +1,15 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
+
+export type ProcedureType = "mutation" | "query";
+
 export interface ProcedureDeclaration<
   InputSchema extends StandardSchemaV1,
   OutputSchema extends StandardSchemaV1,
 > {
   input: InputSchema;
   output: OutputSchema;
+  type: ProcedureType;
 }
 
 export type ProcedureMap = { [procedure: string]: ProcedureDeclaration<StandardSchemaV1, StandardSchemaV1> }
@@ -22,7 +26,7 @@ export type ChannelMap = { [channel: string]: ChannelDeclaration<StandardSchemaV
 
 
 export interface Covenant<
-  P extends ProcedureMap, 
+  P extends ProcedureMap,
   C extends ChannelMap,
 > {
   procedures: P;
@@ -35,3 +39,4 @@ export interface Covenant<
 export function declareCovenant<P extends ProcedureMap, C extends ChannelMap>(covenant: Covenant<P, C>): Covenant<P, C> {
   return covenant;
 }
+

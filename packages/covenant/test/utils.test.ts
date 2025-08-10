@@ -149,8 +149,8 @@ test("Flatten type should work with arrays", () => {
   expect(flattened.strings).toEqual(["a", "b", "c"]);
   expect(flattened.numbers).toEqual([1, 2, 3]);
   expect(flattened.objects).toHaveLength(2);
-  expect(flattened.objects[0].id).toBe("obj1");
-  expect(flattened.objects[1].value).toBe(20);
+  expect(flattened.objects[0]?.id).toBe("obj1");
+  expect(flattened.objects[1]?.value).toBe(20);
 });
 
 test("Flatten type should work with union types", () => {
