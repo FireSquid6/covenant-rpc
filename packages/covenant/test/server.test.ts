@@ -1,32 +1,32 @@
 import { test, expect, mock } from "bun:test";
 import { z } from "zod";
-import { declareCovenant } from "../lib/index";
+import { declareCovenant, query, mutation } from "../lib/index";
 import { CovenantServer, type ProcedureInputs } from "../lib/server";
 import { CovenantError } from "../lib/error";
 
 // Test covenant schema
 const testCovenant = declareCovenant({
   procedures: {
-    getUser: {
-      type: "query" as const,
+    getUser: query({
       input: z.object({ id: z.string() }),
-      output: z.object({ id: z.string(), name: z.string(), email: z.string() })
-    },
-    createUser: {
-      type: "mutation" as const,
+      output: z.object({ id: z.string(), name: z.string(), email: z.string() }),
+      resources: () => []
+    }),
+    createUser: mutation({
       input: z.object({ name: z.string(), email: z.string() }),
-      output: z.object({ id: z.string(), success: z.boolean() })
-    },
-    noInputs: {
-      type: "query" as const,
+      output: z.object({ id: z.string(), success: z.boolean() }),
+      resources: () => []
+    }),
+    noInputs: query({
       input: z.object({}),
-      output: z.object({ message: z.string() })
-    },
-    errorTest: {
-      type: "mutation" as const,
+      output: z.object({ message: z.string() }),
+      resources: () => []
+    }),
+    errorTest: mutation({
       input: z.object({ shouldError: z.boolean() }),
-      output: z.object({ result: z.string() })
-    }
+      output: z.object({ result: z.string() }),
+      resources: () => []
+    })
   },
   channels: {}
 });

@@ -1,15 +1,15 @@
 import { test, expect } from "bun:test";
 import { z } from "zod";
-import { declareCovenant, type Covenant, type ProcedureMap, type ChannelMap } from "../lib/index";
+import { declareCovenant, type Covenant, type ProcedureMap, type ChannelMap, query, mutation } from "../lib/index";
 
 test("declareCovenant should return the same covenant object", () => {
   const testCovenant = {
     procedures: {
-      getUser: {
-        type: "query" as const,
+      getUser: query({
         input: z.object({ id: z.string() }),
-        output: z.object({ name: z.string() })
-      }
+        output: z.object({ name: z.string() }),
+        resources: () => [],
+      }),
     },
     channels: {}
   };
@@ -32,21 +32,21 @@ test("declareCovenant should work with empty procedures and channels", () => {
 test("declareCovenant should work with multiple procedures", () => {
   const multiProcedureCovenant = {
     procedures: {
-      getUser: {
-        type: "query" as const,
+      getUser: query({
         input: z.object({ id: z.string() }),
-        output: z.object({ name: z.string(), email: z.string() })
-      },
-      createUser: {
-        type: "mutation" as const,
+        output: z.object({ name: z.string(), email: z.string() }),
+        resources: () => [],
+      }),
+      createUser: mutation({
         input: z.object({ name: z.string(), email: z.string() }),
-        output: z.object({ id: z.string(), created: z.boolean() })
-      },
-      deleteUser: {
-        type: "mutation" as const,
+        output: z.object({ id: z.string(), created: z.boolean() }),
+        resources: () => []
+      }),
+      deleteUser: mutation({
         input: z.object({ id: z.string() }),
-        output: z.object({ deleted: z.boolean() })
-      }
+        output: z.object({ deleted: z.boolean() }),
+        resources: () => []
+      })
     },
     channels: {}
   };
@@ -75,11 +75,11 @@ test("declareCovenant should work with channels", () => {
 test("declareCovenant should work with both procedures and channels", () => {
   const fullCovenant = {
     procedures: {
-      auth: {
-        type: "mutation" as const,
+      auth: mutation({
         input: z.object({ token: z.string() }),
-        output: z.object({ valid: z.boolean() })
-      }
+        output: z.object({ valid: z.boolean() }),
+        resources: () => []
+      })
     },
     channels: {
       notifications: {
@@ -98,11 +98,11 @@ test("declareCovenant should work with both procedures and channels", () => {
 test("covenant types should be properly inferred", () => {
   const covenant = declareCovenant({
     procedures: {
-      test: {
-        type: "query" as const,
+      test: query({
         input: z.object({ value: z.number() }),
-        output: z.object({ result: z.string() })
-      }
+        output: z.object({ result: z.string() }),
+        resources: () => []
+      })
     },
     channels: {
       stream: {

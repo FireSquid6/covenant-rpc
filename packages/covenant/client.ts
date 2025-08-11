@@ -1,6 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ProcedureMap, ChannelMap, Covenant, ProcedureDeclaration } from ".";
-import type { Flatten } from "./utils";
+import { type Flatten, type Listener } from "./utils";
 import { getResponseSchema, type ProcedureError, type ProcedureResponse } from "./response";
 import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
@@ -11,13 +11,13 @@ export interface ClientMessenger {
 }
 
 export type InferProcedureInputs<T> = Flatten<
-  T extends ProcedureDeclaration<infer Input, any>
+  T extends ProcedureDeclaration<infer Input, any, any>
   ? StandardSchemaV1.InferInput<Input>
   : never
 >
 
 export type InferProcedureOutputs<T> = Flatten<
-  T extends ProcedureDeclaration<any, infer Output>
+  T extends ProcedureDeclaration<any, infer Output, any>
   ? Output extends StandardSchemaV1
   ? ProcedureResponse<Output>
   : never
@@ -25,9 +25,16 @@ export type InferProcedureOutputs<T> = Flatten<
 >;
 
 
+export type MutationKey<P extends ProcedureMap> = { [k in keyof P]: P[k]["type"] extends "mutation" ? k : never }[keyof P]
+export type QueryKey<P extends ProcedureMap> = { 
+  [k in keyof P]: P[k]["type"] extends "query" ? k : never 
+}[keyof P]
+
+
 export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
   private covenant: Covenant<P, C>;
   private messenger: ClientMessenger;
+  private listeners: Map<string, (() => Promise<void>)[]> = new Map();
 
 
   constructor(covenant: Covenant<P, C>, messenger: ClientMessenger) {
@@ -49,7 +56,7 @@ export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
     const validation = await responseSchema["~standard"].validate(body);
 
     if (validation.issues) {
-      // @ts-expect-error types are too deep for ts to understand properly
+      //@ts-expect-error we know more than the typescript compiler here
       return {
         result: "ERROR",
         error: {
@@ -60,8 +67,83 @@ export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
       }
     }
 
-    //@ts-expect-error types are too deep for tsc to understand properly
+    //@ts-expect-error we know more than the typescript compiler here
     return validation.value;
+  }
+
+  async mutate<K extends MutationKey<P>>(procedure: K, inputs: InferProcedureInputs<P[K]>) {
+    const result = this.call(procedure, inputs);
+    const resources = this.covenant.procedures[procedure]!.resources(inputs);
+
+    // we call this without awaiting so that it happens in the background
+    this.refetchResources(resources);
+
+    return result;
+  }
+
+  private async refetchResources(resources: string[]) {
+    const s = new Set(resources);
+    const neededListeners = this.listeners.keys().filter(k => s.has(k));
+    const functions: (() => Promise<void>)[] = [];
+    
+    for (const l of neededListeners) {
+      functions.push(...(this.listeners.get(l)!));
+    }
+
+    await Promise.all(functions.map(f => f()));
+  }
+
+  async query<K extends QueryKey<P>>(procedure: K, inputs: InferProcedureInputs<P[K]>) {
+    return await this.call(procedure, inputs);
+  }
+
+  localListen<K extends QueryKey<P>>(
+    procedure: K,
+    inputs: InferProcedureInputs<P[K]>,
+    callback: Listener<InferProcedureOutputs<P[K]>>
+  ): () => void {
+    const schema = this.covenant.procedures[procedure]!;
+    if (schema.type !== "query") {
+      throw new Error("Tried to listen to a mutation which makes no sense");
+    }
+
+    const resources =  schema.resources(inputs);
+
+    const listener = async () => {
+      callback(await this.call(procedure, inputs));
+    }
+
+    // we also go ahead and call the listener to do an
+    // initial fetch
+    this.addListener(resources, listener);
+    listener();
+
+    // unsubscribe function
+    return () => {
+      this.removeListener(resources, listener);
+    }
+  }
+
+  private addListener(resources: string[], listener: () => Promise<void>) {
+    for (const r of resources) {
+      if (this.listeners.has(r)) {
+        const newListeners = [...(this.listeners.get(r)!)];
+        newListeners.push(listener);
+        this.listeners.set(r, newListeners);
+      } else {
+        this.listeners.set(r, [listener]);
+      }
+    }
+  }
+
+  private removeListener(resources: string[], listener: () => Promise<void>) {
+    for (const r of resources) {
+      if (this.listeners.has(r)) {
+        const currentListeners = this.listeners.get(r)!;
+        const newListeners = currentListeners.filter(l => l !== listener);
+        this.listeners.set(r, newListeners);
+      }
+    }
   }
 
   async callUnwrap<K extends keyof P>(

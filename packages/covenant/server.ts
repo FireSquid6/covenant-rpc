@@ -27,7 +27,7 @@ export interface ParsedRequest {
 }
 
 
-export type ProcedureDefinition<T, Context> = T extends ProcedureDeclaration<infer Input, infer Output>
+export type ProcedureDefinition<T, Context> = T extends ProcedureDeclaration<infer Input, infer Output, ProcedureType>
   ? (i: ProcedureInputs<Input, Context>) => MaybePromise<StandardSchemaV1.InferOutput<Output>>
   : never
 

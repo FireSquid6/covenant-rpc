@@ -1,6 +1,6 @@
 import { test, expect, mock } from "bun:test";
 import { z } from "zod";
-import { declareCovenant } from "../lib/index";
+import { declareCovenant, query, mutation } from "../lib/index";
 import { CovenantClient, httpMessenger, directMessenger, type ClientMessenger } from "../lib/client";
 import { CovenantServer } from "../lib/server";
 import type { ProcedureRequest } from "../lib/request";
@@ -8,21 +8,21 @@ import type { ProcedureRequest } from "../lib/request";
 // Test covenant schema
 const testCovenant = declareCovenant({
   procedures: {
-    getUser: {
-      type: "query" as const,
+    getUser: query({
       input: z.object({ id: z.string() }),
-      output: z.object({ id: z.string(), name: z.string() })
-    },
-    createUser: {
-      type: "mutation" as const,
+      output: z.object({ id: z.string(), name: z.string() }),
+      resources: () => []
+    }),
+    createUser: mutation({
       input: z.object({ name: z.string(), email: z.string() }),
-      output: z.object({ id: z.string(), created: z.boolean() })
-    },
-    deleteUser: {
-      type: "mutation" as const,
+      output: z.object({ id: z.string(), created: z.boolean() }),
+      resources: () => []
+    }),
+    deleteUser: mutation({
       input: z.object({ id: z.string() }),
-      output: z.object({ deleted: z.boolean() })
-    }
+      output: z.object({ deleted: z.boolean() }),
+      resources: () => []
+    })
   },
   channels: {}
 });

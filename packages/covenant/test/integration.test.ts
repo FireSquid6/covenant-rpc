@@ -1,6 +1,6 @@
 import { test, expect, mock } from "bun:test";
 import { z } from "zod";
-import { declareCovenant } from "../lib/index";
+import { declareCovenant, query, mutation } from "../lib/index";
 import { CovenantClient, directMessenger, httpMessenger } from "../lib/client";
 import { CovenantServer, type ProcedureInputs } from "../lib/server";
 import { CovenantError } from "../lib/error";
@@ -8,18 +8,17 @@ import { CovenantError } from "../lib/error";
 // Comprehensive test covenant
 const integrationCovenant = declareCovenant({
   procedures: {
-    getUser: {
-      type: "query" as const,
+    getUser: query({
       input: z.object({ id: z.string() }),
       output: z.object({ 
         id: z.string(), 
         name: z.string(), 
         email: z.string(), 
         active: z.boolean() 
-      })
-    },
-    createUser: {
-      type: "mutation" as const,
+      }),
+      resources: () => []
+    }),
+    createUser: mutation({
       input: z.object({ 
         name: z.string().min(1), 
         email: z.string().email() 
@@ -28,10 +27,10 @@ const integrationCovenant = declareCovenant({
         id: z.string(), 
         created: z.boolean(),
         timestamp: z.number()
-      })
-    },
-    updateUser: {
-      type: "mutation" as const,
+      }),
+      resources: () => []
+    }),
+    updateUser: mutation({
       input: z.object({ 
         id: z.string(),
         name: z.string().optional(),
@@ -40,15 +39,15 @@ const integrationCovenant = declareCovenant({
       output: z.object({ 
         id: z.string(),
         updated: z.boolean()
-      })
-    },
-    deleteUser: {
-      type: "mutation" as const,
+      }),
+      resources: () => []
+    }),
+    deleteUser: mutation({
       input: z.object({ id: z.string() }),
-      output: z.object({ deleted: z.boolean() })
-    },
-    listUsers: {
-      type: "query" as const,
+      output: z.object({ deleted: z.boolean() }),
+      resources: () => []
+    }),
+    listUsers: query({
       input: z.object({ 
         limit: z.number().min(1).max(100).optional(),
         offset: z.number().min(0).optional()
@@ -61,13 +60,14 @@ const integrationCovenant = declareCovenant({
         })),
         total: z.number(),
         hasMore: z.boolean()
-      })
-    },
-    authRequired: {
-      type: "mutation" as const,
+      }),
+      resources: () => []
+    }),
+    authRequired: mutation({
       input: z.object({ action: z.string() }),
-      output: z.object({ authorized: z.boolean(), user: z.string() })
-    }
+      output: z.object({ authorized: z.boolean(), user: z.string() }),
+      resources: () => [],
+    }),
   },
   channels: {}
 });

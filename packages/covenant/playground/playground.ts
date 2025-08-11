@@ -1,13 +1,13 @@
-import { declareCovenant } from "../lib";
-import { CovenantClient, httpMessenger } from "../lib/client";
+import { declareCovenant, mutation, query } from "../lib";
+import { CovenantClient, httpMessenger, type QueryKey } from "../lib/client";
+import type { Flatten } from "../lib/utils";
 import { z } from "zod";
 import { CovenantServer } from "../lib/server";
 
 
 export const covenant = declareCovenant({
   procedures: {
-    findUser: {
-      type: "query",
+    findUser: query({
       input: z.object({
         id: z.string(),
       }),
@@ -17,22 +17,32 @@ export const covenant = declareCovenant({
         image: z.string(),
         email: z.string(),
         verified: z.boolean(),
-      })
-    }
+      }),
+      resources: ({ id }) => [`/routes/${id}`],
+    }),
+    createUser: mutation({
+      input: z.object({
+        id: z.string(),
+      }),
+      output: z.void(),
+      resources: ({ id }) => [`/routes/${id}`],
+    })
   },
   channels: {},
 })
-
 
 
 export const client = new CovenantClient(covenant, httpMessenger({ 
   httpUrl: "http://localhost:4320/api" 
 }));
 
+type queryKey = Flatten<QueryKey<typeof covenant.procedures>>;
+const k = client.localListen("findUser", { id: "hello" }, () => {})
+
 
 export const server = new CovenantServer(covenant, { contextGenerator: () => undefined });
 
-const res = await client.call("findUser", {
+const res = await client.mutate("createUser", {
   id: "uid1",
 })
 
