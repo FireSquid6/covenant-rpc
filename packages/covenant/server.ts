@@ -1,22 +1,12 @@
 import fs from "fs";
 import path from "path";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import type { ChannelMap, ProcedureMap, Covenant, ProcedureDeclaration, ProcedureType, ChannelDeclaration } from ".";
+import type { ChannelMap, ProcedureMap, Covenant, ProcedureDeclaration, ProcedureType, ChannelDeclaration, ProcedureInputs, ContextGenerator, ResourceInputs } from ".";
 import type { MaybePromise } from "./utils";
 import { parseRequest } from "./request";
 import { CovenantError } from "./error";
 import { procedureResponseToJs, type ProcedureResponse } from "./response";
-import type { RealtimeConnection } from "./realtime";
 
-
-export interface ProcedureInputs<Inputs, Context> {
-  inputs: Inputs,
-  ctx: Context,
-  request: ParsedRequest,
-  setHeader: (name: string, value: string) => void;
-  deleteHeader: (name: string) => void;
-  error: (message: string, code: number) => never;
-}
 
 export interface ParsedRequest {
   headers: Headers;
@@ -28,11 +18,18 @@ export interface ParsedRequest {
 }
 
 
-export type ProcedureDefinition<T, Context> = T extends ProcedureDeclaration<infer Input, infer Output, ProcedureType>
-  ? (i: ProcedureInputs<
-    StandardSchemaV1.InferOutput<Input>,
-    Context
-  >) => MaybePromise<StandardSchemaV1.InferOutput<Output>>
+export type ProcedureDefinition<T, Context extends StandardSchemaV1> = T extends ProcedureDeclaration<infer Input, infer Output, ProcedureType>
+  ? {
+    procedure: (i: ProcedureInputs<
+      StandardSchemaV1.InferOutput<Input>,
+      StandardSchemaV1.InferOutput<Context>
+    >) => MaybePromise<StandardSchemaV1.InferOutput<Output>>
+    resources: (i: ResourceInputs<
+      StandardSchemaV1.InferOutput<Input>,
+      StandardSchemaV1.InferOutput<Context>,
+      StandardSchemaV1.InferOutput<Output>
+    >) => MaybePromise<string[]>
+  }
   : never
 
 
@@ -57,7 +54,7 @@ export type ChannelDefinition<T> = T extends ChannelDeclaration<
   } : never
 
 
-export type ProcedureDefinitionMap<T extends ProcedureMap, Context> = {
+export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends StandardSchemaV1> = {
   [key in keyof T]: ProcedureDefinition<T[key], Context> | undefined
 }
 
@@ -65,27 +62,34 @@ export type ChannelDefinitionMap<T extends ChannelMap> = {
   [key in keyof T]: ChannelDefinition<T[key]>
 }
 
-export type ContextGenerator<Context> = (i: ProcedureInputs<unknown, undefined>) => Context;
-
+export type Derivation<Derived, Context> = (i: ProcedureInputs<undefined, Context>) => Derived;
 
 
 export class CovenantServer<
   P extends ProcedureMap,
   C extends ChannelMap,
-  Context,
+  Context extends StandardSchemaV1,
+  Data extends StandardSchemaV1,
+  Derived
 > {
-  private covenant: Covenant<P, C>;
+  private covenant: Covenant<P, C, Context, Data>;
   private procedureDefinitions: ProcedureDefinitionMap<P, Context>;
   private contextGenerator: ContextGenerator<Context>;
+  private derivation: Derivation<Derived, StandardSchemaV1.InferOutput<Context>>;
 
   private channelDefinitions: ChannelDefinitionMap<C>;
 
 
-  constructor(covenant: Covenant<P, C>, { contextGenerator, realtimeConnection }: {
-    contextGenerator: ContextGenerator<Context>
-    realtimeConnection: RealtimeConnection
+  constructor(covenant: Covenant<P, C, Context, Data>, { 
+    contextGenerator,
+    derivation,
+  }: {
+    contextGenerator: ContextGenerator<Context>,
+    derivation: Derivation<Derived, StandardSchemaV1.InferOutput<Context>>,
+    // realtimeConnection: RealtimeConnection
   }) {
     this.covenant = covenant;
+    this.derivation = derivation;
 
     // both of these fail. We assert that the user has defined everything with
     // assertAllDefined. If they haven't, this type is indeed incorrect.
@@ -149,7 +153,7 @@ export class CovenantServer<
     if (this.channelDefinitions[name] !== undefined) {
       throw new Error(`Tried to define ${String(name)} twice!`);
     }
-    
+
     this.channelDefinitions[name] = definition;
   }
 
@@ -190,17 +194,19 @@ export class CovenantServer<
         ctx = await ctx;
       }
 
-      const finalInputs: ProcedureInputs<any, Context> = {
+      const finalInputs: ProcedureInputs<any, StandardSchemaV1.InferOutput<Context>> = {
         ...initialInputs,
         ctx,
       }
 
-      const result = await handler(finalInputs);
+      const result = await handler.procedure(finalInputs);
+      const resources = await handler.resources({ inputs: parsed, ctx, outputs: result });
 
       return {
         result: "OK",
         data: result,
         error: undefined,
+        resources,
       }
 
     } catch (e) {
@@ -216,6 +222,7 @@ export class CovenantServer<
         result: "ERROR",
         error: err.toProcedureError(),
         data: undefined,
+        resources: undefined,
       }
     }
   }
@@ -245,7 +252,7 @@ export class CovenantServer<
         return this.handleConnectMessage(request);
       case "procedure":
         return this.handleProcedure(request);
-      case "resource": 
+      case "resource":
         return this.handleResourceUpdate(request);
     }
 

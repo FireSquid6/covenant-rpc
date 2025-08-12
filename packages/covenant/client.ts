@@ -27,23 +27,36 @@ export type InferProcedureOutputs<T> = Flatten<
 
 
 export type MutationKey<P extends ProcedureMap> = { [k in keyof P]: P[k]["type"] extends "mutation" ? k : never }[keyof P]
-export type QueryKey<P extends ProcedureMap> = { 
-  [k in keyof P]: P[k]["type"] extends "query" ? k : never 
+export type QueryKey<P extends ProcedureMap> = {
+  [k in keyof P]: P[k]["type"] extends "query" ? k : never
 }[keyof P]
 
+export type ListenResponse = {
+  type: "OK",
+  unsubscribe: () => void,
+} | {
+  type: "ERROR",
+  error: ProcedureError,
+}
 
-export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
-  private covenant: Covenant<P, C>;
+
+export class CovenantClient<
+  P extends ProcedureMap,
+  C extends ChannelMap,
+  Context extends StandardSchemaV1,
+  Data extends StandardSchemaV1
+> {
+  private covenant: Covenant<P, C, Context, Data>;
   private messenger: ClientMessenger;
   private listeners: Map<string, (() => Promise<void>)[]> = new Map();
 
 
-  constructor(covenant: Covenant<P, C>, messenger: ClientMessenger) {
+  constructor(covenant: Covenant<P, C, Context, Data>, messenger: ClientMessenger) {
     this.covenant = covenant;
     this.messenger = messenger;
   }
 
-  async call<K extends keyof P>(procedure: K, inputs: InferProcedureInputs<P[K]>): Promise<InferProcedureOutputs<P[K]>> {
+  private async call<K extends keyof P>(procedure: K, inputs: InferProcedureInputs<P[K]>): Promise<InferProcedureOutputs<P[K]>> {
     const req: ProcedureRequest = {
       procedure: String(procedure),
       inputs,
@@ -72,13 +85,18 @@ export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
     return validation.value;
   }
 
-  async mutate<K extends MutationKey<P>>(procedure: K, inputs: InferProcedureInputs<P[K]>) {
-    const result = this.call(procedure, inputs);
-    const resources = this.covenant.procedures[procedure]!.resources(inputs);
+  async mutate<K extends MutationKey<P>>(procedure: K, inputs: InferProcedureInputs<P[K]>): Promise<InferProcedureOutputs<P[K]>> {
+    const data = await this.call(procedure, inputs);
+
+    if (data.result === "ERROR") {
+      return data;
+    }
 
     // we call this without awaiting so that it happens in the background
-    this.refetchResources(resources);
+    //@ts-expect-error we know more than the typescript compiler here
+    this.refetchResources(data.resources);
 
+    //@ts-expect-error we know more than the typescript compiler here
     return result;
   }
 
@@ -86,7 +104,7 @@ export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
     const s = new Set(resources);
     const neededListeners = this.listeners.keys().filter(k => s.has(k));
     const functions: (() => Promise<void>)[] = [];
-    
+
     for (const l of neededListeners) {
       functions.push(...(this.listeners.get(l)!));
     }
@@ -98,17 +116,24 @@ export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
     return await this.call(procedure, inputs);
   }
 
-  localListen<K extends QueryKey<P>>(
+  async localListen<K extends QueryKey<P>>(
     procedure: K,
     inputs: InferProcedureInputs<P[K]>,
     callback: Listener<InferProcedureOutputs<P[K]>>
-  ): () => void {
+  ): Promise<ListenResponse> {
     const schema = this.covenant.procedures[procedure]!;
     if (schema.type !== "query") {
       throw new Error("Tried to listen to a mutation which makes no sense");
     }
+    const result = await this.call(procedure, inputs);
 
-    const resources =  schema.resources(inputs);
+    if (result.result === "ERROR") {
+      return {
+        type: "ERROR",
+        //@ts-ignore
+        error: result.error,
+      }
+    }
 
     const listener = async () => {
       callback(await this.call(procedure, inputs));
@@ -116,12 +141,17 @@ export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
 
     // we also go ahead and call the listener to do an
     // initial fetch
-    this.addListener(resources, listener);
+    //@ts-ignore
+    this.addListener(result.resources, listener);
     listener();
 
     // unsubscribe function
-    return () => {
-      this.removeListener(resources, listener);
+    return {
+      type: "OK",
+      unsubscribe: () => {
+        //@ts-ignore
+        this.removeListener(result.resources, listener);
+      }
     }
   }
 
@@ -199,7 +229,7 @@ export function httpMessenger({ httpUrl }: { httpUrl: string }): ClientMessenger
   }
 }
 
-export function directMessenger(server: CovenantServer<any, any, any>): ClientMessenger {
+export function directMessenger(server: CovenantServer<any, any, any, any, any>): ClientMessenger {
   return {
     fetch(request: ProcedureRequest): Promise<Response> {
       const req: Request = new Request({

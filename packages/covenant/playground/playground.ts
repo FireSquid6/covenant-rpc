@@ -3,6 +3,7 @@ import { CovenantClient, httpMessenger, type QueryKey } from "../client";
 import type { Flatten } from "../utils";
 import { z } from "zod";
 import { CovenantServer } from "../server";
+import { setDefaultTimeout } from "bun:test";
 
 
 export const covenant = declareCovenant({
@@ -18,43 +19,52 @@ export const covenant = declareCovenant({
         email: z.string(),
         verified: z.boolean(),
       }),
-      resources: ({ id }) => [`/routes/${id}`],
     }),
     createUser: mutation({
       input: z.object({
         id: z.string(),
       }),
       output: z.void(),
-      resources: ({ id }) => [`/routes/${id}`],
     })
   },
   channels: {},
+  context: z.object({
+    userId: z.string(),
+  }),
+  data: z.any(),
 })
 
 
-export const client = new CovenantClient(covenant, httpMessenger({ 
-  httpUrl: "http://localhost:4320/api" 
+export const client = new CovenantClient(covenant, httpMessenger({
+  httpUrl: "http://localhost:4320/api"
 }));
 
 type queryKey = Flatten<QueryKey<typeof covenant.procedures>>;
-const k = client.localListen("findUser", { id: "hello" }, () => {})
+const k = client.localListen("findUser", { id: "hello" }, () => { })
 
 
-export const server = new CovenantServer(covenant, { contextGenerator: () => undefined });
-server.defineProcedure("createUser", (i) => {
-
+export const server = new CovenantServer(covenant, {
+  contextGenerator: () => {
+    return {
+      userId: "user"
+    }
+  },
+});
+server.defineProcedure("createUser", {
+  procedure: (i) => {
+  },
+  resources: () => ["users/id"],
 })
 
-const res = await client.mutate("createUser", {
+
+const res = await client.query("findUser", {
   id: "uid1",
 })
 
 if (res.result === "ERROR") {
   console.log(res.error);
-  console.log(res.data);
 } else {
+  console.log(res.resources);
   console.log(res.data);
-  console.log(res.error)
 }
-
 

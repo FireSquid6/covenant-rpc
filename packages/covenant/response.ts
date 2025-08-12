@@ -14,11 +14,13 @@ export function getProcedureResponseSchema<T extends StandardSchemaV1>(result: T
       result: z.literal("OK"),
       error: z.undefined(),
       data: result,
+      resources: z.array(z.string()),
     }),
     z.object({
       result: z.literal("ERROR"),
       error: procedureErrorSchema,
       data: z.undefined(),
+      resources: z.undefined(),
     })
   ])
 }

@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 export const resourceUpdateSchema = z.object({
-  resources: z.array(z.string())
+  resources: z.array(z.string()),
+  secret: z.string(),
 })
 
 // this is the connection from the covenant server to the realtime server
 export interface RealtimeConnection {
-  sendMessage: () => void;
   informUpdated: (resources: string[]) => Promise<void>;
 }
 
@@ -26,7 +26,6 @@ export interface ClientChannel {
 
 export function httpRealtimeConnection(url: string): RealtimeConnection {
   return {
-    sendMessage: () => {},
     informUpdated: async (resources: string[]) => {
 
     },
