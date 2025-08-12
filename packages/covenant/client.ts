@@ -1,9 +1,10 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ProcedureMap, ChannelMap, Covenant, ProcedureDeclaration } from ".";
 import { type Flatten, type Listener } from "./utils";
-import { getResponseSchema, type ProcedureError, type ProcedureResponse } from "./response";
+import { getProcedureResponseSchema, type ProcedureError, type ProcedureResponse } from "./response";
 import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
+import type { ClientChannel } from "./realtime";
 
 
 export interface ClientMessenger {
@@ -51,7 +52,7 @@ export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
     const outputSchema = this.covenant.procedures[procedure]?.output!;
     const res = await this.messenger.fetch(req);
     const body = await res.json();
-    const responseSchema = getResponseSchema(outputSchema);
+    const responseSchema = getProcedureResponseSchema(outputSchema);
 
     const validation = await responseSchema["~standard"].validate(body);
 
@@ -164,8 +165,18 @@ export class CovenantClient<P extends ProcedureMap, C extends ChannelMap> {
     return data;
   }
 
-  listen() {
+  async sendChannelMessage() {
+    // check if we are subscribed to the channel. If not, throw an erorr
+    // send the message to the 
+  }
 
+  async connectTo(): Promise<ClientChannel> {
+    // if we are already connected, return the ClientChannel
+    // send connection
+    // return error if it didn't work
+
+    //@ts-ignore TODO
+    return {}
   }
 }
 

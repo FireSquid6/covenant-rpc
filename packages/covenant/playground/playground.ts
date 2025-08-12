@@ -1,8 +1,8 @@
-import { declareCovenant, mutation, query } from "../lib";
-import { CovenantClient, httpMessenger, type QueryKey } from "../lib/client";
-import type { Flatten } from "../lib/utils";
+import { declareCovenant, mutation, query } from "../";
+import { CovenantClient, httpMessenger, type QueryKey } from "../client";
+import type { Flatten } from "../utils";
 import { z } from "zod";
-import { CovenantServer } from "../lib/server";
+import { CovenantServer } from "../server";
 
 
 export const covenant = declareCovenant({
@@ -41,6 +41,9 @@ const k = client.localListen("findUser", { id: "hello" }, () => {})
 
 
 export const server = new CovenantServer(covenant, { contextGenerator: () => undefined });
+server.defineProcedure("createUser", (i) => {
+
+})
 
 const res = await client.mutate("createUser", {
   id: "uid1",

@@ -19,12 +19,21 @@ export type ProcedureMap = { [procedure: string]: ProcedureDeclaration<any, any,
 export interface ChannelDeclaration<
   ClientMessage extends StandardSchemaV1,
   ServerMessage extends StandardSchemaV1,
+  ConnectionRequest extends StandardSchemaV1,
+  ConnectionContext extends StandardSchemaV1,
 > {
   clientMessage: ClientMessage,
   serverMessage: ServerMessage
+  connectionRequest: ConnectionRequest,
+  connectionContext: ConnectionContext,
 }
 
-export type ChannelMap = { [channel: string]: ChannelDeclaration<StandardSchemaV1, StandardSchemaV1> }
+export type ChannelMap = { [channel: string]: ChannelDeclaration<
+  StandardSchemaV1,
+  StandardSchemaV1,
+  StandardSchemaV1,
+  StandardSchemaV1
+> }
 
 
 export interface Covenant<
@@ -43,6 +52,8 @@ export function declareCovenant<P extends ProcedureMap, C extends ChannelMap>(co
 }
 
 
+
+// helper functions for declaring mutations and queries
 export function mutation<
   Inputs extends StandardSchemaV1,
   Outputs extends StandardSchemaV1,
@@ -72,5 +83,21 @@ export function query<
     input,
     output,
     resources,
+  }
+}
+
+export function channel<
+  ClientMessage extends StandardSchemaV1,
+  ServerMessage extends StandardSchemaV1,
+  ConnectionRequest extends StandardSchemaV1,
+>({ clientMessage, serverMessage, connectionRequest }: { 
+  clientMessage: ClientMessage,
+  serverMessage: ServerMessage,
+  connectionRequest: ConnectionRequest,
+}): ChannelDeclaration<ClientMessage, ServerMessage, ConnectionRequest> {
+  return {
+    clientMessage,
+    serverMessage,
+    connectionRequest,
   }
 }

@@ -1,11 +1,12 @@
 import fs from "fs";
 import path from "path";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import type { ChannelMap, ProcedureMap, Covenant, ProcedureDeclaration, ProcedureType } from ".";
+import type { ChannelMap, ProcedureMap, Covenant, ProcedureDeclaration, ProcedureType, ChannelDeclaration } from ".";
 import type { MaybePromise } from "./utils";
 import { parseRequest } from "./request";
 import { CovenantError } from "./error";
 import { procedureResponseToJs, type ProcedureResponse } from "./response";
+import type { RealtimeConnection } from "./realtime";
 
 
 export interface ProcedureInputs<Inputs, Context> {
@@ -28,12 +29,40 @@ export interface ParsedRequest {
 
 
 export type ProcedureDefinition<T, Context> = T extends ProcedureDeclaration<infer Input, infer Output, ProcedureType>
-  ? (i: ProcedureInputs<Input, Context>) => MaybePromise<StandardSchemaV1.InferOutput<Output>>
+  ? (i: ProcedureInputs<
+    StandardSchemaV1.InferOutput<Input>,
+    Context
+  >) => MaybePromise<StandardSchemaV1.InferOutput<Output>>
   : never
 
 
-export type DefinitionMap<T extends ProcedureMap, Context> = { 
-  [key in keyof T]: ProcedureDefinition<T[key], Context> | undefined 
+export interface ChannelInputs<ClientMessage, ConnectionContext> {
+  message: ClientMessage,
+  ctx: ConnectionContext,
+}
+
+export type ChannelDefinition<T> = T extends ChannelDeclaration<
+  infer ClientMessage,
+  infer ServerMessage,
+  infer ConnectionRequest,
+  infer ConnectionContext
+>
+  ? {
+    guard: (req: StandardSchemaV1.InferOutput<ConnectionRequest>) => StandardSchemaV1.InferOutput<ConnectionContext>;
+    onMessage: (i: ChannelInputs<
+      StandardSchemaV1.InferOutput<ClientMessage>,
+      StandardSchemaV1.InferOutput<ConnectionContext>
+    >) => MaybePromise<StandardSchemaV1.InferOutput<ServerMessage>>;
+    onClose: (ctx: StandardSchemaV1.InferOutput<ConnectionContext>) => void;
+  } : never
+
+
+export type ProcedureDefinitionMap<T extends ProcedureMap, Context> = {
+  [key in keyof T]: ProcedureDefinition<T[key], Context> | undefined
+}
+
+export type ChannelDefinitionMap<T extends ChannelMap> = {
+  [key in keyof T]: ChannelDefinition<T[key]>
 }
 
 export type ContextGenerator<Context> = (i: ProcedureInputs<unknown, undefined>) => Context;
@@ -46,27 +75,40 @@ export class CovenantServer<
   Context,
 > {
   private covenant: Covenant<P, C>;
-  private procedureDefinitions: DefinitionMap<P, Context>;
+  private procedureDefinitions: ProcedureDefinitionMap<P, Context>;
   private contextGenerator: ContextGenerator<Context>;
 
+  private channelDefinitions: ChannelDefinitionMap<C>;
 
-  constructor(covenant: Covenant<P, C>, { contextGenerator }: {
+
+  constructor(covenant: Covenant<P, C>, { contextGenerator, realtimeConnection }: {
     contextGenerator: ContextGenerator<Context>
+    realtimeConnection: RealtimeConnection
   }) {
     this.covenant = covenant;
-    // @ts-expect-error this should actually fail because we define the
-    // procedureDefinitions at runtime
+
+    // both of these fail. We assert that the user has defined everything with
+    // assertAllDefined. If they haven't, this type is indeed incorrect.
+    // @ts-expect-error see above
     this.procedureDefinitions = {};
+    // @ts-expect-error see above
+    this.channelDefinitions = {};
+
     this.contextGenerator = contextGenerator;
   }
 
   assertAllDefined(): void {
     for (const p of Object.keys(this.covenant.procedures)) {
       if (this.procedureDefinitions[p] === undefined) {
-        throw new Error(`${p} was not defined`)
+        throw new Error(`Procedure ${p} was not defined`)
       }
     }
 
+    for (const c of Object.keys(this.covenant.channels)) {
+      if (this.channelDefinitions[c] === undefined) {
+        throw new Error(`Channel ${c} was not defined`);
+      }
+    }
   }
 
   // directory must be an absolute path or this will fail
@@ -103,6 +145,14 @@ export class CovenantServer<
     this.procedureDefinitions[name] = definition;
   }
 
+  defineChannel<N extends keyof C>(name: N, definition: ChannelDefinition<C[N]>) {
+    if (this.channelDefinitions[name] !== undefined) {
+      throw new Error(`Tried to define ${String(name)} twice!`);
+    }
+    
+    this.channelDefinitions[name] = definition;
+  }
+
   private async processProcedure(request: Request, newHeaders: Headers): Promise<ProcedureResponse<any>> {
     try {
       const parsed = await parseRequest(request);
@@ -118,8 +168,8 @@ export class CovenantServer<
       if (validationResult.issues) {
         throw new CovenantError(`Error parsing procedure inputs: ${validationResult.issues}`, 400);
       }
-      
-      
+
+
       const initialInputs: ProcedureInputs<any, undefined> = {
         inputs: validationResult.value,
         request: parsed,
@@ -156,11 +206,11 @@ export class CovenantServer<
     } catch (e) {
       // kinda a confusing line but it turns our unknown error into
       // a covenant error no matter what
-      const err = e instanceof CovenantError 
+      const err = e instanceof CovenantError
         ? e
-        : e instanceof Error 
-        ? CovenantError.fromError(e)
-        : CovenantError.fromUnknown(e);
+        : e instanceof Error
+          ? CovenantError.fromError(e)
+          : CovenantError.fromUnknown(e);
 
       return {
         result: "ERROR",
@@ -169,6 +219,40 @@ export class CovenantServer<
       }
     }
   }
+
+  private async handleResourceUpdate(request: Request): Promise<Response> {
+    return new Response("OK", { status: 200 });
+  }
+
+  private async handleConnectMessage(request: Request): Promise<Response> {
+    return new Response("OK", { status: 200 });
+  }
+
+  private async handleChannelMessage(request: Request): Promise<Response> {
+    // check if that client is even connected to the channel
+
+    return new Response("OK", { status: 200 });
+  }
+
+  async handle(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const type = url.searchParams.get("type") ?? "procedure";
+
+    switch (type) {
+      case "channel":
+        return this.handleChannelMessage(request);
+      case "connect":
+        return this.handleConnectMessage(request);
+      case "procedure":
+        return this.handleProcedure(request);
+      case "resource": 
+        return this.handleResourceUpdate(request);
+    }
+
+    return new Response(`Got an invalid type: ${type}`, { status: 400 });
+  }
+
+
 
   async handleProcedure(request: Request): Promise<Response> {
     const headers = new Headers();

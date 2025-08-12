@@ -8,7 +8,7 @@ export const procedureErrorSchema = z.object({
 
 export type ProcedureError = z.infer<typeof procedureErrorSchema>;
 
-export function getResponseSchema<T extends StandardSchemaV1>(result: T) {
+export function getProcedureResponseSchema<T extends StandardSchemaV1>(result: T) {
   return z.discriminatedUnion("result", [
     z.object({
       result: z.literal("OK"),
@@ -25,7 +25,7 @@ export function getResponseSchema<T extends StandardSchemaV1>(result: T) {
 
 export type ProcedureResponse<T extends StandardSchemaV1> = StandardSchemaV1.InferOutput<
   ReturnType<
-    typeof getResponseSchema<T>
+    typeof getProcedureResponseSchema<T>
   >
 >
 
