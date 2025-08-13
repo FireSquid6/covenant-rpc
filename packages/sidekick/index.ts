@@ -1,31 +1,36 @@
 import { z } from "zod";
 
-const subscribeMessageSchema = z.object({
+export const subscribeMessageSchema = z.object({
   type: z.literal("subscribe"),
   channel: z.string(),
   connectionRequest: z.any(),
 });
+export type SubscribeMessage = z.infer<typeof subscribeMessageSchema>;
 
-const unsubscribeMessageSchema = z.object({
+export const unsubscribeMessageSchema = z.object({
   type: z.literal("unsubscribe"),
   channel: z.string(),
 });
+export type UnsubscribeMessage = z.infer<typeof unsubscribeMessageSchema>;
 
-const messageSchema = z.object({
+export const messageSchema = z.object({
   type: z.literal("message"),
   channel: z.string(),
   message: z.any(),
 });
+export type Message = z.infer<typeof messageSchema>;
 
-const listenMessageSchema = z.object({
+export const listenMessageSchema = z.object({
   type: z.literal("listen"),
   resources: z.array(z.string()),
 });
+export type ListenMessage = z.infer<typeof listenMessageSchema>;
 
-const unlistenMessageSchema = z.object({
+export const unlistenMessageSchema = z.object({
   type: z.literal("unlisten"),
   resources: z.array(z.string()),
 });
+export type UnlistenMessage = z.infer<typeof unlistenMessageSchema>;
 
 export const incomingMessageSchema = z.discriminatedUnion("type", [
   subscribeMessageSchema,
@@ -59,3 +64,11 @@ export const outgoingMessageSchema = z.discriminatedUnion("type", [
   
 
 export type OutgoingMessage = z.infer<typeof outgoingMessageSchema>;
+
+export function makeOutgoing(msg: OutgoingMessage): string {
+  return JSON.stringify(msg);
+}
+
+export function makeIncoming(msg: IncomingMessage): string {
+  return JSON.stringify(msg);
+}
