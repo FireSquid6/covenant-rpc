@@ -12,6 +12,7 @@ export interface SidekickOptions {
 export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOptions): Elysia {
   const ctx: SocketContext = {
     listeningMap: new Map(),
+    updater: new Updater(),
   }
 
   return new Elysia()
@@ -29,17 +30,24 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
         return status(401, `Secret did not match`);
       }
 
+      ctx.updater.update(update.resources);
       console.log(`Recieved updates to ${update.resources}`);
 
     }, {
       // we self validate
       body: t.Any(),
     })
+    .get("/ping", () => {
+      return "pong!";
+    })
     .post("/message", () => {
       // TODO - server posts its mesages here
 
     })
     .ws("/connect", {
+      open: (ws) => {
+        console.log(`New connection from ${ws.id}`);
+      },
       message: async (ws, message) => {
         const { data: msg, success, error } = incomingMessageSchema.safeParse(JSON.parse(message as string));
 
@@ -63,13 +71,17 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
         }
       },
       close: (ws) => {
-        ctx.listeningMap.delete(ws.id);
+        const l = ctx.listeningMap.get(ws.id);
+        if (l) {
+          ctx.updater.unlistenAll(l);
+          ctx.listeningMap.delete(ws.id);
+        }
       },
     })
 }
 
 
-export type UpdateListener = () => Promise<void> | void;
+export type UpdateListener = (resources: string[]) => Promise<void> | void;
 
 export class Updater {
   private listeners: Map<string, UpdateListener[]> = new Map();
@@ -88,7 +100,7 @@ export class Updater {
     }
   }
 
-  unlistenTo(resources: string[], listener: () => Promise<void>) {
+  unlistenTo(resources: string[], listener: UpdateListener) {
     for (const r of resources) {
       if (this.listeners.has(r)) {
         const currentListeners = this.listeners.get(r)!;
@@ -98,7 +110,7 @@ export class Updater {
     }
   }
 
-  unlistenAll(listener: () => Promise<void>) {
+  unlistenAll(listener: UpdateListener) {
     for (const k of this.listeners.keys()) {
       const currentListeners = this.listeners.get(k)!;
       const newListeners = currentListeners.filter(l => l !== listener);
@@ -120,6 +132,6 @@ export class Updater {
       }
     }
 
-    await Promise.all(listenersToCall.values().map(l => l()))
+    await Promise.all(listenersToCall.values().map(l => l(resources)))
   }
 }

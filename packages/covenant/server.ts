@@ -6,6 +6,7 @@ import type { MaybePromise } from "./utils";
 import { parseRequest } from "./request";
 import { CovenantError } from "./error";
 import { procedureResponseToJs, type ProcedureResponse } from "./response";
+import type { RealtimeConnection } from "./realtime";
 
 
 export interface ParsedRequest {
@@ -18,11 +19,12 @@ export interface ParsedRequest {
 }
 
 
-export type ProcedureDefinition<T, Context extends StandardSchemaV1> = T extends ProcedureDeclaration<infer Input, infer Output, ProcedureType>
+export type ProcedureDefinition<T, Context extends StandardSchemaV1, Derivation> = T extends ProcedureDeclaration<infer Input, infer Output, ProcedureType>
   ? {
     procedure: (i: ProcedureInputs<
       StandardSchemaV1.InferOutput<Input>,
-      StandardSchemaV1.InferOutput<Context>
+      StandardSchemaV1.InferOutput<Context>,
+      Derivation
     >) => MaybePromise<StandardSchemaV1.InferOutput<Output>>
     resources: (i: ResourceInputs<
       StandardSchemaV1.InferOutput<Input>,
@@ -54,15 +56,15 @@ export type ChannelDefinition<T> = T extends ChannelDeclaration<
   } : never
 
 
-export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends StandardSchemaV1> = {
-  [key in keyof T]: ProcedureDefinition<T[key], Context> | undefined
+export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends StandardSchemaV1, Derivation> = {
+  [key in keyof T]: ProcedureDefinition<T[key], Context, Derivation> | undefined
 }
 
 export type ChannelDefinitionMap<T extends ChannelMap> = {
   [key in keyof T]: ChannelDefinition<T[key]>
 }
 
-export type Derivation<Derived, Context> = (i: ProcedureInputs<undefined, Context>) => Derived;
+export type Derivation<Derived, Context> = (i: ProcedureInputs<undefined, Context, undefined>) => Derived;
 
 
 export class CovenantServer<
@@ -73,23 +75,25 @@ export class CovenantServer<
   Derived
 > {
   private covenant: Covenant<P, C, Context, Data>;
-  private procedureDefinitions: ProcedureDefinitionMap<P, Context>;
+  private procedureDefinitions: ProcedureDefinitionMap<P, Context, Derived>;
   private contextGenerator: ContextGenerator<Context>;
   private derivation: Derivation<Derived, StandardSchemaV1.InferOutput<Context>>;
-
+  private realtimeConnection: RealtimeConnection;
   private channelDefinitions: ChannelDefinitionMap<C>;
 
 
   constructor(covenant: Covenant<P, C, Context, Data>, { 
     contextGenerator,
     derivation,
+    realtimeConnection
   }: {
     contextGenerator: ContextGenerator<Context>,
     derivation: Derivation<Derived, StandardSchemaV1.InferOutput<Context>>,
-    // realtimeConnection: RealtimeConnection
+    realtimeConnection: RealtimeConnection
   }) {
     this.covenant = covenant;
     this.derivation = derivation;
+    this.realtimeConnection  = realtimeConnection;
 
     // both of these fail. We assert that the user has defined everything with
     // assertAllDefined. If they haven't, this type is indeed incorrect.
@@ -141,7 +145,7 @@ export class CovenantServer<
     }));
   }
 
-  defineProcedure<N extends keyof P>(name: N, definition: ProcedureDefinition<P[N], Context>) {
+  defineProcedure<N extends keyof P>(name: N, definition: ProcedureDefinition<P[N], Context, Derived>) {
     if (this.procedureDefinitions[name] !== undefined) {
       throw new Error(`Tried to define ${String(name)} twice!`);
     }
@@ -174,10 +178,11 @@ export class CovenantServer<
       }
 
 
-      const initialInputs: ProcedureInputs<any, undefined> = {
+      const initialInputs: ProcedureInputs<any, undefined, undefined> = {
         inputs: validationResult.value,
         request: parsed,
         ctx: undefined,
+        derived: undefined,
         setHeader(name: string, value: string) {
           newHeaders.set(name, value)
         },
@@ -193,14 +198,14 @@ export class CovenantServer<
       if (ctx instanceof Promise) {
         ctx = await ctx;
       }
+      const derived = this.derivation({ ...initialInputs, ctx });
 
-      const finalInputs: ProcedureInputs<any, StandardSchemaV1.InferOutput<Context>> = {
-        ...initialInputs,
-        ctx,
-      }
-
-      const result = await handler.procedure(finalInputs);
+      const result = await handler.procedure({ ...initialInputs, derived, ctx });
       const resources = await handler.resources({ inputs: parsed, ctx, outputs: result });
+
+      if (route.type === "mutation") {
+        this.realtimeConnection.informUpdated(resources);
+      }
 
       return {
         result: "OK",
@@ -227,10 +232,6 @@ export class CovenantServer<
     }
   }
 
-  private async handleResourceUpdate(request: Request): Promise<Response> {
-    return new Response("OK", { status: 200 });
-  }
-
   private async handleConnectMessage(request: Request): Promise<Response> {
     return new Response("OK", { status: 200 });
   }
@@ -245,6 +246,10 @@ export class CovenantServer<
     const url = new URL(request.url);
     const type = url.searchParams.get("type") ?? "procedure";
 
+    if (request.method !== "POST") {
+      return new Response("Covenant servers only do POST requests", { status: 404 });
+    }
+
     switch (type) {
       case "channel":
         return this.handleChannelMessage(request);
@@ -252,16 +257,12 @@ export class CovenantServer<
         return this.handleConnectMessage(request);
       case "procedure":
         return this.handleProcedure(request);
-      case "resource":
-        return this.handleResourceUpdate(request);
     }
 
     return new Response(`Got an invalid type: ${type}`, { status: 400 });
   }
 
-
-
-  async handleProcedure(request: Request): Promise<Response> {
+  private async handleProcedure(request: Request): Promise<Response> {
     const headers = new Headers();
     headers.set("Content-Type", "application/json");
 

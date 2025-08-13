@@ -4,7 +4,8 @@ import { type Flatten, type Listener } from "./utils";
 import { getProcedureResponseSchema, type ProcedureError, type ProcedureResponse } from "./response";
 import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
-import type { ClientChannel } from "./realtime";
+import { makeIncoming } from "sidekick";
+import type { ClientChannel, RealtimeClient } from "./realtime";
 
 
 export interface ClientMessenger {
@@ -31,8 +32,10 @@ export type QueryKey<P extends ProcedureMap> = {
   [k in keyof P]: P[k]["type"] extends "query" ? k : never
 }[keyof P]
 
-export type ListenResponse = {
+export type ListenResponse<T> = {
   type: "OK",
+  listener: Listener<T>,
+  resources: string[],
   unsubscribe: () => void,
 } | {
   type: "ERROR",
@@ -49,11 +52,13 @@ export class CovenantClient<
   private covenant: Covenant<P, C, Context, Data>;
   private messenger: ClientMessenger;
   private listeners: Map<string, (() => Promise<void>)[]> = new Map();
+  private realtime: RealtimeClient;
 
 
-  constructor(covenant: Covenant<P, C, Context, Data>, messenger: ClientMessenger) {
+  constructor(covenant: Covenant<P, C, Context, Data>, messenger: ClientMessenger, realtime: RealtimeClient) {
     this.covenant = covenant;
     this.messenger = messenger;
+    this.realtime = realtime;
   }
 
   private async call<K extends keyof P>(procedure: K, inputs: InferProcedureInputs<P[K]>): Promise<InferProcedureOutputs<P[K]>> {
@@ -96,8 +101,7 @@ export class CovenantClient<
     //@ts-expect-error we know more than the typescript compiler here
     this.refetchResources(data.resources);
 
-    //@ts-expect-error we know more than the typescript compiler here
-    return result;
+    return data;
   }
 
   private async refetchResources(resources: string[]) {
@@ -120,7 +124,7 @@ export class CovenantClient<
     procedure: K,
     inputs: InferProcedureInputs<P[K]>,
     callback: Listener<InferProcedureOutputs<P[K]>>
-  ): Promise<ListenResponse> {
+  ): Promise<ListenResponse<InferProcedureOutputs<P[K]>>> {
     const schema = this.covenant.procedures[procedure]!;
     if (schema.type !== "query") {
       throw new Error("Tried to listen to a mutation which makes no sense");
@@ -141,18 +145,44 @@ export class CovenantClient<
 
     // we also go ahead and call the listener to do an
     // initial fetch
-    //@ts-ignore
-    this.addListener(result.resources, listener);
+    this.addListener(result.resources!, listener);
     listener();
 
-    // unsubscribe function
     return {
       type: "OK",
+      listener,
+      resources: result.resources!,
       unsubscribe: () => {
-        //@ts-ignore
-        this.removeListener(result.resources, listener);
+        this.removeListener(result.resources!, listener);
       }
     }
+  }
+
+  async remoteListen<K extends QueryKey<P>>(
+    procedure: K,
+    inputs: InferProcedureInputs<P[K]>,
+    callback: Listener<InferProcedureOutputs<P[K]>>,
+  ): Promise<ListenResponse<
+      InferProcedureOutputs<P[K]>
+    >> {
+    const result = await this.localListen(procedure, inputs, callback);
+
+    if (result.type === "ERROR") {
+      return result;
+    }
+
+    this.realtime.subscribeToResources(result.resources);
+
+    return {
+      type: "OK",
+      listener: result.listener,
+      resources: result.resources,
+      unsubscribe: () => {
+        this.realtime.unsubscribeFromResources(result.resources);
+        result.unsubscribe();
+      }
+    };
+
   }
 
   private addListener(resources: string[], listener: () => Promise<void>) {
@@ -217,7 +247,6 @@ export function httpMessenger({ httpUrl }: { httpUrl: string }): ClientMessenger
       const url = new URL(httpUrl)
       url.searchParams.set("type", "procedure")
 
-
       return fetch(url.toString(), {
         method: "POST",
         headers: {
@@ -233,7 +262,7 @@ export function directMessenger(server: CovenantServer<any, any, any, any, any>)
   return {
     fetch(request: ProcedureRequest): Promise<Response> {
       const req: Request = new Request({
-        url: "http://localhost:3000",
+        url: "http://localhost:3000?type=procedure",
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -241,7 +270,64 @@ export function directMessenger(server: CovenantServer<any, any, any, any, any>)
         body: JSON.stringify(request),
       })
 
-      return server.handleProcedure(req);
+      return server.handle(req);
     }
+  }
+}
+
+
+export class SocketRealtimeClient implements RealtimeClient {
+  url: string;
+  socket: WebSocket;
+
+  constructor(url: string) {
+    this.url = url;
+    this.socket = new WebSocket(url);
+
+    this.makeSocket();
+  }
+
+
+  private makeSocket() {
+    this.socket = new WebSocket(this.url);
+
+    this.socket.onclose = async () => {
+      // TODO - add all subscriptions again after a disconnection
+      console.log("Websocket disconnected. Reconnecting...");
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      this.makeSocket();
+    }
+  }
+
+  private async waitForConnection() {
+    if (this.socket.readyState === WebSocket.OPEN) {
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      const t = setTimeout(reject, 10000);
+      this.socket.addEventListener("open", () => {
+        clearTimeout(t);
+        resolve()
+      });
+    });
+  }
+
+  async subscribeToResources(resources: string[]): Promise<void> {
+    await this.waitForConnection();
+
+    this.socket.send(makeIncoming({
+      type: "listen",
+      resources,
+    }))
+  }
+
+  async unsubscribeFromResources(resources: string[]): Promise<void> {
+    await this.waitForConnection();
+
+    this.socket.send(makeIncoming({
+      type: "unlisten",
+      resources,
+    }));
   }
 }

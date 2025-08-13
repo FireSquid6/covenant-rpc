@@ -60,6 +60,18 @@ export const outgoingMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("unsubscribed"),
     channel: z.string(),
   }),
+  z.object({
+    type: z.literal("listening"),
+    resources: z.array(z.string()),
+  }),
+  z.object({
+    type: z.literal("unlistening"),
+    resources: z.array(z.string()),
+  }),
+  z.object({
+    type: z.literal("updated"),
+    resources: z.array(z.string()),
+  }),
 ])
   
 
