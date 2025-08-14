@@ -1,10 +1,7 @@
 import type { ElysiaWS } from "elysia/ws";
-import { makeOutgoing, type IncomingMessage, type ListenMessage, type OutgoingMessage, type UnlistenMessage } from ".";
-import type { UpdateListener, Updater } from "./server";
+import { type IncomingMessage, type ListenMessage, type OutgoingMessage, type UnlistenMessage } from ".";
 
 export interface SocketContext {
-  listeningMap: Map<string, UpdateListener>;
-  updater: Updater;
 }
 
 export function handleMessage(message: IncomingMessage, ctx: SocketContext, ws: ElysiaWS): OutgoingMessage {
@@ -23,18 +20,11 @@ export function handleMessage(message: IncomingMessage, ctx: SocketContext, ws: 
 }
 
 
-export function handleListenMessage(message: ListenMessage, ctx: SocketContext, ws: ElysiaWS): OutgoingMessage {
-  if (!ctx.listeningMap.has(ws.id)) {
-    ctx.listeningMap.set(ws.id, (resources) => {
-      ws.send(makeOutgoing({
-        type: "updated",
-        resources,
-      }))
-    })
+export function handleListenMessage(message: ListenMessage, _: SocketContext, ws: ElysiaWS): OutgoingMessage {
+  for (const resource of message.resources) {
+    ws.subscribe(getResourceTopicName(resource));
   }
-
-  const listener = ctx.listeningMap.get(ws.id)!;
-  ctx.updater.listenTo(message.resources, listener);
+  console.log("subscribed to resources");
 
   return {
     type: "listening",
@@ -42,22 +32,24 @@ export function handleListenMessage(message: ListenMessage, ctx: SocketContext, 
   }
 }
 
-export function handleUnlistenMessage(message: UnlistenMessage, ctx: SocketContext, ws: ElysiaWS): OutgoingMessage {
-  if (!ctx.listeningMap.has(ws.id)) {
-    ctx.listeningMap.set(ws.id, (resources) => {
-      ws.send(makeOutgoing({
-        type: "updated",
-        resources,
-      }))
-    })
+export function handleUnlistenMessage(message: UnlistenMessage, _: SocketContext, ws: ElysiaWS): OutgoingMessage {
+  for (const resource of message.resources) {
+    ws.unsubscribe(getResourceTopicName(resource));
   }
 
-  const listener = ctx.listeningMap.get(ws.id)!;
-  ctx.updater.unlistenTo(message.resources, listener);
-  
   return {
     type: "unlistening",
     resources: message.resources,
   }
 }
 
+
+export function getResourceTopicName(resource: string) {
+  return `resource:${resource}`; 
+}
+
+
+export function getChannelTopicName(channel: string, params: Record<string, string>) {
+  const map = Object.keys(params).map(k => `${k}:${params[k]}`).join(",");
+  return `channel:${channel}/${map}`
+}

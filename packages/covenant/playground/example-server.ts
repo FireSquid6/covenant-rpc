@@ -11,7 +11,7 @@ const server = new CovenantServer(covenant, {
   },
   realtimeConnection: httpRealtimeConnection(
     "http://localhost:5002",
-    ""
+    "secret",
   ),
   derivation: () => {
     return {

@@ -40,11 +40,13 @@ export interface ChannelDeclaration<
   ServerMessage extends StandardSchemaV1,
   ConnectionRequest extends StandardSchemaV1,
   ConnectionContext extends StandardSchemaV1,
+  Params extends string[],
 > {
   clientMessage: ClientMessage,
   serverMessage: ServerMessage
   connectionRequest: ConnectionRequest,
   connectionContext: ConnectionContext,
+  params: string[],
 }
 
 export type ChannelMap = {
@@ -52,7 +54,8 @@ export type ChannelMap = {
     StandardSchemaV1,
     StandardSchemaV1,
     StandardSchemaV1,
-    StandardSchemaV1
+    StandardSchemaV1,
+    string[]
   >
 }
 
@@ -120,16 +123,19 @@ export function channel<
   ServerMessage extends StandardSchemaV1,
   ConnectionRequest extends StandardSchemaV1,
   ConnectionContext extends StandardSchemaV1,
->({ clientMessage, serverMessage, connectionRequest, connectionContext }: {
+  Params extends string[],
+>({ clientMessage, serverMessage, connectionRequest, connectionContext, params }: {
   clientMessage: ClientMessage,
   serverMessage: ServerMessage,
   connectionRequest: ConnectionRequest,
   connectionContext: ConnectionContext,
-}): ChannelDeclaration<ClientMessage, ServerMessage, ConnectionRequest, ConnectionContext> {
+  params: Params,
+}): ChannelDeclaration<ClientMessage, ServerMessage, ConnectionRequest, ConnectionContext, Params> {
   return {
     clientMessage,
     serverMessage,
     connectionRequest,
     connectionContext,
+    params,
   }
 }

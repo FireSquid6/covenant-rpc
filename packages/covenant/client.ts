@@ -163,8 +163,8 @@ export class CovenantClient<
     inputs: InferProcedureInputs<P[K]>,
     callback: Listener<InferProcedureOutputs<P[K]>>,
   ): Promise<ListenResponse<
-      InferProcedureOutputs<P[K]>
-    >> {
+    InferProcedureOutputs<P[K]>
+  >> {
     const result = await this.localListen(procedure, inputs, callback);
 
     if (result.type === "ERROR") {
@@ -279,6 +279,7 @@ export function directMessenger(server: CovenantServer<any, any, any, any, any>)
 export class SocketRealtimeClient implements RealtimeClient {
   url: string;
   socket: WebSocket;
+  subscribedResources: Set<string> = new Set();
 
   constructor(url: string) {
     this.url = url;
@@ -291,11 +292,25 @@ export class SocketRealtimeClient implements RealtimeClient {
   private makeSocket() {
     this.socket = new WebSocket(this.url);
 
+    this.socket.onopen = () => {
+      // when we reopen we want to add all of the resources we had forgotten
+      console.log("Reconnected!");
+      this.socket.send(makeIncoming({
+        type: "listen",
+        resources: Array.from(this.subscribedResources),
+      }));
+    }
     this.socket.onclose = async () => {
       // TODO - add all subscriptions again after a disconnection
       console.log("Websocket disconnected. Reconnecting...");
       await new Promise(resolve => setTimeout(resolve, 5000));
       this.makeSocket();
+    }
+    this.socket.onmessage = (e) => {
+      const data = e.data;
+      console.log("On client recieved:")
+      console.log(data);
+      console.log(typeof data);
     }
   }
 
@@ -315,7 +330,11 @@ export class SocketRealtimeClient implements RealtimeClient {
 
   async subscribeToResources(resources: string[]): Promise<void> {
     await this.waitForConnection();
+    for (const r of resources) {
+      this.subscribedResources.add(r);
+    }
 
+    console.log("sending subscribe message");
     this.socket.send(makeIncoming({
       type: "listen",
       resources,
@@ -324,6 +343,10 @@ export class SocketRealtimeClient implements RealtimeClient {
 
   async unsubscribeFromResources(resources: string[]): Promise<void> {
     await this.waitForConnection();
+
+    for (const r of resources) {
+      this.subscribedResources.delete(r);
+    }
 
     this.socket.send(makeIncoming({
       type: "unlisten",

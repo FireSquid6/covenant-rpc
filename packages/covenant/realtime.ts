@@ -1,3 +1,4 @@
+import type { MaybePromise } from "bun";
 import { z } from "zod";
 
 export const resourceUpdateSchema = z.object({
@@ -8,7 +9,7 @@ export type RealtimeUpdate = z.infer<typeof resourceUpdateSchema>;
 
 // this is the connection from the covenant server to the realtime server
 export interface RealtimeConnection {
-  informUpdated: (resources: string[]) => Promise<void>;
+  informUpdated: (resources: string[]) => Promise<Error | "OK">;
   sendMessage: () => Promise<void>;
 }
 
@@ -16,8 +17,9 @@ export interface RealtimeConnection {
 // this is the connection from the client to the realtime server
 export interface RealtimeClient {
   // connect: (r: ConnectionData) => ClientChannel;
-  subscribeToResources(resources: string[]):  Promise<void>;
-  unsubscribeFromResources(resources: string[]): Promise<void>;
+  // handleError(arg: (error: Error) => MaybePromise<void>): void;
+  subscribeToResources(resources: string[], onError?: (error: Error) => void | Promise<void>):  Promise<void>;
+  unsubscribeFromResources(resources: string[], onError?: (error: Error) => void | Promise<void>): Promise<void>;
 }
 
 // the realtime client will return one of these. 
@@ -34,10 +36,16 @@ export function httpRealtimeConnection(url: string, secret: string): RealtimeCon
         secret,
       }
 
-      await fetch(`${url}/update`, {
+      const response = await fetch(`${url}/update`, {
         body: JSON.stringify(update),
         method: "POST",
       });
+
+      if (response.status >= 200 && response.status < 400) {
+        return "OK";
+      }
+
+      return new Error(`Error ${response.status} when posting update: ${await response.text()}`)
     },
     sendMessage: async () => {
       console.log("sent the message?")

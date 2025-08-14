@@ -64,3 +64,5 @@ function globMatch(pattern: string, testString: string) {
   const regex = new RegExp(`^${regexPattern}$`);
   return regex.test(testString);
 }
+
+export type ArrayToMap<T extends string[]> = { [k in T[number]]: string };

@@ -70,7 +70,7 @@ export const outgoingMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("updated"),
-    resources: z.array(z.string()),
+    resource: z.string(),
   }),
 ])
   

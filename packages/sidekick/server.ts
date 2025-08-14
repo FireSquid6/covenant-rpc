@@ -1,7 +1,8 @@
 import { Elysia, t } from "elysia";
 import { resourceUpdateSchema } from "covenant/realtime";
-import { handleMessage, type SocketContext } from "./handlers";
+import { getResourceTopicName, handleMessage, type SocketContext } from "./handlers";
 import { incomingMessageSchema, makeOutgoing } from ".";
+import { logger } from "@bogeychan/elysia-logger";
 
 
 export interface SidekickOptions {
@@ -11,12 +12,16 @@ export interface SidekickOptions {
 
 export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOptions): Elysia {
   const ctx: SocketContext = {
-    listeningMap: new Map(),
-    updater: new Updater(),
   }
 
-  return new Elysia()
-    .post("/update", async ({ body, status }) => {
+  const app: Elysia<any, any, any, any> = new Elysia()
+    .use(
+      logger({
+        level: "info",
+      })
+    )
+    .post("/update", async ({ status, request, server }) => {
+      const body = await request.json();
       const { data: update, error, success } = resourceUpdateSchema.safeParse(body);
 
 
@@ -29,13 +34,19 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
         await new Promise((resolve) => setTimeout(resolve, 5000));
         return status(401, `Secret did not match`);
       }
+      if (server === null) {
+        return status(500, `Server was null. Could not send websockets`);
+      }
 
-      ctx.updater.update(update.resources);
+      for (const resource of update.resources) {
+        console.log("Publishing to", resource);
+        server.publish(getResourceTopicName(resource), makeOutgoing({
+          type: "updated",
+          resource,
+        }));
+      }
+
       console.log(`Recieved updates to ${update.resources}`);
-
-    }, {
-      // we self validate
-      body: t.Any(),
     })
     .get("/ping", () => {
       return "pong!";
@@ -45,13 +56,18 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
 
     })
     .ws("/connect", {
+      beforeHandle: (ctx) => {
+        // TODO - validate connection
+
+      },
       open: (ws) => {
         console.log(`New connection from ${ws.id}`);
       },
       message: async (ws, message) => {
-        const { data: msg, success, error } = incomingMessageSchema.safeParse(JSON.parse(message as string));
+        const { data: msg, success, error } = incomingMessageSchema.safeParse(message);
 
         if (!success) {
+          console.log("sending error");
           ws.send(makeOutgoing({
             type: "error",
             error: `Improper message format: ${error.message}`,
@@ -71,15 +87,11 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
         }
       },
       close: (ws) => {
-        const l = ctx.listeningMap.get(ws.id);
-        if (l) {
-          ctx.updater.unlistenAll(l);
-          ctx.listeningMap.delete(ws.id);
-        }
       },
     })
-}
 
+  return app;
+}
 
 export type UpdateListener = (resources: string[]) => Promise<void> | void;
 
@@ -135,3 +147,4 @@ export class Updater {
     await Promise.all(listenersToCall.values().map(l => l(resources)))
   }
 }
+

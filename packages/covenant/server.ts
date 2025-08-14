@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ChannelMap, ProcedureMap, Covenant, ProcedureDeclaration, ProcedureType, ChannelDeclaration, ProcedureInputs, ContextGenerator, ResourceInputs } from ".";
-import type { MaybePromise } from "./utils";
+import type { ArrayToMap, MaybePromise } from "./utils";
 import { parseRequest } from "./request";
 import { CovenantError } from "./error";
 import { procedureResponseToJs, type ProcedureResponse } from "./response";
@@ -35,22 +35,25 @@ export type ProcedureDefinition<T, Context extends StandardSchemaV1, Derivation>
   : never
 
 
-export interface ChannelInputs<ClientMessage, ConnectionContext> {
+export interface ChannelInputs<ClientMessage, ConnectionContext, Params extends string[]> {
   message: ClientMessage,
   ctx: ConnectionContext,
+  params: ArrayToMap<Params>,
 }
 
 export type ChannelDefinition<T> = T extends ChannelDeclaration<
   infer ClientMessage,
   infer ServerMessage,
   infer ConnectionRequest,
-  infer ConnectionContext
+  infer ConnectionContext,
+  infer Params
 >
   ? {
     guard: (req: StandardSchemaV1.InferOutput<ConnectionRequest>) => StandardSchemaV1.InferOutput<ConnectionContext>;
     onMessage: (i: ChannelInputs<
       StandardSchemaV1.InferOutput<ClientMessage>,
-      StandardSchemaV1.InferOutput<ConnectionContext>
+      StandardSchemaV1.InferOutput<ConnectionContext>,
+      Params
     >) => MaybePromise<StandardSchemaV1.InferOutput<ServerMessage>>;
     onClose: (ctx: StandardSchemaV1.InferOutput<ConnectionContext>) => void;
   } : never
