@@ -269,7 +269,10 @@ export class CovenantClient<
 
 
 
-    return unsubscribe;
+    return () => {
+      this.realtime.
+      unsubscribe()
+    };
   }
 }
 
@@ -405,11 +408,25 @@ export class SocketRealtimeClient implements RealtimeClient {
       connectionRequest: request,
     }));
 
-    const channel = getChannelTopicName(request.channel, request.params);
-    this.addChannelListener(channel, listener);
+    const topic = getChannelTopicName(request.channel, request.params);
+    this.addChannelListener(topic, listener);
 
     return () => {
-      this.removeChannelListener(channel, listener);
+      this.removeChannelListener(topic, listener);
+    }
+  }
+
+  async disconnect(request: ConnectionRequest, listener: (i: unknown) => MaybePromise<void>): Promise<void> {
+    await this.waitForConnection();
+    const topic = getChannelTopicName(request.channel, request.params);
+    this.removeChannelListener(topic, listener);
+
+    
+    if ((this.channelListeners.get(topic) ?? []).length < 0) {
+      this.socket.send(makeIncoming({
+        type: "unsubscribe",
+        channel: request.channel,
+      }))
     }
   }
 

@@ -20,6 +20,7 @@ export interface RealtimeClient {
   // connect: (r: ConnectionData) => ClientChannel;
 
   connect(request: ConnectionRequest, listener: (i: unknown) => MaybePromise<void>): Promise<() => void>;
+  disconnect(request: ConnectionRequest, listener: (i: unknown) => MaybePromise<void>):  Promise<void>;
   subscribeToResources(resources: string[], listener: () => MaybePromise<void>):  Promise<void>;
   unsubscribeFromResources(resources: string[], listener: () => MaybePromise<void>): Promise<void>;
 }
