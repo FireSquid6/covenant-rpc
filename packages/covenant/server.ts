@@ -35,29 +35,13 @@ export type ProcedureDefinition<T, Context extends StandardSchemaV1, Derivation>
   : never
 
 
-export interface ChannelInputs<ClientMessage extends StandardSchemaV1> {
-  message: StandardSchemaV1.InferOutput<ClientMessage>,
-}
-
-export type ChannelDefinition<T> = T extends ChannelDeclaration<
-  infer ClientMessage,
-  infer ServerMessage,
-  infer ConnectionRequest,
-  infer ConnectionContext,
-  infer Params
->
-  ? {
-    guard: (req: StandardSchemaV1.InferOutput<ConnectionRequest>) => StandardSchemaV1.InferOutput<ConnectionContext>;
-    onMessage: (i: ChannelInputs<
-      ClientMessage
-    >) => MaybePromise<StandardSchemaV1.InferOutput<ServerMessage>>;
-    onClose: (ctx: StandardSchemaV1.InferOutput<ConnectionContext>) => void;
-  } : never
-
 
 export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends StandardSchemaV1, Derivation> = {
   [key in keyof T]: ProcedureDefinition<T[key], Context, Derivation> | undefined
 }
+
+// TODO
+export type ChannelDefinition<T> = null;
 
 export type ChannelDefinitionMap<T extends ChannelMap> = {
   [key in keyof T]: ChannelDefinition<T[key]>

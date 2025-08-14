@@ -1,9 +1,9 @@
+import { connectionRequest, untypedServerMessageSchema } from "covenant/channels";
 import { z } from "zod";
 
 export const subscribeMessageSchema = z.object({
   type: z.literal("subscribe"),
-  channel: z.string(),
-  connectionRequest: z.any(),
+  connectionRequest: connectionRequest,
 });
 export type SubscribeMessage = z.infer<typeof subscribeMessageSchema>;
 
@@ -16,6 +16,7 @@ export type UnsubscribeMessage = z.infer<typeof unsubscribeMessageSchema>;
 export const messageSchema = z.object({
   type: z.literal("message"),
   channel: z.string(),
+  params: z.record(z.string(), z.string()),
   message: z.any(),
 });
 export type Message = z.infer<typeof messageSchema>;
@@ -45,8 +46,7 @@ export type IncomingMessage = z.infer<typeof incomingMessageSchema>;
 export const outgoingMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("message"),
-    channel: z.string(),
-    data: z.any(),
+    data: untypedServerMessageSchema,
   }),
   z.object({
     type: z.literal("error"),

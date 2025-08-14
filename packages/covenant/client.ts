@@ -6,7 +6,9 @@ import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
 import { makeIncoming, outgoingMessageSchema, type OutgoingMessage } from "sidekick";
 import type { ClientChannel, RealtimeClient } from "./realtime";
-import type { MaybePromise } from "bun";
+import { listen, type MaybePromise } from "bun";
+import type { ConnectionRequest, InferChannelOutputs, InferChannelParams, InferConnectionRequest } from "./channels";
+import { getChannelTopicName } from "sidekick/handlers";
 
 
 export interface ClientMessenger {
@@ -229,13 +231,45 @@ export class CovenantClient<
     // send the message to the 
   }
 
-  async connectTo(): Promise<ClientChannel> {
+  async connectTo<N extends keyof C>(
+    channelName: N,
+    params: InferChannelParams<C[N]>,
+    connection: InferConnectionRequest<C[N]>,
+    callback: (
+      outputs: InferChannelOutputs<C[N]>,
+      params: InferChannelParams<C[N]>,
+      channelName: N
+    ) => MaybePromise<void>,
+  ): Promise<() => void> {
     // if we are already connected, return the ClientChannel
     // send connection
     // return error if it didn't work
+    const channel = this.covenant.channels[channelName]!;
 
-    //@ts-ignore TODO
-    return {}
+    const listener = async (i: unknown) => {
+      const validation = await channel.serverMessage["~standard"].validate(i);
+
+      if (validation.issues) {
+        // TODO - handle this error and proper channel error management in general
+        throw new Error("I forgot to handle the error where we get the wrong resources");
+      }
+
+      // the typescript compiler can't see deep enough to know that outputs
+      // is actually know. This is the problem with dealing with generic
+      // inferrence
+      const outputs = validation.value as InferChannelOutputs<C[N]>;
+      await callback(outputs, params, channelName);
+    }
+
+    const unsubscribe = await this.realtime.connect({
+      channel: String(channelName),
+      params,
+      connectionRequest: connection,
+    }, listener)
+
+
+
+    return unsubscribe;
   }
 }
 
@@ -275,11 +309,13 @@ export function directMessenger(server: CovenantServer<any, any, any, any, any>)
 }
 
 
+// TODO - add the ability to handle errors from the websocket
 export class SocketRealtimeClient implements RealtimeClient {
   url: string;
   socket: WebSocket;
   subscribedResources: Set<string> = new Set();
-  private listeners: Map<string, (() => MaybePromise<void>)[]> = new Map();
+  private resourceListeners: Map<string, (() => MaybePromise<void>)[]> = new Map();
+  private channelListeners: Map<string, ((message: unknown) => MaybePromise<void>)[]> = new Map();
 
   constructor(url: string) {
     this.url = url;
@@ -304,7 +340,7 @@ export class SocketRealtimeClient implements RealtimeClient {
     }
     this.socket.onmessage = async (e) => {
       const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-      const { data: message, success, error } = outgoingMessageSchema.safeParse(e.data);
+      const { data: message, success, error } = outgoingMessageSchema.safeParse(data);
       if (!success) {
         // TODO - error handling
         console.log("Error parsing message:");
@@ -319,7 +355,10 @@ export class SocketRealtimeClient implements RealtimeClient {
   private async handleMessage(message: OutgoingMessage): Promise<void> {
     switch (message.type) {
       case "message":
-        // TODO
+        const topic = getChannelTopicName(message.data.channel, message.data.params);
+        const cListeners = this.channelListeners.get(topic) ?? [];
+        await Promise.all(cListeners.map(l => l(message.data.message)));
+
         break;
       case "listening":
         // log confirmation
@@ -338,8 +377,8 @@ export class SocketRealtimeClient implements RealtimeClient {
         break;
       case "updated":
         console.log("calling listeners for", message.resource);
-        const listeners = this.listeners.get(message.resource) ?? [];
-        await Promise.all(listeners.map(l => l()));
+        const rListeners = this.resourceListeners.get(message.resource) ?? [];
+        await Promise.all(rListeners.map(l => l()));
         break;
     }
 
@@ -359,11 +398,26 @@ export class SocketRealtimeClient implements RealtimeClient {
     });
   }
 
+  async connect(request: ConnectionRequest, listener: (i: unknown) => MaybePromise<void>): Promise<() => void> {
+    await this.waitForConnection();
+    this.socket.send(makeIncoming({
+      type: "subscribe",
+      connectionRequest: request,
+    }));
+
+    const channel = getChannelTopicName(request.channel, request.params);
+    this.addChannelListener(channel, listener);
+
+    return () => {
+      this.removeChannelListener(channel, listener);
+    }
+  }
+
   async subscribeToResources(resources: string[], listener: () => MaybePromise<void>): Promise<void> {
     await this.waitForConnection();
     for (const r of resources) {
       this.subscribedResources.add(r);
-      this.addListener(r, listener);
+      this.addResourceListener(r, listener);
     }
 
 
@@ -379,7 +433,7 @@ export class SocketRealtimeClient implements RealtimeClient {
 
     for (const r of resources) {
       this.subscribedResources.delete(r);
-      this.removeListener(r, listener);
+      this.removeResourceListener(r, listener);
     }
 
     this.socket.send(makeIncoming({
@@ -388,21 +442,39 @@ export class SocketRealtimeClient implements RealtimeClient {
     }));
   }
 
-  private addListener(resource: string, listener: () => MaybePromise<void>) {
-    if (this.listeners.get(resource) === undefined) {
-      this.listeners.set(resource, [listener]);
+  private addResourceListener(resource: string, listener: () => MaybePromise<void>) {
+    if (this.resourceListeners.get(resource) === undefined) {
+      this.resourceListeners.set(resource, [listener]);
     } else {
-      const current = this.listeners.get(resource)!;
+      const current = this.resourceListeners.get(resource)!;
       current.push(listener);
-      this.listeners.set(resource, current);
+      this.resourceListeners.set(resource, current);
     }
   }
 
-  private removeListener(resource: string, listener: () => MaybePromise<void>) {
-    if (this.listeners.get(resource) !== undefined) {
-      const current = this.listeners.get(resource)!;
+  private removeResourceListener(resource: string, listener: () => MaybePromise<void>) {
+    if (this.resourceListeners.get(resource) !== undefined) {
+      const current = this.resourceListeners.get(resource)!;
       const newListeners = current.filter(l => l !== listener);
-      this.listeners.set(resource, newListeners);
+      this.resourceListeners.set(resource, newListeners);
+    }
+  }
+
+  private addChannelListener(channel: string, listener: (i: unknown) => MaybePromise<void>) {
+    if (this.channelListeners.get(channel) === undefined) {
+      this.channelListeners.set(channel, [listener]);
+    } else {
+      const current = this.channelListeners.get(channel)!;
+      current.push(listener);
+      this.channelListeners.set(channel, current);
+    }
+  }
+
+  private removeChannelListener(channel: string, listener: (i: unknown) => MaybePromise<void>) {
+    if (this.channelListeners.get(channel) !== undefined) {
+      const current = this.resourceListeners.get(channel)!;
+      const newListeners = current.filter(l => l !== listener);
+      this.resourceListeners.set(channel, newListeners);
     }
   }
 }
