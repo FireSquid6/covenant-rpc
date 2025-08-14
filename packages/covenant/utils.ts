@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type MaybePromise<T> = Promise<T> | T;
 export type Flatten<T> = { [key in keyof T]: T[key] } & {};
 
@@ -65,4 +67,12 @@ function globMatch(pattern: string, testString: string) {
   return regex.test(testString);
 }
 
-export type ArrayToMap<T extends string[]> = { [k in T[number]]: string };
+export type ArrayToMap<T extends readonly string[]> = { [k in T[number]]: string };
+
+export function createMappedSchema<T extends readonly string[]>(keys: T): z.ZodObject<{
+  [k in keyof T[number]]: z.ZodString
+}> {
+  return z.object(Object.fromEntries(keys.map(k => [k, z.string()]))) as z.ZodObject<{
+    [k in keyof T[number]]: z.ZodString
+  }>
+}

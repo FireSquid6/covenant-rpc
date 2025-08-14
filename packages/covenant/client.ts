@@ -7,8 +7,6 @@ import type { CovenantServer } from "./server";
 import { makeIncoming, outgoingMessageSchema, type OutgoingMessage } from "sidekick";
 import type { ClientChannel, RealtimeClient } from "./realtime";
 import type { MaybePromise } from "bun";
-import { reoptimizationRetryCount } from "bun:jsc";
-import { handleMessage } from "sidekick/handlers";
 
 
 export interface ClientMessenger {
@@ -35,7 +33,7 @@ export type QueryKey<P extends ProcedureMap> = {
   [k in keyof P]: P[k]["type"] extends "query" ? k : never
 }[keyof P]
 
-export type ListenResponse<T> = {
+export type ListenResponse = {
   type: "OK",
   listener: () => MaybePromise<void>,
   resources: string[],
@@ -127,7 +125,7 @@ export class CovenantClient<
     procedure: K,
     inputs: InferProcedureInputs<P[K]>,
     callback: Listener<InferProcedureOutputs<P[K]>>
-  ): Promise<ListenResponse<InferProcedureOutputs<P[K]>>> {
+  ): Promise<ListenResponse> {
     const schema = this.covenant.procedures[procedure]!;
     if (schema.type !== "query") {
       throw new Error("Tried to listen to a mutation which makes no sense");
@@ -165,9 +163,7 @@ export class CovenantClient<
     procedure: K,
     inputs: InferProcedureInputs<P[K]>,
     callback: Listener<InferProcedureOutputs<P[K]>>,
-  ): Promise<ListenResponse<
-    InferProcedureOutputs<P[K]>
-  >> {
+  ): Promise<ListenResponse> {
     const result = await this.localListen(procedure, inputs, callback);
 
     if (result.type === "ERROR") {
@@ -308,7 +304,7 @@ export class SocketRealtimeClient implements RealtimeClient {
     }
     this.socket.onmessage = async (e) => {
       const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-      const { data: message, success, error } = outgoingMessageSchema.safeParse(data);
+      const { data: message, success, error } = outgoingMessageSchema.safeParse(e.data);
       if (!success) {
         // TODO - error handling
         console.log("Error parsing message:");
