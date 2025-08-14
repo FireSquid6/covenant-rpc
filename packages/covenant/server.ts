@@ -35,10 +35,8 @@ export type ProcedureDefinition<T, Context extends StandardSchemaV1, Derivation>
   : never
 
 
-export interface ChannelInputs<ClientMessage, ConnectionContext, Params extends string[]> {
-  message: ClientMessage,
-  ctx: ConnectionContext,
-  params: ArrayToMap<Params>,
+export interface ChannelInputs<ClientMessage extends StandardSchemaV1> {
+  message: StandardSchemaV1.InferOutput<ClientMessage>,
 }
 
 export type ChannelDefinition<T> = T extends ChannelDeclaration<
@@ -51,9 +49,7 @@ export type ChannelDefinition<T> = T extends ChannelDeclaration<
   ? {
     guard: (req: StandardSchemaV1.InferOutput<ConnectionRequest>) => StandardSchemaV1.InferOutput<ConnectionContext>;
     onMessage: (i: ChannelInputs<
-      StandardSchemaV1.InferOutput<ClientMessage>,
-      StandardSchemaV1.InferOutput<ConnectionContext>,
-      Params
+      ClientMessage
     >) => MaybePromise<StandardSchemaV1.InferOutput<ServerMessage>>;
     onClose: (ctx: StandardSchemaV1.InferOutput<ConnectionContext>) => void;
   } : never
@@ -244,6 +240,7 @@ export class CovenantServer<
 
     return new Response("OK", { status: 200 });
   }
+
 
   async handle(request: Request): Promise<Response> {
     const url = new URL(request.url);
