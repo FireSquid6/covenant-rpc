@@ -18,8 +18,8 @@ export interface RealtimeConnection {
 export interface RealtimeClient {
   // connect: (r: ConnectionData) => ClientChannel;
   // handleError(arg: (error: Error) => MaybePromise<void>): void;
-  subscribeToResources(resources: string[], onError?: (error: Error) => void | Promise<void>):  Promise<void>;
-  unsubscribeFromResources(resources: string[], onError?: (error: Error) => void | Promise<void>): Promise<void>;
+  subscribeToResources(resources: string[], listener: () => MaybePromise<void>):  Promise<void>;
+  unsubscribeFromResources(resources: string[], listener: () => MaybePromise<void>): Promise<void>;
 }
 
 // the realtime client will return one of these. 

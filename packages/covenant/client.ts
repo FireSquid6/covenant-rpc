@@ -4,8 +4,11 @@ import { type Flatten, type Listener } from "./utils";
 import { getProcedureResponseSchema, type ProcedureError, type ProcedureResponse } from "./response";
 import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
-import { makeIncoming } from "sidekick";
+import { makeIncoming, outgoingMessageSchema, type OutgoingMessage } from "sidekick";
 import type { ClientChannel, RealtimeClient } from "./realtime";
+import type { MaybePromise } from "bun";
+import { reoptimizationRetryCount } from "bun:jsc";
+import { handleMessage } from "sidekick/handlers";
 
 
 export interface ClientMessenger {
@@ -34,7 +37,7 @@ export type QueryKey<P extends ProcedureMap> = {
 
 export type ListenResponse<T> = {
   type: "OK",
-  listener: Listener<T>,
+  listener: () => MaybePromise<void>,
   resources: string[],
   unsubscribe: () => void,
 } | {
@@ -171,14 +174,14 @@ export class CovenantClient<
       return result;
     }
 
-    this.realtime.subscribeToResources(result.resources);
+    this.realtime.subscribeToResources(result.resources, result.listener);
 
     return {
       type: "OK",
       listener: result.listener,
       resources: result.resources,
       unsubscribe: () => {
-        this.realtime.unsubscribeFromResources(result.resources);
+        this.realtime.unsubscribeFromResources(result.resources, result.listener);
         result.unsubscribe();
       }
     };
@@ -280,6 +283,7 @@ export class SocketRealtimeClient implements RealtimeClient {
   url: string;
   socket: WebSocket;
   subscribedResources: Set<string> = new Set();
+  private listeners: Map<string, (() => MaybePromise<void>)[]> = new Map();
 
   constructor(url: string) {
     this.url = url;
@@ -292,13 +296,9 @@ export class SocketRealtimeClient implements RealtimeClient {
   private makeSocket() {
     this.socket = new WebSocket(this.url);
 
-    this.socket.onopen = () => {
-      // when we reopen we want to add all of the resources we had forgotten
+    this.socket.onopen = async () => {
       console.log("Reconnected!");
-      this.socket.send(makeIncoming({
-        type: "listen",
-        resources: Array.from(this.subscribedResources),
-      }));
+      // TODO - reconnect to all subscribej
     }
     this.socket.onclose = async () => {
       // TODO - add all subscriptions again after a disconnection
@@ -306,12 +306,47 @@ export class SocketRealtimeClient implements RealtimeClient {
       await new Promise(resolve => setTimeout(resolve, 5000));
       this.makeSocket();
     }
-    this.socket.onmessage = (e) => {
-      const data = e.data;
-      console.log("On client recieved:")
-      console.log(data);
-      console.log(typeof data);
+    this.socket.onmessage = async (e) => {
+      const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+      const { data: message, success, error } = outgoingMessageSchema.safeParse(data);
+      if (!success) {
+        // TODO - error handling
+        console.log("Error parsing message:");
+        console.log(error);
+        return;
+      }
+
+      await this.handleMessage(message);
     }
+  }
+
+  private async handleMessage(message: OutgoingMessage): Promise<void> {
+    switch (message.type) {
+      case "message":
+        // TODO
+        break;
+      case "listening":
+        // log confirmation
+        break;
+      case "unlistening":
+        // log confirmation
+        break;
+      case "subscribed":
+        // log confirmation
+        break;
+      case "unsubscribed":
+        // log confirmation
+        break;
+      case "error":
+        // TODO
+        break;
+      case "updated":
+        console.log("calling listeners for", message.resource);
+        const listeners = this.listeners.get(message.resource) ?? [];
+        await Promise.all(listeners.map(l => l()));
+        break;
+    }
+
   }
 
   private async waitForConnection() {
@@ -328,11 +363,13 @@ export class SocketRealtimeClient implements RealtimeClient {
     });
   }
 
-  async subscribeToResources(resources: string[]): Promise<void> {
+  async subscribeToResources(resources: string[], listener: () => MaybePromise<void>): Promise<void> {
     await this.waitForConnection();
     for (const r of resources) {
       this.subscribedResources.add(r);
+      this.addListener(r, listener);
     }
+
 
     console.log("sending subscribe message");
     this.socket.send(makeIncoming({
@@ -341,16 +378,35 @@ export class SocketRealtimeClient implements RealtimeClient {
     }))
   }
 
-  async unsubscribeFromResources(resources: string[]): Promise<void> {
+  async unsubscribeFromResources(resources: string[], listener: () => MaybePromise<void>): Promise<void> {
     await this.waitForConnection();
 
     for (const r of resources) {
       this.subscribedResources.delete(r);
+      this.removeListener(r, listener);
     }
 
     this.socket.send(makeIncoming({
       type: "unlisten",
       resources,
     }));
+  }
+
+  private addListener(resource: string, listener: () => MaybePromise<void>) {
+    if (this.listeners.get(resource) === undefined) {
+      this.listeners.set(resource, [listener]);
+    } else {
+      const current = this.listeners.get(resource)!;
+      current.push(listener);
+      this.listeners.set(resource, current);
+    }
+  }
+
+  private removeListener(resource: string, listener: () => MaybePromise<void>) {
+    if (this.listeners.get(resource) !== undefined) {
+      const current = this.listeners.get(resource)!;
+      const newListeners = current.filter(l => l !== listener);
+      this.listeners.set(resource, newListeners);
+    }
   }
 }

@@ -46,7 +46,7 @@ export interface ChannelDeclaration<
   serverMessage: ServerMessage
   connectionRequest: ConnectionRequest,
   connectionContext: ConnectionContext,
-  params: string[],
+  params: Params,
 }
 
 export type ChannelMap = {
