@@ -10,6 +10,7 @@ export type SubscribeMessage = z.infer<typeof subscribeMessageSchema>;
 export const unsubscribeMessageSchema = z.object({
   type: z.literal("unsubscribe"),
   channel: z.string(),
+  params: z.record(z.string(), z.string()),
 });
 export type UnsubscribeMessage = z.infer<typeof unsubscribeMessageSchema>;
 

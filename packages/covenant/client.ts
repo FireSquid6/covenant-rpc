@@ -261,16 +261,15 @@ export class CovenantClient<
       await callback(outputs, params, channelName);
     }
 
-    const unsubscribe = await this.realtime.connect({
+    const request: ConnectionRequest = {
       channel: String(channelName),
       params,
       connectionRequest: connection,
-    }, listener)
+    }
 
-
-
+    const unsubscribe = await this.realtime.connect(request, listener)
     return () => {
-      this.realtime.
+      this.realtime.disconnect(request, listener);
       unsubscribe()
     };
   }
@@ -426,6 +425,7 @@ export class SocketRealtimeClient implements RealtimeClient {
       this.socket.send(makeIncoming({
         type: "unsubscribe",
         channel: request.channel,
+        params: request.params,
       }))
     }
   }
