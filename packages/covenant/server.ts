@@ -40,8 +40,28 @@ export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends Stand
   [key in keyof T]: ProcedureDefinition<T[key], Context, Derivation> | undefined
 }
 
-// TODO
-export type ChannelDefinition<T> = null;
+export interface ConnectionHandlerInputs<T, Params> {
+  inputs: T,
+  params: Params,
+  // TODO - figure out how to port the request over from sidekick
+  request: Request,
+}
+
+export type ChannelDefinition<T> = T extends ChannelDeclaration<
+  infer ClientMessage,
+  infer ServerMessage,
+  infer ConnectionRequest,
+  infer ConnectionContext,
+  infer Params
+> ? {
+    connection: (i: ConnectionHandlerInputs<
+      StandardSchemaV1.InferOutput<ConnectionRequest>,
+      ArrayToMap<Params>
+    >) => MaybePromise<
+      StandardSchemaV1.InferOutput<ConnectionContext>
+    >;
+
+  } : never
 
 export type ChannelDefinitionMap<T extends ChannelMap> = {
   [key in keyof T]: ChannelDefinition<T[key]>
@@ -65,7 +85,7 @@ export class CovenantServer<
   private channelDefinitions: ChannelDefinitionMap<C>;
 
 
-  constructor(covenant: Covenant<P, C, Context, Data>, { 
+  constructor(covenant: Covenant<P, C, Context, Data>, {
     contextGenerator,
     derivation,
     realtimeConnection
@@ -76,7 +96,7 @@ export class CovenantServer<
   }) {
     this.covenant = covenant;
     this.derivation = derivation;
-    this.realtimeConnection  = realtimeConnection;
+    this.realtimeConnection = realtimeConnection;
 
     // both of these fail. We assert that the user has defined everything with
     // assertAllDefined. If they haven't, this type is indeed incorrect.
@@ -214,6 +234,7 @@ export class CovenantServer<
       }
     }
   }
+
 
   private async handleConnectMessage(request: Request): Promise<Response> {
     return new Response("OK", { status: 200 });
