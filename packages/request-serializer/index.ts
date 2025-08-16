@@ -1,10 +1,14 @@
-export interface SerializedRequest {
-  url: string;
-  method: string;
-  headers: Record<string, string>;
-  body?: string;
-  bodyType?: 'text' | 'json' | 'formdata' | 'arraybuffer' | 'blob';
-}
+import { z } from 'zod';
+
+export const serializedRequestSchema = z.object({
+  url: z.string(),
+  method: z.string(),
+  headers: z.record(z.string(), z.string()),
+  body: z.string().optional(),
+  bodyType: z.enum(['text', 'json', 'formdata', 'arraybuffer', 'blob']).optional()
+});
+
+export type SerializedRequest = z.infer<typeof serializedRequestSchema>;
 
 export async function serializeRequest(request: Request): Promise<SerializedRequest> {
   const headers: Record<string, string> = {};
@@ -45,9 +49,10 @@ export async function serializeRequest(request: Request): Promise<SerializedRequ
 }
 
 export function deserializeRequest(serialized: SerializedRequest): Request {
-  const { url, method, headers, body, bodyType } = serialized;
+  const validated = serializedRequestSchema.parse(serialized);
+  const { url, method, headers, body, bodyType } = validated;
 
-  let requestBody: BodyInit | undefined;
+  let requestBody: Bun.BodyInit | undefined;
 
   if (body) {
     switch (bodyType) {

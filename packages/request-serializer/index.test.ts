@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { serializeRequest, deserializeRequest, type SerializedRequest } from "./index";
+import { serializeRequest, deserializeRequest, serializedRequestSchema, type SerializedRequest } from "./index";
 
 test("serialize and deserialize GET request without body", async () => {
   const originalRequest = new Request("https://example.com/api/users", {
@@ -150,4 +150,38 @@ test("roundtrip serialization preserves all request properties", async () => {
   const originalBody = await originalRequest.text();
   const deserializedBody = await deserialized.text();
   expect(deserializedBody).toBe(originalBody);
+});
+
+test("zod schema validation works correctly", () => {
+  const validData = {
+    url: "https://example.com",
+    method: "GET",
+    headers: { "content-type": "application/json" },
+    body: "test",
+    bodyType: "text" as const
+  };
+
+  const result = serializedRequestSchema.safeParse(validData);
+  expect(result.success).toBe(true);
+
+  const invalidData = {
+    url: "https://example.com",
+    method: "GET",
+    headers: { "content-type": "application/json" },
+    bodyType: "invalid-type"
+  };
+
+  const invalidResult = serializedRequestSchema.safeParse(invalidData);
+  expect(invalidResult.success).toBe(false);
+});
+
+test("deserializeRequest validates input with zod", () => {
+  const invalidData = {
+    url: "https://example.com",
+    method: "GET",
+    headers: { "content-type": "application/json" },
+    bodyType: "invalid-type"
+  };
+
+  expect(() => deserializeRequest(invalidData as any)).toThrow();
 });
