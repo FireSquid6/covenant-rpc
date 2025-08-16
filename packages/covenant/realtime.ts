@@ -1,6 +1,6 @@
 import type { MaybePromise } from "bun";
 import { z } from "zod";
-import type { ConnectionRequest } from "./channels";
+import type { ConnectionRequest, UntypedServerMessage } from "./channels";
 
 export const resourceUpdateSchema = z.object({
   resources: z.array(z.string()),
@@ -11,7 +11,7 @@ export type RealtimeUpdate = z.infer<typeof resourceUpdateSchema>;
 // this is the connection from the covenant server to the realtime server
 export interface RealtimeConnection {
   informUpdated: (resources: string[]) => Promise<Error | "OK">;
-  sendMessage: () => Promise<void>;
+  sendMessage: (message: UntypedServerMessage) => Promise<void>;
 }
 
 
@@ -79,3 +79,4 @@ export class ClientChannel<
 
   }
 }
+

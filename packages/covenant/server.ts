@@ -4,9 +4,12 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ChannelMap, ProcedureMap, Covenant, ProcedureDeclaration, ProcedureType, ChannelDeclaration, ProcedureInputs, ContextGenerator, ResourceInputs } from ".";
 import type { ArrayToMap, MaybePromise } from "./utils";
 import { parseRequest } from "./request";
-import { CovenantError } from "./error";
+import { ChannelErrorWrapper, CovenantError } from "./error";
 import { procedureResponseToJs, type ProcedureResponse } from "./response";
 import type { RealtimeConnection } from "./realtime";
+import { connected } from "process";
+import { connectionRequest, type ConnectionRequest, type ConnectionResponse } from "./channels";
+import { channel } from "diagnostics_channel";
 
 
 export interface ParsedRequest {
@@ -43,8 +46,14 @@ export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends Stand
 export interface ConnectionHandlerInputs<T, Params> {
   inputs: T,
   params: Params,
-  // TODO - figure out how to port the request over from sidekick
-  request: Request,
+  originalRequest: Request,
+  reject(reason: string, cause: "client" | "server"): never,
+}
+
+export interface MessageHandlerInputs<T, Params, Context> {
+  inputs: T,
+  params: Params,
+  context: Context,
 }
 
 export type ChannelDefinition<T> = T extends ChannelDeclaration<
@@ -54,14 +63,20 @@ export type ChannelDefinition<T> = T extends ChannelDeclaration<
   infer ConnectionContext,
   infer Params
 > ? {
-    connection: (i: ConnectionHandlerInputs<
-      StandardSchemaV1.InferOutput<ConnectionRequest>,
-      ArrayToMap<Params>
-    >) => MaybePromise<
-      StandardSchemaV1.InferOutput<ConnectionContext>
-    >;
-
-  } : never
+  onConnect: (i: ConnectionHandlerInputs<
+    StandardSchemaV1.InferOutput<ConnectionRequest>,
+    ArrayToMap<Params>
+  >) => MaybePromise<
+    StandardSchemaV1.InferOutput<ConnectionContext>
+  >;
+  onMessage: (i: MessageHandlerInputs<
+    StandardSchemaV1.InferOutput<ClientMessage>,
+    ArrayToMap<Params>,
+    StandardSchemaV1.InferOutput<ConnectionContext>
+  >) => MaybePromise<
+    StandardSchemaV1.InferOutput<ServerMessage>
+  >
+} : never
 
 export type ChannelDefinitionMap<T extends ChannelMap> = {
   [key in keyof T]: ChannelDefinition<T[key]>
@@ -164,6 +179,16 @@ export class CovenantServer<
     this.channelDefinitions[name] = definition;
   }
 
+  async sendMessage<N extends keyof C>(
+    name: N,
+    params: ArrayToMap<C[N]["params"]>,
+    message: StandardSchemaV1.InferOutput<C[N]["serverMessage"]>
+  ): Promise<Error | null> {
+    // TODO - send a message to 
+    
+    return null;
+  }
+
   private async processProcedure(request: Request, newHeaders: Headers): Promise<ProcedureResponse<any>> {
     try {
       const parsed = await parseRequest(request);
@@ -236,7 +261,67 @@ export class CovenantServer<
   }
 
 
+  private async processConnectionRequest(request: ConnectionRequest): ConnectionResponse {
+    try {
+      const definition = this.channelDefinitions[request.channel];
+      const declaration = this.covenant.channels[request.channel];
+
+      if (!definition || !declaration) {
+        throw new ChannelErrorWrapper(`Channel ${definition} not found.`, "client");
+      }
+      const params = request.params;
+
+      if (!isProperParams(declaration.params, params)) {
+        throw new ChannelErrorWrapper(`Params did not match the params ${declaration.params}.`, "client");
+      }
+
+      const reject = (reason: string, cause: "server" | "client") => {
+        throw new ChannelErrorWrapper(reason, cause);
+      }
+
+      const valid = await declaration.clientMessage["~standard"].validate(request.connectionRequest);
+
+      if (valid.issues) {
+        // the reason we actually want to return a 201 OK but with the error is because
+        // we want this error to be sent in the websocket. Errors in the handleConnectionRequest
+        // are caused by a sidekick instance fucking up (our skill issue) while this error would
+        // be caused by the client fucking up (library user's skill issue)
+        //
+        // I mostly did it this way at first because making a big generic schema was harder and
+        // more brain intensive than just going grug mode and validating twice, but I think it's
+        // actually a fairly smart decision now that I think about it.
+        throw new ChannelErrorWrapper(`Channel message was incorrect: ${valid.issues}`, "client")
+      }
+
+      const context = await definition.onConnect({
+        reject,
+        params: params,
+        inputs: inpu
+        
+      })
+
+
+    } catch (e) {
+      const err: ChannelErrorWrapper = e instanceof ChannelErrorWrapper
+        ? e
+        : e instanceof Error
+          ? ChannelErrorWrapper.fromError(e)
+          : ChannelErrorWrapper.fromUnknown(e);
+
+      return err.toConnectionResponse();
+    }
+  }
+
+
   private async handleConnectMessage(request: Request): Promise<Response> {
+    const body = await request.json();
+    const validated = await connectionRequest["~standard"].validate(body);
+
+    if (validated.issues) {
+      return new Response(`Error parsing: ${validated.issues}`, { status: 400 });
+    }
+
+
     return new Response("OK", { status: 200 });
   }
 
@@ -276,3 +361,34 @@ export class CovenantServer<
   }
 }
 
+
+function isProperParams<T extends string[]>(properties: T, params: Record<string, string>): params is ArrayToMap<T> {
+  const m = new Map<string, boolean>();
+  for (const p of properties) {
+    m.set(p, false);
+  }
+
+  for (const k of Object.keys(params)) {
+    const seen = m.get(k);
+
+    if (seen === undefined) {
+      return false;
+    }
+
+    if (seen === true) {
+      // should be unreachable. Not sure how
+      // a record would have duplicates
+      return false;
+    }
+
+    m.set(k, true);
+  }
+
+  for (const v of m.values()) {
+    if (v === false) {
+      return false;
+    }
+  }
+
+  return true;
+}

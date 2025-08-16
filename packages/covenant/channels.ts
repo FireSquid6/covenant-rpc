@@ -80,12 +80,30 @@ export const connectionResponse = z.discriminatedUnion("type", [
 export type ConnectionResponse = z.infer<typeof connectionResponse>;
 
 
-
-export const untypedServerMessageSchema = z.object({
-  message: z.unknown(),
-  params: z.record(z.string(), z.string()),
-  channel: z.string(),
-});
+export const untypedServerMessageSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("OK"),
+    message: z.unknown(),
+    params: z.record(z.string(), z.string()),
+    channel: z.string(),
+  }),
+  z.object({
+    type: z.literal("ERROR"),
+    error: channelErrorSchema,
+  })
+]);
 
 export type UntypedServerMessage = z.infer<typeof untypedServerMessageSchema>;
 
+
+
+export const untypedClientMessageSchema = z.object({
+  channel: z.string(),
+  params: z.record(z.string(), z.string()),
+  message: z.unknown(),
+  // TODO - serialized request schema from zod
+  request: z.unknown(),
+
+});
+
+export type UntypedClientMessage = z.infer<typeof untypedClientMessageSchema>;
