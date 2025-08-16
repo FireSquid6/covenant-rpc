@@ -3,6 +3,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ChannelDeclaration } from ".";
 import type { ArrayToMap, MaybePromise } from "./utils";
 import type { ChannelDefinition } from "./server";
+import { serializedRequestSchema } from "@covenant/request-serializer";
 
 export const channelErrorSchema = z.object({
   error: z.string(),
@@ -57,6 +58,7 @@ export const connectionRequest = z.object({
   channel: z.string(),
   connectionRequest: z.unknown(),
   params: z.record(z.string(), z.string()),
+  originalRequest: serializedRequestSchema,
 });
 
 export type ConnectionRequest = z.infer<typeof connectionRequest>;
@@ -70,8 +72,6 @@ export const connectionResponse = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("OK"),
-    channel: z.string(),
-    params: z.record(z.string(), z.string()),
     context: z.unknown(),
   })
 ]);
@@ -95,15 +95,10 @@ export const untypedServerMessageSchema = z.discriminatedUnion("type", [
 
 export type UntypedServerMessage = z.infer<typeof untypedServerMessageSchema>;
 
-
-
 export const untypedClientMessageSchema = z.object({
   channel: z.string(),
   params: z.record(z.string(), z.string()),
   message: z.unknown(),
-  // TODO - serialized request schema from zod
-  request: z.unknown(),
-
 });
 
 export type UntypedClientMessage = z.infer<typeof untypedClientMessageSchema>;

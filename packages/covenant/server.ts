@@ -10,6 +10,7 @@ import type { RealtimeConnection } from "./realtime";
 import { connected } from "process";
 import { connectionRequest, type ConnectionRequest, type ConnectionResponse } from "./channels";
 import { channel } from "diagnostics_channel";
+import { deserializeRequest } from "@covenant/request-serializer";
 
 
 export interface ParsedRequest {
@@ -293,12 +294,27 @@ export class CovenantServer<
         throw new ChannelErrorWrapper(`Channel message was incorrect: ${valid.issues}`, "client")
       }
 
+      // ok this is kinda weird
+      //
+      // what we do is the original connection request to the sidekick websocket is serialized. This
+      // allows us to use the cookies (auth for example) to derive the context of this connection and
+      // do auth stuff
+      //
+      // It's important to have the client restart its connection each time the cookies would change
+      // because this is only the cookies at the *start* of whenever the client connects.
+      const originalRequest = deserializeRequest(request.originalRequest);
+
       const context = await definition.onConnect({
         reject,
         params: params,
-        inputs: inpu
-        
-      })
+        originalRequest: originalRequest,
+        inputs: valid.value,
+      });
+
+      return {
+        type: "OK",
+        context,
+      }
 
 
     } catch (e) {
