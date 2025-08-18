@@ -5,8 +5,8 @@ import { getProcedureResponseSchema, type ProcedureError, type ProcedureResponse
 import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
 import { makeIncoming, outgoingMessageSchema, type OutgoingMessage } from "sidekick";
-import type { ClientChannel, RealtimeClient } from "./realtime";
-import { listen, type MaybePromise } from "bun";
+import type { RealtimeClient } from "./realtime";
+import { type MaybePromise } from "bun";
 import type { ConnectionRequest, InferChannelOutputs, InferChannelParams, InferConnectionRequest } from "./channels";
 import { getChannelTopicName } from "sidekick/handlers";
 

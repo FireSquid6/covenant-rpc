@@ -17,8 +17,6 @@ export interface RealtimeConnection {
 
 // this is the connection from the client to the realtime server
 export interface RealtimeClient {
-  // connect: (r: ConnectionData) => ClientChannel;
-
   connect(request: ConnectionRequest, listener: (i: unknown) => MaybePromise<void>): Promise<() => void>;
   disconnect(request: ConnectionRequest, listener: (i: unknown) => MaybePromise<void>):  Promise<void>;
   subscribeToResources(resources: string[], listener: () => MaybePromise<void>):  Promise<void>;

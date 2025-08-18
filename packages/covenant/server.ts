@@ -7,9 +7,7 @@ import { parseRequest } from "./request";
 import { ChannelErrorWrapper, CovenantError } from "./error";
 import { procedureResponseToJs, type ProcedureResponse } from "./response";
 import type { RealtimeConnection } from "./realtime";
-import { connected } from "process";
 import { connectionRequest, type ConnectionRequest, type ConnectionResponse } from "./channels";
-import { channel } from "diagnostics_channel";
 import { deserializeRequest } from "@covenant/request-serializer";
 
 
@@ -115,7 +113,11 @@ export class CovenantServer<
     this.realtimeConnection = realtimeConnection;
 
     // both of these fail. We assert that the user has defined everything with
-    // assertAllDefined. If they haven't, this type is indeed incorrect.
+    // assertAllDefined later. If they haven't, this type is indeed incorrect.
+    //
+    // This is crucial for the way covenant works. Our typesafety sits on a throne
+    // of lies
+    //
     // @ts-expect-error see above
     this.procedureDefinitions = {};
     // @ts-expect-error see above
