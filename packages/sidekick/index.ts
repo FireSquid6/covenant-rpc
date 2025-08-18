@@ -20,7 +20,7 @@ export const messageSchema = z.object({
   params: z.record(z.string(), z.string()),
   message: z.any(),
 });
-export type Message = z.infer<typeof messageSchema>;
+export type ChannelMessage = z.infer<typeof messageSchema>;
 
 export const listenMessageSchema = z.object({
   type: z.literal("listen"),
@@ -56,10 +56,12 @@ export const outgoingMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("subscribed"),
     channel: z.string(),
+    params: z.record(z.string(), z.string()),
   }),
   z.object({
     type: z.literal("unsubscribed"),
     channel: z.string(),
+    params: z.record(z.string(), z.string()),
   }),
   z.object({
     type: z.literal("listening"),

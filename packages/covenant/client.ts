@@ -7,7 +7,7 @@ import type { CovenantServer } from "./server";
 import { makeIncoming, outgoingMessageSchema, type OutgoingMessage } from "sidekick";
 import type { RealtimeClient } from "./realtime";
 import { type MaybePromise } from "bun";
-import type { ConnectionRequest, InferChannelOutputs, InferChannelParams, InferConnectionRequest } from "./channels";
+import type { ConnectionRequest, InferChannelInputs, InferChannelOutputs, InferChannelParams, InferConnectionRequest } from "./channels";
 import { getChannelTopicName } from "sidekick/handlers";
 
 
@@ -226,7 +226,11 @@ export class CovenantClient<
     return data;
   }
 
-  async sendChannelMessage() {
+  async sendChannelMessage<K extends keyof C>(
+    channel: K,
+    params: InferChannelParams<C[K]>,
+    message: InferChannelInputs<C[K]>
+  ) {
     // check if we are subscribed to the channel. If not, throw an erorr
     // send the message to the 
   }
@@ -357,22 +361,30 @@ export class SocketRealtimeClient implements RealtimeClient {
   private async handleMessage(message: OutgoingMessage): Promise<void> {
     switch (message.type) {
       case "message":
-        const topic = getChannelTopicName(message.data.channel, message.data.params);
-        const cListeners = this.channelListeners.get(topic) ?? [];
-        await Promise.all(cListeners.map(l => l(message.data.message)));
+        const msg = message.data;
+
+        if (msg.type === "OK") {
+          const topic = getChannelTopicName(msg.channel, msg.params);
+          const cListeners = this.channelListeners.get(topic) ?? [];
+          await Promise.all(cListeners.map(l => l(msg.message)));
+        } else {
+
+        }
 
         break;
+      // TODO - keep list of all channels we are subscribed to
+      // throw errors if we try to send a message on a non-subscribed channel
       case "listening":
-        // log confirmation
+        // TODO log confirmation
         break;
       case "unlistening":
-        // log confirmation
+        // TODO log confirmation
         break;
       case "subscribed":
-        // log confirmation
+        // TODO log confirmation
         break;
       case "unsubscribed":
-        // log confirmation
+        // TODO log confirmation
         break;
       case "error":
         // TODO
@@ -420,7 +432,7 @@ export class SocketRealtimeClient implements RealtimeClient {
     const topic = getChannelTopicName(request.channel, request.params);
     this.removeChannelListener(topic, listener);
 
-    
+
     if ((this.channelListeners.get(topic) ?? []).length < 0) {
       this.socket.send(makeIncoming({
         type: "unsubscribe",

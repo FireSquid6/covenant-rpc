@@ -7,7 +7,7 @@ import { parseRequest } from "./request";
 import { ChannelErrorWrapper, CovenantError } from "./error";
 import { procedureResponseToJs, type ProcedureResponse } from "./response";
 import type { RealtimeConnection } from "./realtime";
-import { connectionRequest, type ConnectionRequest, type ConnectionResponse } from "./channels";
+import { connectionRequest, sidekickChannelMessage, type ConnectionRequest, type ConnectionResponse, type SidekickChannelMessage, type UntypedServerMessage } from "./channels";
 import { deserializeRequest } from "@covenant/request-serializer";
 
 
@@ -53,11 +53,12 @@ export interface MessageHandlerInputs<T, Params, Context> {
   inputs: T,
   params: Params,
   context: Context,
+  error(reason: string, cause: "client" | "server"): never,
 }
 
 export type ChannelDefinition<T> = T extends ChannelDeclaration<
   infer ClientMessage,
-  infer ServerMessage,
+  any,
   infer ConnectionRequest,
   infer ConnectionContext,
   infer Params
@@ -73,7 +74,7 @@ export type ChannelDefinition<T> = T extends ChannelDeclaration<
     ArrayToMap<Params>,
     StandardSchemaV1.InferOutput<ConnectionContext>
   >) => MaybePromise<
-    StandardSchemaV1.InferOutput<ServerMessage>
+    void 
   >
 } : never
 
@@ -187,9 +188,14 @@ export class CovenantServer<
     params: ArrayToMap<C[N]["params"]>,
     message: StandardSchemaV1.InferOutput<C[N]["serverMessage"]>
   ): Promise<Error | null> {
-    // TODO - send a message to 
-    
-    return null;
+    const msg: UntypedServerMessage = {
+      type: "OK",
+      message,
+      params,
+      channel: String(name),
+    }
+
+    return await this.realtimeConnection.sendMessage(msg);
   }
 
   private async processProcedure(request: Request, newHeaders: Headers): Promise<ProcedureResponse<any>> {
@@ -264,7 +270,7 @@ export class CovenantServer<
   }
 
 
-  private async processConnectionRequest(request: ConnectionRequest): ConnectionResponse {
+  private async processConnectionRequest(request: ConnectionRequest): Promise<ConnectionResponse> {
     try {
       const definition = this.channelDefinitions[request.channel];
       const declaration = this.covenant.channels[request.channel];
@@ -339,14 +345,89 @@ export class CovenantServer<
       return new Response(`Error parsing: ${validated.issues}`, { status: 400 });
     }
 
+    const result = await this.processConnectionRequest(validated.value);
 
-    return new Response("OK", { status: 200 });
+    return Response.json(result, { status: 201 });
   }
+
+  // this one doesn't return anything because messages are sent through a separate request system
+  private async processChannelMessage(message: SidekickChannelMessage): Promise<void> {
+    try {
+      const definition = this.channelDefinitions[message.channel];
+      const declaration = this.covenant.channels[message.channel];
+
+      if (!definition || !declaration) {
+        await this.realtimeConnection.sendMessage({
+          type: "ERROR",
+          error: {
+            error: `channel ${message.channel} does not exist`,
+            cause: "client",
+          }
+        });
+        return;
+      }
+
+      const msgValid = await declaration.connectionContext["~standard"].validate(message.message);
+
+      if (msgValid.issues) {
+        throw new ChannelErrorWrapper(`Message did not match schema: ${msgValid.issues}`, "client");
+      }
+
+      const ctxValid = await declaration.connectionContext["~standard"].validate(message.context);
+      if (ctxValid.issues) {
+        throw new ChannelErrorWrapper(`Context did not match schema: ${ctxValid.issues}`, "server");
+      }
+
+      if (!isProperParams(declaration.params, message.params)) {
+        throw new ChannelErrorWrapper(`Params did not match schema`, "client");
+      }
+
+
+      const context = ctxValid.value;
+      const msg = msgValid.value;
+
+      await definition.onMessage({
+        inputs: msg,
+        params: message.params,
+        context,
+        error: (reason: string, cause: "client" | "server") => {
+          throw new ChannelErrorWrapper(reason, cause)
+        }
+      })
+    } catch (e) {
+      const err: ChannelErrorWrapper = e instanceof ChannelErrorWrapper
+        ? e
+        : e instanceof Error
+          ? ChannelErrorWrapper.fromError(e)
+          : ChannelErrorWrapper.fromUnknown(e);
+
+      await this.realtimeConnection.sendMessage({
+        type: "ERROR",
+        error: {
+          error: err.message,
+          cause: err.cause,
+        }
+      })
+
+    }
+  }
+
 
   private async handleChannelMessage(request: Request): Promise<Response> {
     // check if that client is even connected to the channel
+    const body = await request.json();
+    const { data, error, success } = sidekickChannelMessage.safeParse(body);
 
-    return new Response("OK", { status: 200 });
+    if (!success) {
+      return new Response(`Error parsing: ${error}`, { status: 400 });
+    }
+    const valid = this.realtimeConnection.validateKey(data.key);
+    if (!valid) {
+      return new Response(`Key not valid`, { status: 401 });
+    }
+
+    await this.processChannelMessage(data);
+    return new Response("OK", { status: 201 });
   }
 
 

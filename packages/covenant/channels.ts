@@ -80,6 +80,7 @@ export const connectionResponse = z.discriminatedUnion("type", [
 export type ConnectionResponse = z.infer<typeof connectionResponse>;
 
 
+// these are sent from the server back to sidekick after processing a message
 export const untypedServerMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("OK"),
@@ -95,6 +96,7 @@ export const untypedServerMessageSchema = z.discriminatedUnion("type", [
 
 export type UntypedServerMessage = z.infer<typeof untypedServerMessageSchema>;
 
+// these are sent from the client to sidekick
 export const untypedClientMessageSchema = z.object({
   channel: z.string(),
   params: z.record(z.string(), z.string()),
@@ -102,3 +104,14 @@ export const untypedClientMessageSchema = z.object({
 });
 
 export type UntypedClientMessage = z.infer<typeof untypedClientMessageSchema>;
+
+// these are sent from sidekick to the server
+export const sidekickChannelMessage = z.object({
+  channel: z.string(),
+  params: z.record(z.string(), z.string()),
+  message: z.unknown(),
+  context: z.unknown(),
+  key: z.string(),
+})
+
+export type SidekickChannelMessage = z.infer<typeof sidekickChannelMessage>;

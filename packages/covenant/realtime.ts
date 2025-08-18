@@ -10,8 +10,9 @@ export type RealtimeUpdate = z.infer<typeof resourceUpdateSchema>;
 
 // this is the connection from the covenant server to the realtime server
 export interface RealtimeConnection {
-  informUpdated: (resources: string[]) => Promise<Error | "OK">;
-  sendMessage: (message: UntypedServerMessage) => Promise<void>;
+  informUpdated: (resources: string[]) => Promise<Error | null>;
+  sendMessage: (message: UntypedServerMessage) => Promise<Error | null>;
+  validateKey: (key: string) => boolean;
 }
 
 
@@ -37,13 +38,19 @@ export function httpRealtimeConnection(url: string, secret: string): RealtimeCon
       });
 
       if (response.status >= 200 && response.status < 400) {
-        return "OK";
+        return null;
       }
 
       return new Error(`Error ${response.status} when posting update: ${await response.text()}`)
     },
     sendMessage: async () => {
+      throw new Error("TODO: implement the sendmessage function of the realtimeConnection");
       console.log("sent the message?")
+      return null;
+    },
+    validateKey: (key: string) => {
+      throw new Error("TODO: implement validate key for httpRealtimeConnection");
+      return true;
     }
   }
 }

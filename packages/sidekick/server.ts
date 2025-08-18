@@ -12,6 +12,7 @@ export interface SidekickOptions {
 
 export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOptions): Elysia {
   const ctx: SocketContext = {
+    contextMap: new Map<string, unknown>(),
   }
 
   const app: Elysia<any, any, any, any> = new Elysia()
@@ -58,6 +59,9 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
     .ws("/connect", {
       beforeHandle: (ctx) => {
         // TODO - validate connection
+        //
+        // we should implement something here to ensure that it isn't just
+        // garbage spam requests coming in
 
       },
       open: (ws) => {
@@ -76,7 +80,7 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
         }
 
         try {
-          const response = handleMessage(msg, ctx, ws);
+          const response = await handleMessage(msg, ctx, ws);
           ws.send(makeOutgoing(response));
           return;
         } catch (e) {
