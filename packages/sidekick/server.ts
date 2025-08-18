@@ -11,8 +11,13 @@ export interface SidekickOptions {
 }
 
 export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOptions): Elysia {
+  //@ts-ignore
   const ctx: SocketContext = {
     contextMap: new Map<string, unknown>(),
+  }
+
+  if (ctx.edgeConnection === undefined) {
+    throw new Error("you forgot to define the edgeConnection");
   }
 
   const app: Elysia<any, any, any, any> = new Elysia()
@@ -54,7 +59,7 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
     })
     .post("/message", () => {
       // TODO - server posts its mesages here
-
+      throw new Error("you forgot to implement the sidekick handling messages");
     })
     .ws("/connect", {
       beforeHandle: (ctx) => {
