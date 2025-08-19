@@ -16,6 +16,7 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
   const ctx: SocketContext = {
     contextMap: new Map<string, unknown>(),
     edgeConnection: httpEdgeConnection(covenantEndpoint),
+    key: covenantSecret,
   }
 
 
@@ -56,12 +57,18 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
     .get("/ping", () => {
       return "pong!";
     })
-    .post("/message", async ({ status, server, request }) => {
+    .post("/message", async ({ status, server, request, headers }) => {
       const body = await request.json();
       const { data: message, error, success } = untypedServerMessageSchema.safeParse(body);
 
       if (!success) {
         return status(400, `Bad inputs: ${error}`);
+      }
+
+      const key = headers["authorization"];
+
+      if (key !== `Bearer ${covenantSecret}`) {
+        return status(401, `Not authorized`);
       }
 
       if (server === null) {
@@ -96,10 +103,11 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
         console.log(`New connection from ${ws.id}`);
       },
       message: async (ws, message) => {
+        console.log(message);
         const { data: msg, success, error } = incomingMessageSchema.safeParse(message);
 
         if (!success) {
-          console.log("sending error");
+          console.log(error);
           ws.send(makeOutgoing({
             type: "error",
             error: `Improper message format: ${error.message}`,
@@ -109,8 +117,9 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
 
         try {
           const response = await handleMessage(msg, ctx, ws);
-          ws.send(makeOutgoing(response));
-          return;
+          if (response !== null) {
+            ws.send(makeOutgoing(response));
+          }
         } catch (e) {
           ws.send(makeOutgoing({
             type: "error",

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { declareCovenant, mutation, query } from "..";
+import { channel, declareCovenant, mutation, query } from "..";
 
 export const userSchema = z.object({
   userId: z.string(),
@@ -17,7 +17,26 @@ export const covenant = declareCovenant({
     userId: z.string(),
     socketId: z.string(),
   }),
-  channels: {},
+  channels: {
+    events: channel({
+      clientMessage: z.object({
+        message: z.string(),
+      }),
+      serverMessage: z.object({
+        sender: z.string(),
+        message: z.string(),
+      }),
+      connectionContext: z.object({
+        userId: z.string(),
+      }),
+      connectionRequest: z.object({
+        userId: z.string(),
+      }),
+      // Important: make sure you include the "as const" part, or else your
+      // params will not be strongly typed
+      params: ["channelId"] as const,
+    })
+  },
   procedures: {
     findUsers: query({
       input: z.undefined(),

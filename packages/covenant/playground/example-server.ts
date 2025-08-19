@@ -54,6 +54,21 @@ server.defineProcedure("createUser", {
   }
 })
 
+server.defineChannel("events", {
+  onConnect(i) {
+    return {
+      userId: i.inputs.userId,
+    }
+  },
+  // TODO - params are not strongly typed
+  onMessage({ params, inputs, context }) {
+    server.sendMessage("events", params, {
+      sender: context.userId,
+      message: inputs.message,
+    })
+  },
+})
+
 server.assertAllDefined();
 
 

@@ -5,16 +5,18 @@ import type { EdgeConnection } from "./connection";
 export interface SocketContext {
   contextMap: Map<string, unknown>;
   edgeConnection: EdgeConnection;
+  key: string;
 }
 
-export async function handleMessage(message: IncomingMessage, ctx: SocketContext, ws: ElysiaWS): Promise<OutgoingMessage> {
+export async function handleMessage(message: IncomingMessage, ctx: SocketContext, ws: ElysiaWS): Promise<OutgoingMessage | null> {
   switch (message.type) {
     case "subscribe":
       return handleSubscribeMessage(message, ctx, ws);
     case "unsubscribe":
       return handleUnsubscribeMessage(message, ctx, ws);
     case "message":
-      return handleChannelMessage(message, ctx, ws);
+      handleChannelMessage(message, ctx, ws);
+      return null;
     case "listen":
       return handleListenMessage(message, ctx, ws);
     case "unlisten":
@@ -46,7 +48,22 @@ export function handleUnlistenMessage(message: UnlistenMessage, _: SocketContext
   }
 }
 
-export async function handleChannelMessage(message: ChannelMessage, ctx: SocketContext, ws: ElysiaWS): OutgoingMessage {
+export async function handleChannelMessage(message: ChannelMessage, ctx: SocketContext, ws: ElysiaWS) {
+  const mapId = getMapId(ws.id, getChannelTopicName(message.channel, message.params));
+  const context = ctx.contextMap.get(mapId)!;
+
+  const res = await ctx.edgeConnection.sendMessage({
+    channel: message.channel,
+    params: message.params,
+    context,
+    key: ctx.key,
+    message: message.message
+  });
+
+  // TODO: actually handle this error
+  if (res !== null) {
+    console.log(res);
+  }
 
 }
 

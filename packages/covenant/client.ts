@@ -4,7 +4,7 @@ import { type Flatten, type Listener } from "./utils";
 import { getProcedureResponseSchema, type ProcedureError, type ProcedureResponse } from "./response";
 import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
-import { makeIncoming, outgoingMessageSchema, type OutgoingMessage } from "sidekick";
+import { makeIncoming, outgoingMessageSchema, type ChannelMessage, type OutgoingMessage } from "sidekick";
 import type { RealtimeClient } from "./realtime";
 import { type MaybePromise } from "bun";
 import type { ConnectionRequest, InferChannelInputs, InferChannelOutputs, InferChannelParams, InferConnectionRequest, LocalConnectionRequest } from "./channels";
@@ -231,8 +231,14 @@ export class CovenantClient<
     params: InferChannelParams<C[K]>,
     message: InferChannelInputs<C[K]>
   ) {
-    // check if we are subscribed to the channel. If not, throw an erorr
-    // send the message to the 
+    // TODO: check if we are subscribed to the channel. If not, throw an erorr
+    // maybe do that in the RealtimeClient actually
+
+    this.realtime.send({
+      channel: String(channel),
+      params,
+      message
+    });
   }
 
   async connectTo<N extends keyof C>(
@@ -320,6 +326,7 @@ export class SocketRealtimeClient implements RealtimeClient {
   url: string;
   socket: WebSocket;
   subscribedResources: Set<string> = new Set();
+  subscribedChannelTopics: Set<string> = new Set();
   private resourceListeners: Map<string, (() => MaybePromise<void>)[]> = new Map();
   private channelListeners: Map<string, ((message: unknown) => MaybePromise<void>)[]> = new Map();
 
@@ -336,16 +343,16 @@ export class SocketRealtimeClient implements RealtimeClient {
 
     this.socket.onopen = async () => {
       console.log("Reconnected!");
-      // TODO - reconnect to all subscribej
+      // TODO - reconnect to all previously subscribed
     }
     this.socket.onclose = async () => {
-      // TODO - add all subscriptions again after a disconnection
       console.log("Websocket disconnected. Reconnecting...");
       await new Promise(resolve => setTimeout(resolve, 5000));
       this.makeSocket();
     }
     this.socket.onmessage = async (e) => {
       const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+      console.log("Data:", data);
       const { data: message, success, error } = outgoingMessageSchema.safeParse(data);
       if (!success) {
         // TODO - error handling
@@ -358,6 +365,21 @@ export class SocketRealtimeClient implements RealtimeClient {
     }
   }
 
+  send(message: Omit<ChannelMessage, "type">): void {
+    const msg: ChannelMessage = {
+      type: "message",
+      ...message,
+    }
+    this.socket.send(JSON.stringify(msg));
+  }
+  getSubscribedChannelTopics(): string[] {
+    return Array.from(this.subscribedChannelTopics);
+  }
+
+  getSubscribedResources(): string[] {
+    return Array.from(this.subscribedResources);
+  }
+
   private async handleMessage(message: OutgoingMessage): Promise<void> {
     switch (message.type) {
       case "message":
@@ -368,26 +390,33 @@ export class SocketRealtimeClient implements RealtimeClient {
           const cListeners = this.channelListeners.get(topic) ?? [];
           await Promise.all(cListeners.map(l => l(msg.message)));
         } else {
-
+          // TODO - handle the error
+          throw msg;
         }
 
         break;
       // TODO - keep list of all channels we are subscribed to
       // throw errors if we try to send a message on a non-subscribed channel
+      // also keep track of all the things we are listening to
       case "listening":
-        // TODO log confirmation
+        message.resources.map(r => this.subscribedResources.add(r));
         break;
       case "unlistening":
-        // TODO log confirmation
+        message.resources.map(r => this.subscribedResources.delete(r));
         break;
       case "subscribed":
-        // TODO log confirmation
+        const subscribedTopic = getChannelTopicName(message.channel, message.params);
+        this.subscribedChannelTopics.add(subscribedTopic);
         break;
       case "unsubscribed":
-        // TODO log confirmation
+        const unsubscribedTopic = getChannelTopicName(message.channel, message.params);
+        this.subscribedChannelTopics.delete(unsubscribedTopic);
         break;
       case "error":
-        // TODO
+        // TODO - send the error somewhere
+        console.log("Recieved error:");
+        console.log(message.error);
+
         break;
       case "updated":
         console.log("calling listeners for", message.resource);

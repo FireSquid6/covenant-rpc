@@ -9,11 +9,6 @@ async function main() {
     new SocketRealtimeClient("ws://localhost:5002/connect")
   )
 
-  const listener = await client.remoteListen("findUsers", undefined, (users) => {
-    console.log("Update to findUsers:")
-    console.log(users);
-  })
-
   for await (const line of console) {
     switch (line) {
       case "new":

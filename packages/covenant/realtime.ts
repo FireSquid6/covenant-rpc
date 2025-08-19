@@ -1,6 +1,7 @@
 import type { MaybePromise } from "bun";
 import { z } from "zod";
 import type { ConnectionRequest, LocalConnectionRequest, UntypedServerMessage } from "./channels";
+import type { ChannelMessage } from "sidekick";
 
 export const resourceUpdateSchema = z.object({
   resources: z.array(z.string()),
@@ -21,8 +22,11 @@ export interface RealtimeConnection {
 export interface RealtimeClient {
   connect(request: LocalConnectionRequest, listener: (i: unknown) => MaybePromise<void>): Promise<() => void>;
   disconnect(request: LocalConnectionRequest, listener: (i: unknown) => MaybePromise<void>):  Promise<void>;
+  send(message: Omit<ChannelMessage, "type">): void
   subscribeToResources(resources: string[], listener: () => MaybePromise<void>):  Promise<void>;
   unsubscribeFromResources(resources: string[], listener: () => MaybePromise<void>): Promise<void>;
+  getSubscribedResources(): string[];
+  getSubscribedChannelTopics(): string[];
 }
 
 export function httpRealtimeConnection(url: string, secret: string): RealtimeConnection {
@@ -44,14 +48,22 @@ export function httpRealtimeConnection(url: string, secret: string): RealtimeCon
 
       return new Error(`Error ${response.status} when posting update: ${await response.text()}`)
     },
-    sendMessage: async () => {
-      throw new Error("TODO: implement the sendmessage function of the realtimeConnection");
-      console.log("sent the message?")
+    sendMessage: async (message: UntypedServerMessage) => {
+      const res = await fetch(`${url}/message`,{
+        body: JSON.stringify(message),
+        headers: {
+          "authorization": `Bearer ${secret}`,
+        }
+      })
+
+      if (!res.ok) {
+        return new Error(`Sending message to sidekick failed: ${res.status} - ${res.statusText}`);
+      }
+
       return null;
     },
     validateKey: (key: string) => {
-      throw new Error("TODO: implement validate key for httpRealtimeConnection");
-      return true;
+      return key === secret;
     }
   }
 }

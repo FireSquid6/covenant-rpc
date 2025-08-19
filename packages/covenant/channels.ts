@@ -58,7 +58,6 @@ export const connectionRequest = z.object({
   channel: z.string(),
   connectionRequest: z.unknown(),
   params: z.record(z.string(), z.string()),
-  originalRequest: serializedRequestSchema,
 });
 
 export type ConnectionRequest = z.infer<typeof connectionRequest>;
@@ -99,6 +98,7 @@ export type UntypedServerMessage = z.infer<typeof untypedServerMessageSchema>;
 
 
 // these are sent from sidekick to the server and from the server back to sid
+// TODO: give this the "original request" system?
 export const sidekickChannelMessage = z.object({
   channel: z.string(),
   params: z.record(z.string(), z.string()),

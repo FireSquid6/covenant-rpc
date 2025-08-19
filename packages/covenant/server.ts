@@ -45,7 +45,7 @@ export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends Stand
 export interface ConnectionHandlerInputs<T, Params> {
   inputs: T,
   params: Params,
-  originalRequest: Request,
+  // originalRequest: Request,
   reject(reason: string, cause: "client" | "server"): never,
 }
 
@@ -310,12 +310,10 @@ export class CovenantServer<
       //
       // It's important to have the client restart its connection each time the cookies would change
       // because this is only the cookies at the *start* of whenever the client connects.
-      const originalRequest = deserializeRequest(request.originalRequest);
 
       const context = await definition.onConnect({
         reject,
         params: params,
-        originalRequest: originalRequest,
         inputs: valid.value,
       });
 

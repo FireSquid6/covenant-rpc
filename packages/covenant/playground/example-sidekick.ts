@@ -5,7 +5,7 @@ import { getSidekick } from "sidekick/server";
 
 const app = getSidekick({
   covenantSecret: "secret",
-  covenantEndpoint: "http://localhost:5001",
+  covenantEndpoint: "http://localhost:5001/api",
 });
 
 
