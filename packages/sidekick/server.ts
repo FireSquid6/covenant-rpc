@@ -1,8 +1,10 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 import { resourceUpdateSchema } from "covenant/realtime";
-import { getResourceTopicName, handleMessage, type SocketContext } from "./handlers";
+import { getChannelTopicName, getResourceTopicName, handleMessage, type SocketContext } from "./handlers";
 import { incomingMessageSchema, makeOutgoing } from ".";
 import { logger } from "@bogeychan/elysia-logger";
+import { untypedServerMessageSchema } from "covenant/channels";
+import { httpEdgeConnection } from "./connection";
 
 
 export interface SidekickOptions {
@@ -11,14 +13,11 @@ export interface SidekickOptions {
 }
 
 export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOptions): Elysia {
-  //@ts-ignore
   const ctx: SocketContext = {
     contextMap: new Map<string, unknown>(),
+    edgeConnection: httpEdgeConnection(covenantEndpoint),
   }
 
-  if (ctx.edgeConnection === undefined) {
-    throw new Error("you forgot to define the edgeConnection");
-  }
 
   const app: Elysia<any, any, any, any> = new Elysia()
     .use(
@@ -57,9 +56,33 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
     .get("/ping", () => {
       return "pong!";
     })
-    .post("/message", () => {
-      // TODO - server posts its mesages here
-      throw new Error("you forgot to implement the sidekick handling messages");
+    .post("/message", async ({ status, server, request }) => {
+      const body = await request.json();
+      const { data: message, error, success } = untypedServerMessageSchema.safeParse(body);
+
+      if (!success) {
+        return status(400, `Bad inputs: ${error}`);
+      }
+
+      if (server === null) {
+        return status(500, `Server was null. Could not send websockets`);
+      }
+
+      if (message.type === "ERROR") {
+        // TODO - modify the protocol so that we can get these errors
+        // back to the correct client
+        console.log(message.error);
+        return status(201, "Created");
+      }
+
+      const topic = getChannelTopicName(message.channel, message.params);
+
+      server.publish(topic, makeOutgoing({
+        type: "message",
+        data: message,
+      }))
+
+      return status(201, "Created")
     })
     .ws("/connect", {
       beforeHandle: (ctx) => {

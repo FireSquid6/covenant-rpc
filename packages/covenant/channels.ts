@@ -62,6 +62,7 @@ export const connectionRequest = z.object({
 });
 
 export type ConnectionRequest = z.infer<typeof connectionRequest>;
+export type LocalConnectionRequest = Omit<ConnectionRequest, "originalRequest">;
 
 // sent from the edge function to the sidekick. Sidekick then sends various
 // messages depending on what happens here to the client
@@ -96,16 +97,8 @@ export const untypedServerMessageSchema = z.discriminatedUnion("type", [
 
 export type UntypedServerMessage = z.infer<typeof untypedServerMessageSchema>;
 
-// these are sent from the client to sidekick
-export const untypedClientMessageSchema = z.object({
-  channel: z.string(),
-  params: z.record(z.string(), z.string()),
-  message: z.unknown(),
-});
 
-export type UntypedClientMessage = z.infer<typeof untypedClientMessageSchema>;
-
-// these are sent from sidekick to the server
+// these are sent from sidekick to the server and from the server back to sid
 export const sidekickChannelMessage = z.object({
   channel: z.string(),
   params: z.record(z.string(), z.string()),
@@ -115,3 +108,6 @@ export const sidekickChannelMessage = z.object({
 })
 
 export type SidekickChannelMessage = z.infer<typeof sidekickChannelMessage>;
+
+
+

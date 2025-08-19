@@ -7,7 +7,7 @@ import type { CovenantServer } from "./server";
 import { makeIncoming, outgoingMessageSchema, type OutgoingMessage } from "sidekick";
 import type { RealtimeClient } from "./realtime";
 import { type MaybePromise } from "bun";
-import type { ConnectionRequest, InferChannelInputs, InferChannelOutputs, InferChannelParams, InferConnectionRequest } from "./channels";
+import type { ConnectionRequest, InferChannelInputs, InferChannelOutputs, InferChannelParams, InferConnectionRequest, LocalConnectionRequest } from "./channels";
 import { getChannelTopicName } from "sidekick/handlers";
 
 
@@ -265,7 +265,7 @@ export class CovenantClient<
       await callback(outputs, params, channelName);
     }
 
-    const request: ConnectionRequest = {
+    const request: LocalConnectionRequest = {
       channel: String(channelName),
       params,
       connectionRequest: connection,

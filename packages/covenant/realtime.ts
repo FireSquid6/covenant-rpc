@@ -1,6 +1,6 @@
 import type { MaybePromise } from "bun";
 import { z } from "zod";
-import type { ConnectionRequest, UntypedServerMessage } from "./channels";
+import type { ConnectionRequest, LocalConnectionRequest, UntypedServerMessage } from "./channels";
 
 export const resourceUpdateSchema = z.object({
   resources: z.array(z.string()),
@@ -17,9 +17,10 @@ export interface RealtimeConnection {
 
 
 // this is the connection from the client to the realtime server
+
 export interface RealtimeClient {
-  connect(request: ConnectionRequest, listener: (i: unknown) => MaybePromise<void>): Promise<() => void>;
-  disconnect(request: ConnectionRequest, listener: (i: unknown) => MaybePromise<void>):  Promise<void>;
+  connect(request: LocalConnectionRequest, listener: (i: unknown) => MaybePromise<void>): Promise<() => void>;
+  disconnect(request: LocalConnectionRequest, listener: (i: unknown) => MaybePromise<void>):  Promise<void>;
   subscribeToResources(resources: string[], listener: () => MaybePromise<void>):  Promise<void>;
   unsubscribeFromResources(resources: string[], listener: () => MaybePromise<void>): Promise<void>;
 }
@@ -55,33 +56,4 @@ export function httpRealtimeConnection(url: string, secret: string): RealtimeCon
   }
 }
 
-
-
-
-export class ClientChannel<
-  Input,
-  Output
-> {
-  private messageListeners: ((i: Output, channel: ClientChannel<Input, Output>) => MaybePromise<void>)[] = [];
-  private onDisconnect: () => void;
-  private onSend: (i: Input) => void;
-
-  constructor(onDisconnect: () => void, onSend: () => void) {
-    this.onDisconnect = onDisconnect;
-    this.onSend = onSend;
-  }
-  
-  onMessage() {
-
-  }
-
-  sendMessage(i: Input) {
-    this.onSend(i);
-  }
-
-  disconnect() {
-    this.onDisconnect();
-
-  }
-}
 
