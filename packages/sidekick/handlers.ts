@@ -1,5 +1,5 @@
 import type { ElysiaWS } from "elysia/ws";
-import { type ChannelMessage, type IncomingMessage, type ListenMessage, type OutgoingMessage, type SubscribeMessage, type UnlistenMessage, type UnsubscribeMessage } from ".";
+import { makeOutgoing, type ChannelMessage, type IncomingMessage, type ListenMessage, type OutgoingMessage, type SubscribeMessage, type UnlistenMessage, type UnsubscribeMessage } from ".";
 import type { EdgeConnection } from "./connection";
 
 export interface SocketContext {
@@ -62,9 +62,11 @@ export async function handleChannelMessage(message: ChannelMessage, ctx: SocketC
 
   // TODO: actually handle this error
   if (res !== null) {
-    console.log(res);
+    ws.send(makeOutgoing({
+      type: "error",
+      error: `Error processing request: ${res.message}`,
+    }));
   }
-
 }
 
 

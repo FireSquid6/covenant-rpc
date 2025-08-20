@@ -10,11 +10,9 @@ export interface EdgeConnection {
 export function httpEdgeConnection(endpoint: string): EdgeConnection {
   return {
     async connectClient(req: ConnectionRequest) {
-      console.log(endpoint);
       const url = new URL(endpoint);
       url.searchParams.set("type", "connect");
 
-      console.log(url.toString());
       const res = await fetch(url.toString(), {
         method: "POST",
         body: JSON.stringify(req),
@@ -38,7 +36,17 @@ export function httpEdgeConnection(endpoint: string): EdgeConnection {
     },
 
     async sendMessage(msg: SidekickChannelMessage): Promise<null | Error> {
-      
+      const url = new URL(endpoint);
+      url.searchParams.set("type", "channel");
+
+      const res = await fetch(url.toString(), {
+        method: "POST",
+        body: JSON.stringify(msg),
+      });
+
+      if (!res.ok) {
+        return new Error(`Error sending message to server: ${res.status} - ${res.statusText}`);
+      }
 
       return null;
     }

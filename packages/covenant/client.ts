@@ -234,6 +234,7 @@ export class CovenantClient<
     // TODO: check if we are subscribed to the channel. If not, throw an erorr
     // maybe do that in the RealtimeClient actually
 
+    console.log("sending message to the client's realtime");
     this.realtime.send({
       channel: String(channel),
       params,
@@ -370,6 +371,8 @@ export class SocketRealtimeClient implements RealtimeClient {
       type: "message",
       ...message,
     }
+
+    console.log("sending message in the socket");
     this.socket.send(JSON.stringify(msg));
   }
   getSubscribedChannelTopics(): string[] {

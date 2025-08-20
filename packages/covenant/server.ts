@@ -74,7 +74,7 @@ export type ChannelDefinition<T> = T extends ChannelDeclaration<
     ArrayToMap<Params>,
     StandardSchemaV1.InferOutput<ConnectionContext>
   >) => MaybePromise<
-    void 
+    void
   >
 } : never
 
@@ -288,7 +288,8 @@ export class CovenantServer<
         throw new ChannelErrorWrapper(reason, cause);
       }
 
-      const valid = await declaration.clientMessage["~standard"].validate(request.connectionRequest);
+      console.log(request.connectionRequest);
+      const valid = await declaration.connectionRequest["~standard"].validate(request.connectionRequest);
 
       if (valid.issues) {
         // the reason we actually want to return a 201 OK but with the error is because
@@ -299,7 +300,12 @@ export class CovenantServer<
         // I mostly did it this way at first because making a big generic schema was harder and
         // more brain intensive than just going grug mode and validating twice, but I think it's
         // actually a fairly smart decision now that I think about it.
-        throw new ChannelErrorWrapper(`Channel message was incorrect: ${valid.issues}`, "client")
+        let str = "";
+        for (const issue of valid.issues) {
+          str += `${issue.path}:  ${issue.message}, `;
+
+        }
+        throw new ChannelErrorWrapper(`Channel message was incorrect: ${str}`, "client")
       }
 
       // ok this is kinda weird
@@ -364,16 +370,17 @@ export class CovenantServer<
         });
         return;
       }
+      console.log(message);
 
-      const msgValid = await declaration.connectionContext["~standard"].validate(message.message);
+      const msgValid = await declaration.clientMessage["~standard"].validate(message.message);
 
       if (msgValid.issues) {
-        throw new ChannelErrorWrapper(`Message did not match schema: ${msgValid.issues}`, "client");
+        throw new ChannelErrorWrapper(`Message did not match schema: ${JSON.stringify(msgValid.issues)}`, "client");
       }
 
       const ctxValid = await declaration.connectionContext["~standard"].validate(message.context);
       if (ctxValid.issues) {
-        throw new ChannelErrorWrapper(`Context did not match schema: ${ctxValid.issues}`, "server");
+        throw new ChannelErrorWrapper(`Context did not match schema: ${JSON.stringify(ctxValid.issues)}`, "server");
       }
 
       if (!isProperParams(declaration.params, message.params)) {
@@ -417,6 +424,7 @@ export class CovenantServer<
     const { data, error, success } = sidekickChannelMessage.safeParse(body);
 
     if (!success) {
+      // TODO - turn every instance of this to empty body but error in status text
       return new Response(`Error parsing: ${error}`, { status: 400 });
     }
     const valid = this.realtimeConnection.validateKey(data.key);
@@ -437,16 +445,25 @@ export class CovenantServer<
       return new Response("Covenant servers only do POST requests", { status: 404 });
     }
 
+    let res = new Response();
     switch (type) {
       case "channel":
-        return this.handleChannelMessage(request);
+        res = await this.handleChannelMessage(request);
+        break;
       case "connect":
-        return this.handleConnectMessage(request);
+        res = await this.handleConnectMessage(request);
+        break;
       case "procedure":
-        return this.handleProcedure(request);
+        res = await this.handleProcedure(request);
+        break;
+      default:
+        res = new Response(`Got an invalid type: ${type}`, { status: 400 });
+        break;
     }
 
-    return new Response(`Got an invalid type: ${type}`, { status: 400 });
+
+    console.log(`Handled ${type} -> ${res.status}`)
+    return res;
   }
 
   private async handleProcedure(request: Request): Promise<Response> {

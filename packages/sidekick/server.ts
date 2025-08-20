@@ -84,6 +84,7 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
 
       const topic = getChannelTopicName(message.channel, message.params);
 
+      console.log("Publishing a message to", topic);
       server.publish(topic, makeOutgoing({
         type: "message",
         data: message,
@@ -103,17 +104,18 @@ export function getSidekick({ covenantEndpoint, covenantSecret }: SidekickOption
         console.log(`New connection from ${ws.id}`);
       },
       message: async (ws, message) => {
-        console.log(message);
         const { data: msg, success, error } = incomingMessageSchema.safeParse(message);
 
         if (!success) {
-          console.log(error);
           ws.send(makeOutgoing({
             type: "error",
             error: `Improper message format: ${error.message}`,
           }));
+          console.log(`Recieved bad message: ${error.message}`);
           return;
+
         }
+        console.log(`Recieved ${msg.type} message`);
 
         try {
           const response = await handleMessage(msg, ctx, ws);

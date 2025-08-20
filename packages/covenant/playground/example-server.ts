@@ -62,6 +62,7 @@ server.defineChannel("events", {
   },
   // TODO - params are not strongly typed
   onMessage({ params, inputs, context }) {
+    console.log("Sending the message back!");
     server.sendMessage("events", params, {
       sender: context.userId,
       message: inputs.message,

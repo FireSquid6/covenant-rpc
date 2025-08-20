@@ -1,6 +1,6 @@
 import type { MaybePromise } from "bun";
 import { z } from "zod";
-import type { ConnectionRequest, LocalConnectionRequest, UntypedServerMessage } from "./channels";
+import type { LocalConnectionRequest, UntypedServerMessage } from "./channels";
 import type { ChannelMessage } from "sidekick";
 
 export const resourceUpdateSchema = z.object({
@@ -49,8 +49,10 @@ export function httpRealtimeConnection(url: string, secret: string): RealtimeCon
       return new Error(`Error ${response.status} when posting update: ${await response.text()}`)
     },
     sendMessage: async (message: UntypedServerMessage) => {
+      console.log(`Making request to ${url}/message`);
       const res = await fetch(`${url}/message`,{
         body: JSON.stringify(message),
+        method: "POST",
         headers: {
           "authorization": `Bearer ${secret}`,
         }
