@@ -71,3 +71,17 @@ export function httpRealtimeConnection(url: string, secret: string): RealtimeCon
 }
 
 
+
+// this is for if you're not doing channels or realtime stuff
+export function emptyRealtimeConnection(): RealtimeConnection {
+  return {
+    informUpdated: async () => {
+      return null;
+    },
+    sendMessage: async () => {
+      return null;
+    },
+    validateKey: () => true,
+  }
+
+}

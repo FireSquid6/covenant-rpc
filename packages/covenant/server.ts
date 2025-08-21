@@ -8,7 +8,6 @@ import { ChannelErrorWrapper, CovenantError } from "./error";
 import { procedureResponseToJs, type ProcedureResponse } from "./response";
 import type { RealtimeConnection } from "./realtime";
 import { connectionRequest, sidekickChannelMessage, type ConnectionRequest, type ConnectionResponse, type SidekickChannelMessage, type UntypedServerMessage } from "./channels";
-import { deserializeRequest } from "@covenant/request-serializer";
 
 
 export interface ParsedRequest {

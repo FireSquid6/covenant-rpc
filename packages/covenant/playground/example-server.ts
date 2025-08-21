@@ -1,4 +1,3 @@
-import { bunAdapter } from "../adapters/bun";
 import { httpRealtimeConnection } from "../realtime";
 import { CovenantServer } from "../server";
 import { covenant, type User } from "./covenant";
@@ -9,6 +8,7 @@ const server = new CovenantServer(covenant, {
       userId: "example",
     }
   },
+  // this is the connection to the sidekick server
   realtimeConnection: httpRealtimeConnection(
     "http://localhost:5002",
     "secret",
@@ -22,6 +22,7 @@ const server = new CovenantServer(covenant, {
   }
 })
 
+// dummy data
 const users: User[] = [
   {
     userId: "1",
@@ -35,10 +36,14 @@ const users: User[] = [
   },
 ]
 
+// we have to indidually define all of what we declared. This can
+// be done in different files if we so choose
 server.defineProcedure("findUsers", {
   procedure: () => {
     return users;
   },
+  // the resource allows us to automatically refetch if a client
+  // mutates a specific resource
   resources: () => {
     return ["/users"];
   }
@@ -54,31 +59,23 @@ server.defineProcedure("createUser", {
   }
 })
 
-server.defineChannel("events", {
+server.defineChannel("chat", {
   onConnect(i) {
     return {
-      userId: i.inputs.userId,
+      // dummy data - would actually want to authenticated
+      userId: "newId"
     }
   },
-  // TODO - params are not strongly typed
   onMessage({ params, inputs, context }) {
-    console.log("Sending the message back!");
-    server.sendMessage("events", params, {
+    // now we send the message back!
+    server.sendMessage("chat", params, {
       sender: context.userId,
       message: inputs.message,
     })
   },
 })
 
+// this is crucial - we use this to make sure the server defines everything
 server.assertAllDefined();
 
 
-
-Bun.serve({
-  port: 5001,
-  routes: {
-    "/api": bunAdapter(server),
-  }
-});
-
-console.log("Server listening on 5001");

@@ -539,3 +539,20 @@ export class SocketRealtimeClient implements RealtimeClient {
     }
   }
 }
+
+export class EmptyRealtimeClient implements RealtimeClient {
+  async connect(): Promise<() => void> {
+    return () => { };
+  }
+  async disconnect(): Promise<void> { }
+  async subscribeToResources(): Promise<void> { }
+  async unsubscribeFromResources(): Promise<void> { }
+  getSubscribedResources(): string[] {
+    return []
+  }
+  getSubscribedChannelTopics(): string[] {
+    return []
+  }
+
+  send(): void { }
+}

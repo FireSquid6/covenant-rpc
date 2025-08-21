@@ -1,9 +1,7 @@
 import { z } from "zod";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ChannelDeclaration } from ".";
-import type { ArrayToMap, MaybePromise } from "./utils";
-import type { ChannelDefinition } from "./server";
-import { serializedRequestSchema } from "@covenant/request-serializer";
+import type { ArrayToMap } from "./utils";
 
 export const channelErrorSchema = z.object({
   error: z.string(),
