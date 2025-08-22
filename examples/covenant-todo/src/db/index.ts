@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { createClient } from "@libsql/client";
-import { AppConfig, readConfigFromEnv } from "../config";
+import { AppConfig, readConfigFromEnv } from "@/lib/config";
 import { drizzle } from "drizzle-orm/libsql";
 
 export function getDb(config: AppConfig) {
@@ -25,3 +25,5 @@ export function getDbFromEnv() {
   const config = readConfigFromEnv();
   return getDb(config);
 }
+
+export const db = getDbFromEnv();

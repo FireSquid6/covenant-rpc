@@ -23,6 +23,6 @@ export const covenantServer = new CovenantServer(
 )
 
 
-const dir = path.resolve(__dirname, "..", "implementations");
+const dir = path.resolve(process.cwd(), "src", "implementations");
 await covenantServer.runDefaultInDirectory(dir);
 covenantServer.assertAllDefined();
