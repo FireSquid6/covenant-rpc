@@ -1,7 +1,6 @@
 import { covenant } from "@/lib/covenant";
 import { emptyRealtimeConnection } from "covenant/realtime";
 import { CovenantServer } from "covenant/server";
-import path from "path";
 
 
 export const covenantServer = new CovenantServer(
@@ -22,7 +21,15 @@ export const covenantServer = new CovenantServer(
   }
 )
 
+console.log("defining the procedure");
+covenantServer.defineProcedure("helloWorld", {
+  procedure: ({ inputs }) => {
+    return `Hello, ${inputs.name}`;
+  },
+  resources: () => [],
+});
 
-const dir = path.resolve(process.cwd(), "src", "implementations");
-await covenantServer.runDefaultInDirectory(dir);
+
 covenantServer.assertAllDefined();
+
+
