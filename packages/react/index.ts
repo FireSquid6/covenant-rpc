@@ -11,7 +11,7 @@ export class CovenantReactProvider<
 
   }
 
-  useProcedureResult(proc: keyof P, inputs: ) {
+  useProcedureResult<K extends keyof P>(proc: K, inputs: P[K]) {
 
   }
 }
