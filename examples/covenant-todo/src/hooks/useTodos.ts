@@ -69,13 +69,15 @@ export function useTodos() {
     const todo = todos.find(t => t.id === id)
 
     if (todo) {
+      const completed = !todo.completed;
+      console.log("Updating todo with new completed", completed);
       covenantClient.mutate("updateTodo", {
         id: id,
         text: todo.text,
-        completed: !todo.completed,
+        completed: completed,
       })
     }
-  }, [])
+  }, [todos])
 
   const completedTodos = todos.filter(todo => todo.completed)
   const pendingTodos = todos.filter(todo => !todo.completed)
