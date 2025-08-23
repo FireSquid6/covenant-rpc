@@ -1,6 +1,7 @@
 import { CovenantClient } from "covenant/client";
 import { type Covenant, type ChannelMap, type ProcedureMap } from "covenant";
 
+// TODO - this will be really smart one day I promise
 
 export class CovenantReactProvider<
   P extends ProcedureMap,
