@@ -48,6 +48,12 @@ export async function updateTodo(db: Database, id: string, { text, completed }: 
   return todos[0];
 }
 
+export async function deleteTodo(db: Database, id: string) {
+  await db
+    .delete(todosTable)
+    .where(eq(todosTable.id, id));
+}
+
 
 export async function ownsTodo(db: Database, userId: string, todoId: string): Promise<boolean> {
   const todos = await db

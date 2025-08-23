@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { DatabaseSession, todosTable, User } from "@/db/schema";
-import { getAllTodosForUser, makeTodo, ownsTodo, updateTodo } from "@/db/todo";
+import { deleteTodo, getAllTodosForUser, makeTodo, ownsTodo, updateTodo } from "@/db/todo";
 import { getUserAndSession } from "@/db/user";
 import { covenant } from "@/lib/covenant";
 import { emptyRealtimeConnection } from "covenant/realtime";
@@ -82,7 +82,23 @@ covenantServer.defineProcedure("updateTodo", {
     return todo;
   },
   resources: ({ ctx, inputs }) => [`/todos/${ctx.user?.id ?? "__null_user__"}/${inputs.id}`],
+});
+
+covenantServer.defineProcedure("deleteTodo", {
+  procedure: async ({ derived, inputs, error }) => {
+    const user = await derived.forceAuthenticated();
+
+    if (!await ownsTodo(db, user.id, inputs.id)) {
+      throw error(`Todo id ${inputs.id} does not exist or is not readable by user`, 404);
+    }
+
+    await deleteTodo(db, inputs.id);
+
+    return undefined;
+  },
+  resources: ({ ctx, inputs }) => [`/todos/${ctx.user?.id ?? "__null_user__"}/${inputs.id}`],
 })
+
 
 covenantServer.assertAllDefined();
 
