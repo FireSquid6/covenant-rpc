@@ -9,8 +9,11 @@ export default async function Header() {
   return (
     <header className="navbar bg-base-200 shadow-md">
       <div className="navbar-start">
-        <Link href="/" className="btn btn-ghost text-xl">
+        <Link href="/" className="btn btn-ghost text-xl font-bold">
           Covenant Todo
+        </Link>
+        <Link href="/todos" className="btn btn-ghost text-xl">
+          My Todos
         </Link>
       </div>
       
