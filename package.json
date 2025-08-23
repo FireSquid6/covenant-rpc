@@ -13,6 +13,7 @@
     "zod": "^4.0.14"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "examples/*" 
   ]
 }
