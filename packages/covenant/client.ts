@@ -1,6 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ProcedureMap, ChannelMap, Covenant, ProcedureDeclaration } from ".";
-import { type Flatten, type Listener } from "./utils";
+import { issuesToString, type Flatten, type Listener } from "./utils";
 import { getProcedureResponseSchema, type ProcedureError, type ProcedureResponse } from "./response";
 import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
@@ -77,12 +77,13 @@ export class CovenantClient<
 
     const validation = await responseSchema["~standard"].validate(body);
 
+
     if (validation.issues) {
       //@ts-expect-error we know more than the typescript compiler here
       return {
         result: "ERROR",
         error: {
-          message: `Output validation failed: ${validation.issues}`,
+          message: `Output validation failed: ${issuesToString(validation.issues)}`,
           httpCode: res.status,
         },
         data: undefined,
@@ -135,6 +136,7 @@ export class CovenantClient<
     const result = await this.call(procedure, inputs);
 
     if (result.result === "ERROR") {
+      callback(result);
       return {
         type: "ERROR",
         //@ts-ignore
@@ -143,7 +145,10 @@ export class CovenantClient<
     }
 
     const listener = async () => {
-      callback(await this.call(procedure, inputs));
+      console.log("Calling the listener");
+      const res = await this.call(procedure, inputs);
+      console.log("Calling the initial supplied thing")
+      callback(res);
     }
 
     // we also go ahead and call the listener to do an

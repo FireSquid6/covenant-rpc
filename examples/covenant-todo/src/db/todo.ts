@@ -7,7 +7,7 @@ export async function getAllTodosForUser(db: Database, userId: string) {
   return await db
     .select()
     .from(todosTable)
-    .where(eq(usersTable.id, userId));
+    .where(eq(todosTable.userId, userId));
 }
 
 export async function makeTodo(db: Database, userId: string, { text, completed }: {

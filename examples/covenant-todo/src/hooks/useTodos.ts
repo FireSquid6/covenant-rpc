@@ -11,6 +11,7 @@ export function useTodos() {
 
   useEffect(() => {
     const fn = async () => {
+      console.log("Calling the top lvel fn of useEffect")
       const callback = await covenantClient.localListen("getTodos", null, ({ data, error, result }) => {
         if (result !== "OK") {
           console.error(error);
@@ -24,12 +25,14 @@ export function useTodos() {
     const p = fn();
 
     return () => {
+      console.log("UseEffect initialized an unsubcribe")
       p.then((c) => {
         if (c.type === "ERROR") {
           console.log(c.error);
           return;
         }
 
+        console.log("Unsubscribing");
         c.unsubscribe();
       });
     }

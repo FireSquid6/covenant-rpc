@@ -45,7 +45,10 @@ covenantServer.defineProcedure("helloWorld", {
 covenantServer.defineProcedure("getTodos", {
   procedure: async ({ derived }) => {
     const user = await derived.forceAuthenticated();
-    return getAllTodosForUser(db, user.id);
+    console.log(`Refetching for ${user.id}`);
+    const todos = await getAllTodosForUser(db, user.id);
+    console.log(todos);
+    return todos;
   },
   resources: ({ ctx }) => [`/todos/${ctx.user?.id ?? "__null_user__"}`],
 });

@@ -1,3 +1,4 @@
+import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { z } from "zod";
 
 export type MaybePromise<T> = Promise<T> | T;
@@ -75,4 +76,15 @@ export function createMappedSchema<T extends readonly string[]>(keys: T): z.ZodO
   return z.object(Object.fromEntries(keys.map(k => [k, z.string()]))) as z.ZodObject<{
     [k in keyof T[number]]: z.ZodString
   }>
+}
+
+export function issuesToString(issues: readonly StandardSchemaV1.Issue[]): string {
+  const strs: string[] = []
+
+  for (const issue of issues) {
+    strs.push(`${issue.path}: ${issue.message}`);
+  }
+
+
+  return strs.join(", ");
 }
