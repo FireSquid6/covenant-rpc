@@ -154,9 +154,9 @@ export default function TodosPage() {
                       <div className={`cursor-pointer ${todo.completed ? 'line-through text-base-content/50' : ''}`}>
                         <p className="font-medium">{todo.text}</p>
                         <p className="text-sm text-base-content/60">
-                          Created: {todo.createdAt.toLocaleDateString()}
-                          {todo.lastUpdated.getTime() !== todo.createdAt.getTime() && 
-                            ` • Updated: ${todo.lastUpdated.toLocaleDateString()}`
+                          Created: {new Date(todo.createdAt).toLocaleDateString()}
+                          {new Date(todo.lastUpdated).getTime() !== new Date(todo.createdAt).getTime() && 
+                            ` • Updated: ${new Date(todo.lastUpdated).toLocaleDateString()}`
                           }
                         </p>
                       </div>

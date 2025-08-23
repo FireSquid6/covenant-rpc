@@ -6,7 +6,7 @@ import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
 import { makeIncoming, outgoingMessageSchema, type ChannelMessage, type OutgoingMessage } from "sidekick";
 import type { RealtimeClient } from "./realtime";
-import { type MaybePromise } from "bun";
+import { type MaybePromise } from "./utils";
 import type { ConnectionRequest, InferChannelInputs, InferChannelOutputs, InferChannelParams, InferConnectionRequest, LocalConnectionRequest } from "./channels";
 import { getChannelTopicName } from "sidekick/handlers";
 
@@ -298,11 +298,12 @@ export function httpMessenger({ httpUrl }: { httpUrl: string }): ClientMessenger
       const url = new URL(httpUrl)
       url.searchParams.set("type", "procedure")
 
+      const headers = new Headers();
+      headers.append("Content-Type", "application/json");
+
       return fetch(url.toString(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(request),
       });
     }
@@ -312,12 +313,13 @@ export function httpMessenger({ httpUrl }: { httpUrl: string }): ClientMessenger
 export function directMessenger(server: CovenantServer<any, any, any, any, any>): ClientMessenger {
   return {
     fetch(request: ProcedureRequest): Promise<Response> {
+      const headers = new Headers();
+      headers.append("Content-Type", "application/json");
+
       const req: Request = new Request({
         url: "http://localhost:3000?type=procedure",
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify(request),
       })
 

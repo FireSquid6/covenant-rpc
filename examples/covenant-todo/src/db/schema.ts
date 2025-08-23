@@ -104,8 +104,8 @@ export const todosTable = sqliteTable("todo", {
   userId: text().notNull().references(() => usersTable.id),
   completed: int({ mode: "boolean" }).notNull().default(false),
   text: text().notNull(),
-  createdAt: int({ mode: "timestamp" }).notNull().default(new Date()),
-  lastUpdated: int({ mode: "timestamp" }).notNull().default(new Date()),
+  createdAt: int().notNull().default(Date.now()),
+  lastUpdated: int().notNull().default(Date.now()),
 });
 
 

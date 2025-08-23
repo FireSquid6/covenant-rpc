@@ -23,8 +23,8 @@ export async function makeTodo(db: Database, userId: string, { text, completed }
       userId,
       text,
       completed,
-      createdAt: new Date(),
-      lastUpdated: new Date(),
+      createdAt: Date.now(),
+      lastUpdated: Date.now(),
     })
     .returning()
   
@@ -40,7 +40,7 @@ export async function updateTodo(db: Database, id: string, { text, completed }: 
     .set({
       text: text,
       completed: completed,
-      lastUpdated: new Date(),
+      lastUpdated: Date.now(),
     })
     .where(eq(todosTable.id, id))
     .returning()
