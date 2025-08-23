@@ -27,11 +27,8 @@ export const covenantServer = new CovenantServer(
     contextGenerator: (i) => {
       return undefined;
     },
-    derivation: (i) => {
+    derivation: ({ error }) => {
       return {
-        forceAuthenticated: () => {
-
-        }
       }
     },
     realtimeConnection: emptyRealtimeConnection(),

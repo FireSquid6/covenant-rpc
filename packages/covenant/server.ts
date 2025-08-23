@@ -230,10 +230,7 @@ export class CovenantServer<
         }
       }
 
-      let ctx = this.contextGenerator(initialInputs);
-      if (ctx instanceof Promise) {
-        ctx = await ctx;
-      }
+      const ctx = await this.contextGenerator(initialInputs);
       const derived = this.derivation({ ...initialInputs, ctx });
 
       const result = await handler.procedure({ ...initialInputs, derived, ctx });

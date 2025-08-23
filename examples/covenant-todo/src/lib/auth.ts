@@ -41,3 +41,4 @@ export const nextAuthConfig = {
     strategy: "database",
   },
 } satisfies NextAuthOptions
+

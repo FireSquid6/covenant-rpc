@@ -1,6 +1,7 @@
 import { InferSelectModel } from "drizzle-orm";
 import { int, sqliteTable, text, primaryKey } from "drizzle-orm/sqlite-core";
 import { v7 as uuidv7 } from "uuid";
+import { createSelectSchema } from "drizzle-zod";
 
 
 export const usersTable = sqliteTable("user", {
@@ -11,6 +12,7 @@ export const usersTable = sqliteTable("user", {
   image: text("image"),
 });
 
+export const selectUserSchema = createSelectSchema(usersTable);
 export type User = InferSelectModel<typeof usersTable>;
 export type PublicUser = Omit<User,  "email" | "emailVerified">;
 
@@ -44,8 +46,9 @@ export const sessionsTable = sqliteTable("session", {
     .notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
   expires: int("expires", { mode: "timestamp_ms" }).notNull(),
-})
+});
 
+export const selectSessionSchema = createSelectSchema(sessionsTable);
 export type DatabaseSession = InferSelectModel<typeof sessionsTable>;
 
 export const verificationTokensTable = sqliteTable(
@@ -95,3 +98,16 @@ export const resetTable = sqliteTable("resets", {
   key: text().notNull(),
 });
 export type ResetToken = InferSelectModel<typeof resetTable>;
+
+export const todosTable = sqliteTable("todo", {
+  id: text().notNull().unique().primaryKey(),
+  userId: text().notNull().references(() => usersTable.id),
+  completed: int({ mode: "boolean" }).notNull().default(false),
+  text: text().notNull(),
+  createdAt: int({ mode: "timestamp" }).notNull().default(new Date()),
+  lastUpdated: int({ mode: "timestamp" }).notNull().default(new Date()),
+});
+
+
+export type Todo = InferSelectModel<typeof todosTable>;
+export const todosSelectSchema = createSelectSchema(todosTable);

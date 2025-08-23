@@ -1,5 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ParsedRequest } from "./server";
+import type { MaybePromise } from "./utils";
 
 export interface ProcedureInputs<Inputs, Context, Derivation> {
   inputs: Inputs,
@@ -86,7 +87,7 @@ export function declareCovenant<
 
 
 export type ContextGenerator<Context extends StandardSchemaV1> = 
-  (i: ProcedureInputs<unknown, undefined, undefined>) => StandardSchemaV1.InferOutput<Context>
+  (i: ProcedureInputs<unknown, undefined, undefined>) => MaybePromise<StandardSchemaV1.InferOutput<Context>>
 
 
 // helper functions for declaring mutations and queries
