@@ -90,7 +90,7 @@ export function issuesToString(issues: readonly StandardSchemaV1.Issue[]): strin
 }
 
 
-export function stringToReadableStream(str: string, chunkSize = str.length) {
+export function stringToReadableStream(str: string, chunkSize = str.length): ReadableStream<Uint8Array> {
   let index = 0;
   
   return new ReadableStream({

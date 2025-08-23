@@ -1,6 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ProcedureMap, ChannelMap, Covenant, ProcedureDeclaration } from ".";
-import { issuesToString, type Flatten, type Listener } from "./utils";
+import { issuesToString, stringToReadableStream, type Flatten, type Listener } from "./utils";
 import { getProcedureResponseSchema, type ProcedureError, type ProcedureResponse } from "./response";
 import type { ProcedureRequest } from "./request";
 import type { CovenantServer } from "./server";
@@ -316,8 +316,7 @@ export function directMessenger(server: CovenantServer<any, any, any, any, any>)
       const headers = new Headers();
       headers.append("Content-Type", "application/json");
 
-      const req: Request = new Request({
-        url: "http://localhost:3000?type=procedure",
+      const req: Request = new Request("http://localhost:3000?type=procedure", {
         method: "POST",
         headers,
         body: JSON.stringify(request),
