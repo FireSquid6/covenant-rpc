@@ -10,8 +10,8 @@ export interface AppConfig {
 
 
 export function readConfigFromEnv(): AppConfig {
-  const clientId = process.env.LANGMONTH_GITHUB_ID;
-  const clientSecret = process.env.LANGMONTH_GITHUB_SECRET;
+  const clientId = process.env.GITHUB_ID;
+  const clientSecret = process.env.GITHUB_SECRET;
 
   if (clientId === undefined) {
     throw new Error("No GITHUB_ID provided");
