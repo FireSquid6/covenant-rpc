@@ -88,3 +88,35 @@ export function issuesToString(issues: readonly StandardSchemaV1.Issue[]): strin
 
   return strs.join(", ");
 }
+
+
+export function stringToReadableStream(str: string, chunkSize = str.length) {
+  let index = 0;
+  
+  return new ReadableStream({
+    start() {
+      // Optional: You can enqueue initial data here if needed
+    },
+    
+    pull(controller) {
+      // If we've reached the end of the string, close the stream
+      if (index >= str.length) {
+        controller.close();
+        return;
+      }
+      
+      // Get the next chunk
+      const chunk = str.slice(index, index + chunkSize);
+      index += chunk.length;
+      
+      // Encode the string chunk as Uint8Array and enqueue it
+      const encoder = new TextEncoder();
+      controller.enqueue(encoder.encode(chunk));
+    },
+    
+    cancel(reason) {
+      // Handle stream cancellation if needed
+      console.log('Stream cancelled:', reason);
+    }
+  });
+}
