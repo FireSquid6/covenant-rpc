@@ -213,6 +213,7 @@ export class CovenantServer<
         throw new CovenantError(`Error parsing procedure inputs: ${validationResult.issues}`, 400);
       }
 
+      console.log(parsed.procedure);
 
       const initialInputs: ProcedureInputs<any, undefined, undefined> = {
         inputs: validationResult.value,

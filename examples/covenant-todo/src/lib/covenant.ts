@@ -14,7 +14,7 @@ export const covenant = declareCovenant({
     }),
 
     getTodos: query({
-      input: z.undefined(),
+      input: z.null(),
       output: z.array(todosSelectSchema),
     }),
     makeTodo: mutation({
@@ -36,7 +36,7 @@ export const covenant = declareCovenant({
       input: z.object({
         id: z.string(),
       }),
-      output: z.undefined(),
+      output: z.null(),
     }),
   },
   // data has not been implemented yet

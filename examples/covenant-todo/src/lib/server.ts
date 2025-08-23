@@ -1,11 +1,10 @@
 import { db } from "@/db";
-import { DatabaseSession, todosTable, User } from "@/db/schema";
+import { User } from "@/db/schema";
 import { deleteTodo, getAllTodosForUser, makeTodo, ownsTodo, updateTodo } from "@/db/todo";
 import { getUserAndSession } from "@/db/user";
 import { covenant } from "@/lib/covenant";
 import { emptyRealtimeConnection } from "covenant/realtime";
 import { CovenantServer } from "covenant/server";
-import { Session } from "next-auth";
 
 
 export const covenantServer = new CovenantServer(
@@ -35,7 +34,6 @@ export const covenantServer = new CovenantServer(
   }
 )
 
-console.log("defining the procedure");
 covenantServer.defineProcedure("helloWorld", {
   procedure: ({ inputs }) => {
     return `Hello, ${inputs.name}`;
@@ -94,7 +92,7 @@ covenantServer.defineProcedure("deleteTodo", {
 
     await deleteTodo(db, inputs.id);
 
-    return undefined;
+    return null;
   },
   resources: ({ ctx }) => [`/todos/${ctx.user?.id ?? "__null_user__"}`],
 })
