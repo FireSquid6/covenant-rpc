@@ -8,6 +8,7 @@ import { ChannelErrorWrapper, CovenantError } from "./error";
 import { procedureResponseToJs, type ProcedureResponse } from "./response";
 import type { RealtimeConnection } from "./realtime";
 import { connectionRequest, sidekickChannelMessage, type ConnectionRequest, type ConnectionResponse, type SidekickChannelMessage, type UntypedServerMessage } from "./channels";
+import { issuesToString } from "./utils";
 
 
 export interface ParsedRequest {
@@ -210,7 +211,7 @@ export class CovenantServer<
 
       const validationResult = await route.input["~standard"].validate(parsed.input);
       if (validationResult.issues) {
-        throw new CovenantError(`Error parsing procedure inputs: ${validationResult.issues}`, 400);
+        throw new CovenantError(`Error parsing procedure inputs: ${issuesToString(validationResult.issues)}`, 400);
       }
 
       console.log(parsed.procedure);
@@ -297,12 +298,7 @@ export class CovenantServer<
         // I mostly did it this way at first because making a big generic schema was harder and
         // more brain intensive than just going grug mode and validating twice, but I think it's
         // actually a fairly smart decision now that I think about it.
-        let str = "";
-        for (const issue of valid.issues) {
-          str += `${issue.path}:  ${issue.message}, `;
-
-        }
-        throw new ChannelErrorWrapper(`Channel message was incorrect: ${str}`, "client")
+        throw new ChannelErrorWrapper(`Channel message was incorrect: ${issuesToString(valid.issues)}`, "client")
       }
 
       // ok this is kinda weird
@@ -372,12 +368,12 @@ export class CovenantServer<
       const msgValid = await declaration.clientMessage["~standard"].validate(message.message);
 
       if (msgValid.issues) {
-        throw new ChannelErrorWrapper(`Message did not match schema: ${JSON.stringify(msgValid.issues)}`, "client");
+        throw new ChannelErrorWrapper(`Message did not match schema: ${issuesToString(msgValid.issues)}`, "client");
       }
 
       const ctxValid = await declaration.connectionContext["~standard"].validate(message.context);
       if (ctxValid.issues) {
-        throw new ChannelErrorWrapper(`Context did not match schema: ${JSON.stringify(ctxValid.issues)}`, "server");
+        throw new ChannelErrorWrapper(`Context did not match schema: ${issuesToString(ctxValid.issues)}`, "server");
       }
 
       if (!isProperParams(declaration.params, message.params)) {
