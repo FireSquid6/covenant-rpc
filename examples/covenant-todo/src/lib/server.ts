@@ -81,7 +81,7 @@ covenantServer.defineProcedure("updateTodo", {
 
     return todo;
   },
-  resources: ({ ctx, inputs }) => [`/todos/${ctx.user?.id ?? "__null_user__"}/${inputs.id}`],
+  resources: ({ ctx }) => [`/todos/${ctx.user?.id ?? "__null_user__"}`],
 });
 
 covenantServer.defineProcedure("deleteTodo", {
@@ -96,7 +96,7 @@ covenantServer.defineProcedure("deleteTodo", {
 
     return undefined;
   },
-  resources: ({ ctx, inputs }) => [`/todos/${ctx.user?.id ?? "__null_user__"}/${inputs.id}`],
+  resources: ({ ctx }) => [`/todos/${ctx.user?.id ?? "__null_user__"}`],
 })
 
 

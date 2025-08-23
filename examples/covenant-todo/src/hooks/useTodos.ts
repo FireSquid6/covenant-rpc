@@ -1,6 +1,7 @@
 
 'use client'
 
+import { covenantClient } from '@/lib/client'
 import { useState, useCallback } from 'react'
 import { Todo } from '@/db/schema'
 
@@ -61,7 +62,7 @@ export function useTodos() {
     }
     setTodos(prev => [newTodo, ...prev])
     return newTodo
-  }, [])
+  }, [setTodos])
 
   const updateTodo = useCallback((id: string, updates: Partial<Pick<Todo, 'text' | 'completed'>>) => {
     setTodos(prev => 
@@ -71,16 +72,21 @@ export function useTodos() {
           : todo
       )
     )
-  }, [])
+  }, [setTodos])
 
   const deleteTodo = useCallback((id: string) => {
     setTodos(prev => prev.filter(todo => todo.id !== id))
-  }, [])
+  }, [setTodos])
 
   const toggleTodo = useCallback((id: string) => {
     const todo = todos.find(t => t.id === id)
+
     if (todo) {
-      updateTodo(id, { completed: !todo.completed })
+      covenantClient.mutate("updateTodo", {
+        id: id,
+        text: todo.text,
+        completed: !todo.completed,
+      })
     }
   }, [todos, updateTodo])
 
