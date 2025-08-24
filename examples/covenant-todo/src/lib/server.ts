@@ -34,14 +34,6 @@ export const covenantServer = new CovenantServer(
   }
 )
 
-covenantServer.defineProcedure("helloWorld", {
-  procedure: ({ inputs }) => {
-    return `Hello, ${inputs.name}`;
-  },
-  resources: () => [],
-});
-
-
 covenantServer.defineProcedure("getTodos", {
   procedure: async ({ derived }) => {
     const user = await derived.forceAuthenticated();

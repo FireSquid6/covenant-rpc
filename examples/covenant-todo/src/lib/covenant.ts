@@ -6,13 +6,6 @@ import { selectUserSchema, todosSelectSchema } from "@/db/schema";
 export const covenant = declareCovenant({
   channels: {},
   procedures: {
-    helloWorld: query({
-      input: z.object({
-        name: z.string(),
-      }),
-      output: z.string(),
-    }),
-
     getTodos: query({
       input: z.null(),
       output: z.array(todosSelectSchema),

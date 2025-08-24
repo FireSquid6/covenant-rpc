@@ -99,15 +99,51 @@ export const resetTable = sqliteTable("resets", {
 });
 export type ResetToken = InferSelectModel<typeof resetTable>;
 
-export const todosTable = sqliteTable("todo", {
+export const guildsTable = sqliteTable("guild", {
   id: text().notNull().unique().primaryKey(),
+  name: text().notNull(),
+});
+export type Guild = InferSelectModel<typeof guildsTable>;
+
+export const roomsTable = sqliteTable("room", {
+  id: text().notNull().unique().primaryKey(),
+  guild: text().notNull().references(() => guildsTable.id),
+  name: text().notNull(),
+  description: text().notNull(),
+});
+export type Room = InferSelectModel<typeof roomsTable>;
+
+export const messagesTable = sqliteTable("message", {
+  id: text().notNull().unique().primaryKey(),
+  content: text().notNull(),
+  sender: text().notNull().references(() => usersTable.id),
+  room: text().notNull().references(() => roomsTable.id),
+  // it's best not to use { mode: "date" } since that doesn't really serialize well
+  // just format it as a date on the client side
+  timestamp: int().notNull(),
+});
+export type Message = InferSelectModel<typeof messagesTable>;
+
+export const rolesTable = sqliteTable("role", {
+  id: text().notNull().unique().primaryKey(),
+  guild: text().notNull().references(() => guildsTable.id),
   userId: text().notNull().references(() => usersTable.id),
-  completed: int({ mode: "boolean" }).notNull().default(false),
-  text: text().notNull(),
-  createdAt: int().notNull().default(Date.now()),
-  lastUpdated: int().notNull().default(Date.now()),
+  isAdmin: int({ mode: "boolean" }).notNull().default(false),
+});
+export type Role = InferSelectModel<typeof rolesTable>;
+
+export const invitesTable = sqliteTable("invites", {
+  code: text().notNull().unique().primaryKey(),
+  guildId: text().notNull().references(() => guildsTable.id),
+});
+
+export const joinedTable = sqliteTable("joined", {
+  userId: text().notNull().references(() => usersTable.id),
+  guildId: text().notNull().references(() => guildsTable.id),
 });
 
 
-export type Todo = InferSelectModel<typeof todosTable>;
-export const todosSelectSchema = createSelectSchema(todosTable);
+// invitations table
+// channels table
+// roles table
+// messages table
