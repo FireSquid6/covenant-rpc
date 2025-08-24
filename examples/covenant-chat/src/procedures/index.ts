@@ -32,3 +32,6 @@ export const covenantServer = new CovenantServer(
     realtimeConnection: emptyRealtimeConnection(),
   }
 )
+
+
+covenantServer.assertAllDefined();
