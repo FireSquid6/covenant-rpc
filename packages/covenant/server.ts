@@ -142,30 +142,30 @@ export class CovenantServer<
   }
 
   // directory must be an absolute path or this will fail
-  async runDefaultInDirectory(directory: string) {
-    const validExtensions = [".ts", ".tsx", ".js", ".jsx"];
-
-    await Promise.all(fs.readdirSync(directory, { recursive: true }).map(async (f) => {
-      const filepath = path.join(directory, f.toString());
-      const extension = path.extname(filepath);
-
-      if (validExtensions.find(e => e === extension) === undefined) {
-        console.log(`${f} is not a source file`);
-        return;
-      }
-
-      try {
-        const mod = await import(filepath);
-        mod.default()
-      } catch (e) {
-        console.log(`${f} had an error:`)
-        console.log(e);
-
-        // we want to quit if there's an error
-        process.exit(1);
-      }
-    }));
-  }
+  // async runDefaultInDirectory(directory: string) {
+  //   const validExtensions = [".ts", ".tsx", ".js", ".jsx"];
+  //
+  //   await Promise.all(fs.readdirSync(directory, { recursive: true }).map(async (f) => {
+  //     const filepath = path.join(directory, f.toString());
+  //     const extension = path.extname(filepath);
+  //
+  //     if (validExtensions.find(e => e === extension) === undefined) {
+  //       console.log(`${f} is not a source file`);
+  //       return;
+  //     }
+  //
+  //     try {
+  //       const mod = await import(filepath);
+  //       mod.default()
+  //     } catch (e) {
+  //       console.log(`${f} had an error:`)
+  //       console.log(e);
+  //
+  //       // we want to quit if there's an error
+  //       process.exit(1);
+  //     }
+  //   }));
+  // }
 
   defineProcedure<N extends keyof P>(name: N, definition: ProcedureDefinition<P[N], Context, Derived>) {
     if (this.procedureDefinitions[name] !== undefined) {
