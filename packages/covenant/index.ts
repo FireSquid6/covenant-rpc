@@ -64,13 +64,11 @@ export type ChannelMap = {
 export interface Covenant<
   P extends ProcedureMap,
   C extends ChannelMap,
-  Context extends StandardSchemaV1,
-  Data extends StandardSchemaV1,
+  Context extends StandardSchemaV1
 > {
   procedures: P;
   channels: C;
   context: Context;
-  data: Data;
 }
 
 
@@ -80,8 +78,7 @@ export function declareCovenant<
   P extends ProcedureMap,
   C extends ChannelMap,
   Context extends StandardSchemaV1,
-  Data extends StandardSchemaV1,
->(covenant: Covenant<P, C, Context, Data>): Covenant<P, C, Context, Data> {
+>(covenant: Covenant<P, C, Context>): Covenant<P, C, Context> {
   return covenant;
 }
 

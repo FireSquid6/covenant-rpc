@@ -89,10 +89,9 @@ export class CovenantServer<
   P extends ProcedureMap,
   C extends ChannelMap,
   Context extends StandardSchemaV1,
-  Data extends StandardSchemaV1,
   Derived
 > {
-  private covenant: Covenant<P, C, Context, Data>;
+  private covenant: Covenant<P, C, Context>;
   private procedureDefinitions: ProcedureDefinitionMap<P, Context, Derived>;
   private contextGenerator: ContextGenerator<Context>;
   private derivation: Derivation<Derived, StandardSchemaV1.InferOutput<Context>>;
@@ -100,7 +99,7 @@ export class CovenantServer<
   private channelDefinitions: ChannelDefinitionMap<C>;
 
 
-  constructor(covenant: Covenant<P, C, Context, Data>, {
+  constructor(covenant: Covenant<P, C, Context>, {
     contextGenerator,
     derivation,
     realtimeConnection

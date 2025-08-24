@@ -50,15 +50,14 @@ export class CovenantClient<
   P extends ProcedureMap,
   C extends ChannelMap,
   Context extends StandardSchemaV1,
-  Data extends StandardSchemaV1
 > {
-  private covenant: Covenant<P, C, Context, Data>;
+  private covenant: Covenant<P, C, Context>;
   private messenger: ClientMessenger;
   private listeners: Map<string, (() => Promise<void>)[]> = new Map();
   private realtime: RealtimeClient;
 
 
-  constructor(covenant: Covenant<P, C, Context, Data>, messenger: ClientMessenger, realtime: RealtimeClient) {
+  constructor(covenant: Covenant<P, C, Context>, messenger: ClientMessenger, realtime: RealtimeClient) {
     this.covenant = covenant;
     this.messenger = messenger;
     this.realtime = realtime;
