@@ -1,4 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
+import type { MaybePromise } from "./utils";
+import type { ProcedureInputs } from "./procedure";
 
 
 export type ProcedureType = "mutation" | "query";

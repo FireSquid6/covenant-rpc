@@ -2,16 +2,20 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ProcedureDeclaration, ProcedureType } from ".";
 import type { MaybePromise } from "bun";
 
-export interface ParsedRequest {
+export interface ProcedureRequest {
   headers: Headers;
   input: unknown;
+  url: string;
+  procedure: string;
+  path: string;
+  req: Request;
 }
 
 export interface ProcedureInputs<Inputs, Context, Derivation> {
   inputs: Inputs,
   ctx: Context,
   derived: Derivation,
-  request: ParsedRequest,
+  request: ProcedureRequest,
   setHeader: (name: string, value: string) => void;
   deleteHeader: (name: string) => void;
   error: (message: string, code: number) => never;
