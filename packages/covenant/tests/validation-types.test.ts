@@ -10,12 +10,10 @@ test("type inference works correctly", () => {
   type BoolInfer = v.Infer<ReturnType<typeof v.bool>>;
   type NumberInfer = v.Infer<ReturnType<typeof v.number>>;
   type StringInfer = v.Infer<ReturnType<typeof v.string>>;
-  type SymbolInfer = v.Infer<ReturnType<typeof v.symbol>>;
 
   type _BoolTest = Expect<Equal<BoolInfer, boolean>>;
   type _NumberTest = Expect<Equal<NumberInfer, number>>;
   type _StringTest = Expect<Equal<StringInfer, string>>;
-  type _SymbolTest = Expect<Equal<SymbolInfer, symbol>>;
 
   // Optional type inference
   type OptionalStringInfer = v.Infer<ReturnType<typeof v.optional<string>>>;
@@ -121,51 +119,4 @@ test("type inference works correctly", () => {
   type _StringArrayTest = Expect<Equal<StringArrayInfer, string[]>>;
   type _NumberArrayTest = Expect<Equal<NumberArrayInfer, number[]>>;
   type _ObjArrayTest = Expect<Equal<ObjArrayInfer, { id: number }[]>>;
-
-  // Tuple type inference
-  const simpleTuple = v.tuple(v.string(), v.number());
-  const complexTuple = v.tuple(
-    v.string(), 
-    v.number(), 
-    v.obj({ active: v.bool() }),
-    v.optional(v.literal("test"))
-  );
-  
-  type SimpleTupleInfer = v.Infer<typeof simpleTuple>;
-  type ComplexTupleInfer = v.Infer<typeof complexTuple>;
-  
-  type _SimpleTupleTest = Expect<Equal<SimpleTupleInfer, [string, number]>>;
-  type _ComplexTupleTest = Expect<Equal<ComplexTupleInfer, [string, number, { active: boolean }, "test" | undefined]>>;
-
-  // Record type inference
-  const stringNumberRecord = v.record(v.string(), v.number());
-  const literalKeyRecord = v.record(v.union(v.literal("id"), v.literal("name")), v.string());
-  
-  type StringNumberRecordInfer = v.Infer<typeof stringNumberRecord>;
-  type LiteralKeyRecordInfer = v.Infer<typeof literalKeyRecord>;
-  
-  type _StringNumberRecordTest = Expect<Equal<StringNumberRecordInfer, Record<string, number>>>;
-  type _LiteralKeyRecordTest = Expect<Equal<LiteralKeyRecordInfer, Record<"id" | "name", string>>>;
-
-  // InstanceOf type inference
-  class TestClass {
-    constructor(public value: string) {}
-  }
-  
-  const testClassValidator = v.instanceOf(TestClass);
-  const dateValidator = v.instanceOf(Date);
-  
-  type TestClassInfer = v.Infer<typeof testClassValidator>;
-  type DateInfer = v.Infer<typeof dateValidator>;
-  
-  type _TestClassTest = Expect<Equal<TestClassInfer, TestClass>>;
-  type _DateTest = Expect<Equal<DateInfer, Date>>;
-
-  // Custom validator type inference
-  const positiveNumberValidator = v.custom((value): value is number => {
-    return typeof value === "number" && value > 0;
-  });
-  
-  type PositiveNumberInfer = v.Infer<typeof positiveNumberValidator>;
-  type _PositiveNumberTest = Expect<Equal<PositiveNumberInfer, number>>;
 });

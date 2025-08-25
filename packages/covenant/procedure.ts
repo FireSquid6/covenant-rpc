@@ -1,6 +1,7 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ProcedureDeclaration, ProcedureType } from ".";
 import type { MaybePromise } from "bun";
+import { v } from "./validation";
 
 export interface ProcedureRequest {
   headers: Headers;
@@ -42,3 +43,25 @@ export type ProcedureDefinition<T, ContextSchema extends StandardSchemaV1, Deriv
       StandardSchemaV1.InferOutput<OutputSchema>
     >) => MaybePromise<string[]>
   } : never
+
+
+export const procedureErrorSchema = v.obj({
+  message: v.string(),
+  code: v.number(),
+});
+
+export type ProcedureError = v.Infer<typeof procedureErrorSchema>;
+
+
+export const procedureResponseSchema = v.union(
+  v.obj({
+    status: v.literal("OK"),
+    data: v.unknown(),
+  }),
+  v.obj({
+    status: v.literal("OK"),
+    error: procedureErrorSchema,
+  }),
+);
+
+export type ProcedureResponse = v.Infer<typeof procedureResponseSchema>;

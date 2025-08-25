@@ -1,3 +1,5 @@
+// Covenant cannot have any dependencies, so I have to make a very tiny validation library for parsing requests. This does not implement standard schema, and should not be used
+// outside of covenant code. If you are doing so, you are wrong
 export namespace v {
   export type Validator<T> = (o: unknown) => o is T;
   export type Infer<K> = K extends Validator<infer T> ? T : never;
@@ -5,7 +7,7 @@ export namespace v {
   export const bool: () => Validator<boolean> = () => (o: unknown) => typeof o === "boolean";
   export const number: () => Validator<number> = () => (o: unknown) => typeof o === "number"
   export const string: () => Validator<string> = () => (o: unknown) => typeof o === "string";
-  export const symbol: () => Validator<symbol> = () => (o: unknown) => typeof o === "symbol";
+  export const unknown: () => Validator<unknown> = () => (o: unknown): o is unknown => true;
 
   export function optional<T>(validator: Validator<T>): Validator<T | undefined> {
     return (o: unknown) => validator(o) || o === undefined;
@@ -73,15 +75,6 @@ export namespace v {
     };
   }
 
-  export function tuple<T extends readonly Validator<any>[]>(...validators: T): Validator<{ [K in keyof T]: Infer<T[K]> }> {
-    return (o: unknown): o is { [K in keyof T]: Infer<T[K]> } => {
-      if (!Array.isArray(o) || o.length !== validators.length) {
-        return false;
-      }
-      return validators.every((validator, index) => validator(o[index]));
-    };
-  }
-
   export function record<K extends string | number | symbol, V>(
     keyValidator: Validator<K>,
     valueValidator: Validator<V>
@@ -101,20 +94,6 @@ export namespace v {
       
       return true;
     };
-  }
-
-  export function instanceOf<T extends new (...args: any[]) => any>(
-    constructor: T
-  ): Validator<InstanceType<T>> {
-    return (o: unknown): o is InstanceType<T> => {
-      return o instanceof constructor;
-    };
-  }
-
-  export function custom<T>(
-    predicate: (value: unknown) => value is T
-  ): Validator<T> {
-    return predicate;
   }
 }
 
