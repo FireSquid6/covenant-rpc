@@ -15,8 +15,6 @@ export const covenant = declareCovenant({
       output: z.string(),
     }),
   },
-  // data has not been implemented yet
-  data: z.undefined(),
   context: z.undefined(),
 })
 

@@ -1,4 +1,4 @@
-# @covenant/sidekick
+# covenant
 
 To install dependencies:
 

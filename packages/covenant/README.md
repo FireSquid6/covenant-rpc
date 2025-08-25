@@ -1,4 +1,4 @@
-# covenant
+# @covenant/rpc
 
 To install dependencies:
 

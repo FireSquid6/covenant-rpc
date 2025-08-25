@@ -20,10 +20,6 @@ export const covenant = declareCovenant({
   context: z.object({
     userId: z.string(),
   }),
-  data: z.object({
-    userId: z.string(),
-    socketId: z.string(),
-  }),
   channels: {
     chat: channel({
 

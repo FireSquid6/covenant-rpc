@@ -2,6 +2,8 @@ import { InferSelectModel } from "drizzle-orm";
 import { int, sqliteTable, text, primaryKey } from "drizzle-orm/sqlite-core";
 import { v7 as uuidv7 } from "uuid";
 import { createSelectSchema } from "drizzle-zod";
+import { useSelectedLayoutSegment } from "next/navigation";
+import { z } from "zod";
 
 
 export const usersTable = sqliteTable("user", {
@@ -104,6 +106,7 @@ export const guildsTable = sqliteTable("guild", {
   name: text().notNull(),
 });
 export type Guild = InferSelectModel<typeof guildsTable>;
+export const selectGuildSchema = createSelectSchema(guildsTable);
 
 export const roomsTable = sqliteTable("room", {
   id: text().notNull().unique().primaryKey(),
@@ -123,6 +126,7 @@ export const messagesTable = sqliteTable("message", {
   timestamp: int().notNull(),
 });
 export type Message = InferSelectModel<typeof messagesTable>;
+export const selectMessageSchema = createSelectSchema(messagesTable);
 
 export const rolesTable = sqliteTable("role", {
   id: text().notNull().unique().primaryKey(),

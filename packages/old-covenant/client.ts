@@ -50,6 +50,7 @@ export class CovenantClient<
   P extends ProcedureMap,
   C extends ChannelMap,
   Context extends StandardSchemaV1,
+  Data extends StandardSchemaV1
 > {
   private covenant: Covenant<P, C, Context>;
   private messenger: ClientMessenger;
@@ -309,7 +310,7 @@ export function httpMessenger({ httpUrl }: { httpUrl: string }): ClientMessenger
   }
 }
 
-export function directMessenger(server: CovenantServer<any, any, any, any, any>): ClientMessenger {
+export function directMessenger(server: CovenantServer<any, any, any, any>): ClientMessenger {
   return {
     fetch(request: ProcedureRequest): Promise<Response> {
       const headers = new Headers();

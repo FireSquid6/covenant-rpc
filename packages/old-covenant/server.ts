@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ChannelMap, ProcedureMap, Covenant, ProcedureDeclaration, ProcedureType, ChannelDeclaration, ProcedureInputs, ContextGenerator, ResourceInputs } from ".";
 import type { ArrayToMap, MaybePromise } from "./utils";

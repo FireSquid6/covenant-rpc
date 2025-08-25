@@ -32,8 +32,6 @@ export const covenant = declareCovenant({
       output: z.null(),
     }),
   },
-  // data has not been implemented yet
-  data: z.undefined(),
   context: z.object({
     user: z.nullable(selectUserSchema),
   })
