@@ -57,6 +57,7 @@ export const procedureResponseSchema = v.union(
   v.obj({
     status: v.literal("OK"),
     data: v.unknown(),
+    resources: v.array(v.string()),
   }),
   v.obj({
     status: v.literal("ERR"),

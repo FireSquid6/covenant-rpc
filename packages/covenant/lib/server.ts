@@ -1,11 +1,11 @@
 import type { ChannelMap, Covenant, ProcedureMap } from ".";
 import { procedureRequestBodySchema, type ProcedureDefinition, type ProcedureInputs, type ProcedureRequest, type ProcedureResponse } from "./procedure";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import { err, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from "./utils";
+import { err, issuesToString, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from "./utils";
 import type { ServerToSidekickConnection } from "./interfaces";
 import type { ChannelDefinition } from "./channel";
 import { v } from "./validation";
-import { ThrowableProcedureError } from "./errors";
+import { procedureErrorFromUnknown, ThrowableProcedureError } from "./errors";
 
 
 export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends StandardSchemaV1, Derivation> = {
@@ -19,7 +19,7 @@ export type ChannelDefinitionMap<T extends ChannelMap> = {
 export type ContextGenerator<Context extends StandardSchemaV1> = 
   (i: ProcedureInputs<unknown, undefined, undefined>) => MaybePromise<StandardSchemaV1.InferOutput<Context>>
 
-export type Derivation<Derived, Context> = (i: ProcedureInputs<undefined, Context, undefined>) => Derived;
+export type Derivation<Derived, Context> = (i: ProcedureInputs<undefined, Context, undefined>) => MaybePromise<Derived>;
 
 
 export class CovenantServer<
@@ -104,7 +104,7 @@ export class CovenantServer<
     }
   }
 
-  private async processProcedure(request: ProcedureRequest): Promise<ProcedureResponse> {
+  private async processProcedure(request: ProcedureRequest, newHeaders: Headers): Promise<ProcedureResponse> {
     try {
       const declaration = this.covenant.procedures[request.procedure];
       const definition = this.procedureDefinitions[request.procedure];
@@ -115,23 +115,66 @@ export class CovenantServer<
 
       const validationResult = await declaration.input["~standard"].validate(request.input);
 
+      if (validationResult.issues) {
+        throw new ThrowableProcedureError(`Error parsing procedure inputs: ${issuesToString(validationResult.issues)}`, 404);
+      }
+
+      const initialInputs: ProcedureInputs<any, undefined, undefined> = {
+        inputs: validationResult.value,
+        request,
+        ctx: undefined,
+        derived: undefined,
+        setHeader(name: string, value: string) {
+          newHeaders.set(name, value);
+        },
+        deleteHeader(name: string) {
+          newHeaders.delete(name);
+        },
+        error(message, code) {
+          throw new ThrowableProcedureError(message, code);
+        }
+      }
+      const ctx = await this.contextGenerator(initialInputs);
+      const derived = await this.derivation({ ...initialInputs, ctx });
+      const result = await definition.procedure({ ...initialInputs, ctx, derived });
+      const resources = await definition.resources({ inputs: request, ctx, outputs: result });
+
+      if (declaration.type === "mutation") {
+        this.sidekickConnection.update(resources).then((e) => {
+          // TODO - log this error if it's bad
+          if (e !== null) {
+            throw e;
+          }
+        });
+      }
+
+      return {
+        status: "OK",
+        data: result,
+        resources,
+      }
+
     } catch (e) {
-
+      const error = procedureErrorFromUnknown(e);
+      return {
+        status: "ERR",
+        error,
+      }
     }
-
   }
 
   private async handleProcedure(request: Request): Promise<Response> {
     const { data: parsed, error, success } = await parseRequest(request);
 
     if (!success) {
-      return new Response("Error parsing request body. If you're a dev seeing this then this is probably my bad not yours. Create an issue on the covenant rpc github");
+      return new Response(`Error parsing request body. If you're a dev seeing this then this is probably my bad not yours. Create an issue on the covenant rpc github: ${error.message}`);
     }
-
-    const res = await this.processProcedure(parsed);
 
     const headers = new Headers();
     headers.set("Content-Type", "application/json");
+
+    const res = await this.processProcedure(parsed, headers);
+
     const status = res.status === "OK" ? 201 : res.error.code;
 
     return new Response(JSON.stringify(res), {
