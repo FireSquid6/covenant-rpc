@@ -1,3 +1,4 @@
+import { channelErrorSchema } from "./channel";
 import { v } from "./validation";
 
 
@@ -48,5 +49,34 @@ export type SidekickIncomingMessage = v.Infer<typeof sidekickIncomingMessageSche
 export const sidekickOutgoingMessageSchema = v.union(
   v.obj({
     type: v.literal("error"),
-  })
+    error: channelErrorSchema,
+  }),
+  v.obj({
+    type: v.literal("message"),
+    channel: v.string(),
+    params: v.record(v.string(), v.string()),
+    data: v.unknown(),
+  }),
+  v.obj({
+    type: v.literal("updated"),
+    resource: v.string(),
+  }),
+  v.obj({
+    type: v.literal("listening"),
+    resources: v.array(v.string()),
+  }),
+  v.obj({
+    type: v.literal("unlistening"),
+    resources: v.array(v.string()),
+  }),
+  v.obj({
+    type: v.literal("subscribed"),
+    channel: v.string(),
+    params: v.record(v.string(), v.string()),
+  }),
+  v.obj({
+    type: v.literal("listening"),
+    channel: v.string(),
+    params: v.record(v.string(), v.string()),
+  }),
 )
