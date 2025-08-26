@@ -59,9 +59,16 @@ export const procedureResponseSchema = v.union(
     data: v.unknown(),
   }),
   v.obj({
-    status: v.literal("OK"),
+    status: v.literal("ERR"),
     error: procedureErrorSchema,
   }),
 );
 
 export type ProcedureResponse = v.Infer<typeof procedureResponseSchema>;
+
+export const procedureRequestBodySchema = v.obj({
+  procedure: v.string(),
+  inputs: v.unknown(),
+});
+
+export type ProcedureRequestBody = v.Infer<typeof procedureRequestBodySchema>;

@@ -1,0 +1,184 @@
+import type { ChannelMap, Covenant, ProcedureMap } from ".";
+import { procedureRequestBodySchema, type ProcedureDefinition, type ProcedureInputs, type ProcedureRequest, type ProcedureResponse } from "./procedure";
+import type { StandardSchemaV1 } from "@standard-schema/spec";
+import { err, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from "./utils";
+import type { ServerToSidekickConnection } from "./interfaces";
+import type { ChannelDefinition } from "./channel";
+import { v } from "./validation";
+
+
+export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends StandardSchemaV1, Derivation> = {
+  [key in keyof T]: ProcedureDefinition<T[key], Context, Derivation> | undefined
+}
+
+export type ChannelDefinitionMap<T extends ChannelMap> = {
+  [key in keyof T]: ChannelDefinition<T[key]>
+}
+
+export type ContextGenerator<Context extends StandardSchemaV1> = 
+  (i: ProcedureInputs<unknown, undefined, undefined>) => MaybePromise<StandardSchemaV1.InferOutput<Context>>
+
+export type Derivation<Derived, Context> = (i: ProcedureInputs<undefined, Context, undefined>) => Derived;
+
+
+export class CovenantServer<
+  P extends ProcedureMap,
+  C extends ChannelMap,
+  ContextSchema extends StandardSchemaV1,
+  Derived,
+> {
+  private covenant: Covenant<P, C, ContextSchema>;
+  private contextGenerator: ContextGenerator<ContextSchema>;
+  private derivation: Derivation<Derived, StandardSchemaV1.InferOutput<ContextSchema>>;
+  private sidekickConnection: ServerToSidekickConnection
+
+  private procedureDefinitions: ProcedureDefinitionMap<P, ContextSchema, Derived>;
+  private channelDefinitions: ChannelDefinitionMap<C>;
+
+  constructor(covenant: Covenant<P, C, ContextSchema>, {
+    contextGenerator,
+    derivation,
+    sidekickConnection,
+  }: {
+    contextGenerator: ContextGenerator<ContextSchema>,
+    derivation: Derivation<Derived, StandardSchemaV1.InferOutput<ContextSchema>>
+    sidekickConnection: ServerToSidekickConnection
+  }) {
+    this.covenant = covenant;
+    this.contextGenerator = contextGenerator;
+    this.derivation = derivation;
+    this.sidekickConnection = sidekickConnection;
+
+
+    // both of these fail. We leave them emtpy and let the user
+    // define them later. The `assertAllDefined can be used to do`
+    // a check to ensure all channels and procedures are defined
+    //
+    //@ts-expect-error see above
+    this.procedureDefinitions = {};
+    //@ts-expect-error see above
+    this.channelDefinitions = {};
+  }
+
+  defineProcedure<N extends keyof P>(name: N, definition: ProcedureDefinition<P[N], ContextSchema, Derived>) {
+    if (this.procedureDefinitions[name] !== undefined) {
+      throw new Error(`Tried to define ${String(name)} twice!`);
+    }
+
+    this.procedureDefinitions[name] = definition;
+  }
+
+  defineChannel<N extends keyof C>(name: N, definition: ChannelDefinition<C[N]>) {
+    if (this.channelDefinitions[name] !== undefined) {
+      throw new Error(`Tried to define ${String(name)} twice!`);
+    }
+
+    this.channelDefinitions[name] = definition;
+  }
+
+
+  async sendMessage<N extends keyof C>(
+    name: N,
+    params: ArrayToMap<C[N]["params"]>,
+    message: StandardSchemaV1.InferOutput<C[N]["serverMessage"]>
+  ): Promise<Error | null> {
+    return await this.sidekickConnection.postMessage({
+      channel: String(name),
+      params,
+      data: message,
+    });
+  }
+
+  assertAllDefined(): void {
+    for (const p of Object.keys(this.covenant.procedures)) {
+      if (this.procedureDefinitions[p] === undefined) {
+        throw new Error(`Procedure ${p} was not defined`)
+      }
+    }
+
+    for (const c of Object.keys(this.covenant.channels)) {
+      if (this.channelDefinitions[c] === undefined) {
+        throw new Error(`Channel ${c} was not defined`);
+      }
+    }
+  }
+
+  private async processProcedure(request: ProcedureRequest): Promise<ProcedureResponse> {
+    try {
+
+    } catch (e) {
+
+    }
+
+  }
+
+  private async handleProcedure(request: Request): Promise<Response> {
+    const { data: parsed, error, success } = await parseRequest(request);
+
+    if (!success) {
+      return new Response("Error parsing request body. If you're a dev seeing this then this is probably my bad not yours. Create an issue on the covenant rpc github");
+    }
+
+    const res = await this.processProcedure(parsed);
+
+    const headers = new Headers();
+    headers.set("Content-Type", "application/json");
+    const status = res.status === "OK" ? 201 : res.error.code;
+
+    return new Response(JSON.stringify(res), {
+      headers,
+      status,
+    });
+  }
+
+
+  async handle(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const type = url.searchParams.get("type") ?? "procedure";
+
+    if (request.method !== "POST") {
+      return new Response("Covenant servers only handle POST requests", { status: 404 });
+    }
+
+    let response = new Response();
+
+    switch (type) {
+      case "channel":
+        throw new Error("handling channels is not implemented");
+        break;
+      case "procedure":
+        response = await this.handleProcedure(request);
+        break;
+      case "connect":
+        throw new Error("handling connecitons is not implemented");
+        break;
+    }
+
+    return response;
+  }
+}
+
+
+export async function parseRequest(request: Request): AsyncResult<ProcedureRequest> {
+  try {
+    const body = await request.json();
+    const result = v.parseSafe(body, procedureRequestBodySchema);
+    
+    if (result === null) {
+      throw new Error(`Failed to parse body as a ProcedureRequestBody`);
+    }
+    const url = new URL(request.url);
+
+    return ok({
+      headers: request.headers,
+      input: result.inputs,
+      procedure: result.procedure,
+      path: url.pathname,
+      url: url.toString(),
+      req: request
+    });
+  } catch (e) {
+    return err(e instanceof Error ? e : new Error(`Unknown error: ${e}`));
+  }
+
+}

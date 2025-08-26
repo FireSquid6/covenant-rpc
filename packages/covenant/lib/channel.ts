@@ -1,4 +1,7 @@
 import { v } from "./validation";
+import type { ChannelDeclaration } from ".";
+import type { MaybePromise, ArrayToMap } from "./utils";
+import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 
 export const channelErrorSchema = v.obj({
@@ -43,10 +46,48 @@ export const channelConnectionPayload = v.obj({
   context: v.unknown(),
 });
 
-
+export type ChannelConnectionPayload = v.Infer<typeof channelConnectionPayload>;
 
 export const serverMessageSchema = v.obj({
   channel: v.string(),
   params: v.record(v.string(), v.string()),
-  content: v.unknown(),
+  data: v.unknown(),
 });
+export type ServerMessage = v.Infer<typeof serverMessageSchema>;
+
+export interface ConnectionHandlerInputs<T, Params> {
+  inputs: T,
+  params: Params,
+  // originalRequest: Request,
+  reject(reason: string, cause: "client" | "server"): never,
+}
+
+export interface MessageHandlerInputs<T, Params, Context> {
+  inputs: T,
+  params: Params,
+  context: Context,
+  error(reason: string, cause: "client" | "server"): never,
+}
+
+export type ChannelDefinition<T> = T extends ChannelDeclaration<
+  infer ClientMessage,
+  any,
+  infer ConnectionRequest,
+  infer ConnectionContext,
+  infer Params
+> ? {
+  onConnect: (i: ConnectionHandlerInputs<
+    StandardSchemaV1.InferOutput<ConnectionRequest>,
+    ArrayToMap<Params>
+  >) => MaybePromise<
+    StandardSchemaV1.InferOutput<ConnectionContext>
+  >;
+  onMessage: (i: MessageHandlerInputs<
+    StandardSchemaV1.InferOutput<ClientMessage>,
+    ArrayToMap<Params>,
+    StandardSchemaV1.InferOutput<ConnectionContext>
+  >) => MaybePromise<
+    void
+  >
+} : never
+

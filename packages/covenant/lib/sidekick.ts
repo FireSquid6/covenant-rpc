@@ -80,3 +80,5 @@ export const sidekickOutgoingMessageSchema = v.union(
     params: v.record(v.string(), v.string()),
   }),
 )
+
+export type SidekickOutgoingMessage = v.Infer<typeof sidekickOutgoingMessageSchema>;
