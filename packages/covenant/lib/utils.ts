@@ -1,3 +1,4 @@
+import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 export type MaybePromise<T> = T | Promise<T>;
 export type Flatten<T> = { [k in keyof T]: T[k] } & {};
@@ -15,7 +16,7 @@ export type Result<T> = {
   error: Error
 }
 
-export type AsyncResult<T> = Promise<Result<T>>
+export type AsyncResult<T> = Promise<Result<T>>;
 
 
 export function ok<T>(t: T): Result<T> {
@@ -32,4 +33,15 @@ export function err(error: Error): Result<any> {
     success: false,
     error,
   }
+}
+
+export function issuesToString(issues: readonly StandardSchemaV1.Issue[]): string {
+  const strs: string[] = []
+
+  for (const issue of issues) {
+    strs.push(`${issue.path}: ${issue.message}`);
+  }
+
+
+  return strs.join(", ");
 }

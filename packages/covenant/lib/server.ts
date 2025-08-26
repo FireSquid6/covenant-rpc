@@ -5,6 +5,7 @@ import { err, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from ".
 import type { ServerToSidekickConnection } from "./interfaces";
 import type { ChannelDefinition } from "./channel";
 import { v } from "./validation";
+import { ThrowableProcedureError } from "./errors";
 
 
 export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends StandardSchemaV1, Derivation> = {
@@ -105,6 +106,14 @@ export class CovenantServer<
 
   private async processProcedure(request: ProcedureRequest): Promise<ProcedureResponse> {
     try {
+      const declaration = this.covenant.procedures[request.procedure];
+      const definition = this.procedureDefinitions[request.procedure];
+
+      if (!declaration || !definition) {
+        throw new ThrowableProcedureError(`Procedure ${request.procedure} not found`, 404);
+      }
+
+      const validationResult = await declaration.input["~standard"].validate(request.input);
 
     } catch (e) {
 
