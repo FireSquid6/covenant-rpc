@@ -1,5 +1,5 @@
-import { channelErrorSchema } from "./channel";
-import { v } from "./validation";
+import { channelErrorSchema } from "../channel";
+import { v } from "../validation";
 
 
 
