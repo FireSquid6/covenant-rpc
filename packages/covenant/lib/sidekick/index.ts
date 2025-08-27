@@ -1,10 +1,11 @@
+import { promise } from "zod";
 import type { ChannelConnectionPayload, ServerMessage } from "../channel";
 import type { SidekickToServerConnection } from "../interfaces";
 import { httpSidekickToServer } from "../interfaces/http";
 import type { LoggerLevel } from "../logger";
 import { Logger } from "../logger";
 import { handleListenMessage, handleSendMessage, handleSubscribeMessage, handleUnlistenMessage, handleUnsubscribeMessage, type SidekickHandlerContext } from "./handlers";
-import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "./protocol";
+import { getChannelTopicName, getResourceTopicName, type SidekickIncomingMessage, type SidekickOutgoingMessage } from "./protocol";
 
 export interface SidekickClient {
   subscribe(topic: string): void;
@@ -45,15 +46,32 @@ export class Sidekick {
   }
 
   async updateResources(resources: string[]) {
+    const promises: (() => Promise<void>)[] = [];
 
+    for (const r of resources) {
+      promises.push(async () => {
+        const topic = getResourceTopicName(r);
+        await this.publish(topic, {
+          type: "updated",
+          resource: r,
+        });
+
+      });
+    }
+
+    await Promise.all(promises.map(p => p()));
   }
 
   async postServerMessage(message: ServerMessage) {
-
+    const topic = getChannelTopicName(message.channel, message.params);
+    await this.publish(topic, {
+      type: "message",
+      ...message
+    });
   }
 
-  async addConnection(payload: ChannelConnectionPayload) {
-
+  addConnection(payload: ChannelConnectionPayload) {
+    this.state.tokenMap.set(payload.token, payload);
   }
 
   async handleClientMessage(client: SidekickClient, message: SidekickIncomingMessage) {
