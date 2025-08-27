@@ -23,6 +23,15 @@ export class Logger {
     return new Logger(this.level, [...this.prefixes, prefix]);
   }
 
+  pushPrefix(prefix: Prefix): Logger {
+    this.prefixes.push(prefix);
+    return this
+  }
+
+  clone(): Logger {
+    return new Logger(this.level, [...this.prefixes]);
+  }
+
   debug(text: string): void {
     if (!levelSatisfies("debug", this.level)) {
       return;

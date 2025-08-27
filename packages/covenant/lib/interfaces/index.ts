@@ -1,5 +1,5 @@
 import type { MaybePromise } from "../utils";
-import type { ChannelConnectionPayload, ChannelConnectionRequest, ChannelConnectionResponse, ServerMessage } from "../channel";
+import type { ChannelConnectionPayload, ChannelConnectionRequest, ChannelConnectionResponse, ChannelError, ServerMessage, ServerMessageWithContext } from "../channel";
 import type { ProcedureRequestBody, ProcedureResponse } from "../procedure";
 import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "../sidekick/protocol";
 
@@ -23,3 +23,6 @@ export interface ServerToSidekickConnection {
 }
 
 
+export interface SidekickToServerConnection {
+  sendMessage(message: ServerMessageWithContext): Promise<ChannelError | null>;
+}

@@ -55,10 +55,17 @@ export const serverMessageSchema = v.obj({
 });
 export type ServerMessage = v.Infer<typeof serverMessageSchema>;
 
+export const serverMessageWithContext = v.obj({
+  channel: v.string(),
+  params: v.record(v.string(), v.string()),
+  data: v.unknown(),
+  context: v.unknown(),
+});
+export type ServerMessageWithContext = v.Infer<typeof serverMessageWithContext>;
+
 export interface ConnectionHandlerInputs<T, Params> {
   inputs: T,
   params: Params,
-  // originalRequest: Request,
   reject(reason: string, cause: "client" | "server"): never,
 }
 

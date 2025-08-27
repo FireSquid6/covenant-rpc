@@ -8,7 +8,7 @@ export const subscribeMessageSchema = v.obj({
   type: v.literal("subscribe"),
   token: v.string(),
 });
-export type SubscribeMessage = v.Infer<typeof unsubscribeMessageSchema>;
+export type SubscribeMessage = v.Infer<typeof subscribeMessageSchema>;
 
 export const unsubscribeMessageSchema = v.obj({
   type: v.literal("unsubscribe"),
@@ -75,6 +75,11 @@ export const sidekickOutgoingMessageSchema = v.union(
     params: v.record(v.string(), v.string()),
   }),
   v.obj({
+    type: v.literal("unsubscribed"),
+    channel: v.string(),
+    params: v.record(v.string(), v.string()),
+  }),
+  v.obj({
     type: v.literal("listening"),
     channel: v.string(),
     params: v.record(v.string(), v.string()),
@@ -82,3 +87,17 @@ export const sidekickOutgoingMessageSchema = v.union(
 )
 
 export type SidekickOutgoingMessage = v.Infer<typeof sidekickOutgoingMessageSchema>;
+
+
+export function getChannelTopicName(channel: string, params: Record<string, string>) {
+  const map = Object.keys(params).map(k => `${k}:${params[k]}`).join(",");
+  return `channel:${channel}/${map}`
+}
+
+export function getResourceTopicName(resource: string) {
+  return `resource:${resource}`;
+}
+
+export function getMapId(wsId: string, topic: string) {
+  return `${wsId}@${topic}`;
+}

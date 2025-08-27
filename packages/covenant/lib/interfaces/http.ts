@@ -1,8 +1,9 @@
-import type { ClientToServerConnection } from ".";
+import type { ClientToServerConnection, SidekickToServerConnection } from ".";
 import type { ClientToSidekickConnection } from ".";
 import { procedureResponseSchema } from "../procedure";
 import { v } from "../validation";
 
+// TODO - include key in the args
 export function httpClientToSidekick(): ClientToSidekickConnection {
   return {
     sendMessage(message) {
@@ -74,3 +75,11 @@ export function httpClientToServer(covenantUrl: string, extraHeaders: Record<str
   }
 }
 
+
+export function httpSidekickToServer(url: string, key: string): SidekickToServerConnection {
+  return {
+    sendMessage(message) {
+      throw new Error("not implemented httpSidekickToServer");
+    },
+  }
+}
