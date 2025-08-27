@@ -1,5 +1,4 @@
-import type { ClientToServerConnection } from ".";
-import type { ClientToSidekickConnection } from ".";
+import type { ClientToServerConnection, ServerToSidekickConnection, ClientToSidekickConnection } from ".";
 
 export function emptyClientToSidekick(): ClientToSidekickConnection {
   return {
@@ -7,7 +6,7 @@ export function emptyClientToSidekick(): ClientToSidekickConnection {
 
     },
     onMessage() {
-      return () => {};
+      return () => { };
     },
   }
 }
@@ -43,3 +42,11 @@ export function emptyClientToServer(): ClientToServerConnection {
   }
 }
 
+
+export function emptyServerToSidekick(): ServerToSidekickConnection {
+  return {
+    addConnection: async () => null,
+    update: async () => null,
+    postMessage: async () => null,
+  }
+}

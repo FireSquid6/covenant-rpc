@@ -133,6 +133,7 @@ export class CovenantServer<
         request,
         ctx: undefined,
         derived: undefined,
+        logger: l,
         setHeader(name: string, value: string) {
           newHeaders.set(name, value);
         },
@@ -146,7 +147,7 @@ export class CovenantServer<
       const ctx = await this.contextGenerator(initialInputs);
       const derived = await this.derivation({ ...initialInputs, ctx });
       const result = await definition.procedure({ ...initialInputs, ctx, derived });
-      const resources = await definition.resources({ inputs: request, ctx, outputs: result });
+      const resources = await definition.resources({ inputs: validationResult.value, ctx, outputs: result, logger: l });
 
       if (declaration.type === "mutation") {
         this.sidekickConnection.update(resources).then((e) => {

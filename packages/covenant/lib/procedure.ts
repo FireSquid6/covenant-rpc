@@ -3,6 +3,7 @@ import type { ProcedureDeclaration, ProcedureType } from ".";
 import type { MaybePromise } from "bun";
 import { v } from "./validation";
 import type { Flatten } from "./utils";
+import type { Logger } from "./logger";
 
 export interface ProcedureRequest {
   headers: Headers;
@@ -18,6 +19,7 @@ export interface ProcedureInputs<Inputs, Context, Derivation> {
   ctx: Context,
   derived: Derivation,
   request: ProcedureRequest,
+  logger: Logger,
   setHeader: (name: string, value: string) => void;
   deleteHeader: (name: string) => void;
   error: (message: string, code: number) => never;
@@ -25,6 +27,7 @@ export interface ProcedureInputs<Inputs, Context, Derivation> {
 
 export interface ResourceInputs<Inputs, Context, Outputs> {
   inputs: Inputs,
+  logger: Logger,
   ctx: Context,
   outputs: Outputs,
 }
