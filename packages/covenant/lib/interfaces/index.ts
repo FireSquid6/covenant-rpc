@@ -1,7 +1,7 @@
 import type { MaybePromise } from "../utils";
 import type { ChannelConnectionPayload, ChannelConnectionRequest, ChannelConnectionResponse, ServerMessage } from "../channel";
 import type { ProcedureRequestBody, ProcedureResponse } from "../procedure";
-import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "../sidekick";
+import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "../sidekick/protocol";
 
 
 export interface ClientToServerConnection {

@@ -1,6 +1,6 @@
 import type { ClientToSidekickConnection, ServerToSidekickConnection } from ".";
 import type { MaybePromise } from "../utils";
-import type { SidekickOutgoingMessage, SidekickIncomingMessage } from "../sidekick";
+import type { SidekickOutgoingMessage, SidekickIncomingMessage } from "../sidekick/protocol";
 
 export class MockSidekick {
   private listeners: ((m: SidekickOutgoingMessage) => MaybePromise<void>)[] = [];
