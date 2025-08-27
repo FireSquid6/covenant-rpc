@@ -2,7 +2,7 @@ import { declareCovenant, mutation } from "../lib";
 import { z } from "zod";
 import { CovenantClient } from "../lib/client";
 import { emptyClientToSidekick } from "../lib/interfaces/clientToSidekick";
-import { emptyClientToServer } from "../lib/interfaces/clientToServer";
+import { emptyClientToServer } from "../lib/interfaces/empty";
 import type { InferProcedureInputs } from "../lib/procedure";
 
 

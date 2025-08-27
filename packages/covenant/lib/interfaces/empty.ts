@@ -1,4 +1,16 @@
 import type { ClientToServerConnection } from ".";
+import type { ClientToSidekickConnection } from ".";
+
+export function emptyClientToSidekick(): ClientToSidekickConnection {
+  return {
+    sendMessage() {
+
+    },
+    onMessage() {
+      return () => {};
+    },
+  }
+}
 
 
 export function emptyClientToServer(): ClientToServerConnection {
@@ -28,6 +40,6 @@ export function emptyClientToServer(): ClientToServerConnection {
         resources: [],
       }
     }
-
   }
 }
+
