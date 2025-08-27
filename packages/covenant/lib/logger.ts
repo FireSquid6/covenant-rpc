@@ -1,32 +1,74 @@
 
 
-export interface Logger {
-  sublogger(prefix: string): Logger;
-  info(text: string): void;
-  error(text: string): void;
-  warn(text: string): void;
+
+export type LoggerLevel = "info" | "error" | "warn" | "slient" | "debug";
+const loggerLevels: Record<LoggerLevel, number> = { "slient": 0, "error": 1, "warn": 2, "info": 3, "debug": 4 };
+
+function levelSatisfies(currentLevel: LoggerLevel, maxLevel: LoggerLevel): boolean {
+  return loggerLevels[currentLevel] <= loggerLevels[maxLevel];
 }
 
-export class ConsoleLogger implements Logger {
-  prefixes: string[];
+export type Prefix = string | (() => string);
 
-  constructor(prefixes: string[] = []) {
+export class Logger {
+  prefixes: Prefix[];
+  level: LoggerLevel
+
+  constructor(level: LoggerLevel, prefixes: Prefix[] = []) {
     this.prefixes = prefixes;
+    this.level = level;
   }
 
-  sublogger(prefix: string): Logger {
-    return new ConsoleLogger([...this.prefixes, prefix]);
+  sublogger(prefix: Prefix): Logger {
+    return new Logger(this.level, [...this.prefixes, prefix]);
+  }
+
+  debug(text: string): void {
+    if (!levelSatisfies("debug", this.level)) {
+      return;
+    }
+
+    console.log(`${this.getPrefix()}DEBUG: ${text}`);
   }
 
   info(text: string): void {
-    console.log(`INFO: ${text}`);
+    if (!levelSatisfies("info", this.level)) {
+      return;
+    }
+
+    console.log(`${this.getPrefix()}INFO: ${text}`);
   }
 
   error(text: string): void {
-    console.log(`ERROR: ${text}`);
+    if (!levelSatisfies("error", this.level)) {
+      return;
+    }
+
+    console.log(`${this.getPrefix()}ERROR: ${text}`);
   }
 
   warn(text: string): void {
-    console.log(`WARNING: ${text}`);
+    if (!levelSatisfies("error", this.level)) {
+      return;
+    }
+
+    console.log(`${this.getPrefix()}WARNING: ${text}`);
+  }
+
+  fatal(text: string): never {
+    console.log("---------------------------------");
+    console.log(`${this.getPrefix()}FATAL: ${text}`);
+    console.log("---------------------------------");
+    process.exit(1);
+  }
+
+  private getPrefix(): string {
+    if (this.prefixes.length === 0) {
+      return "";
+    }
+    const strs = this.prefixes.map(p => typeof p === "string" ? p : p());
+    return `[${strs.join(" |> ")}] `;
+
   }
 }
+

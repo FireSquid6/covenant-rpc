@@ -6,6 +6,7 @@ import type { ServerToSidekickConnection } from "./interfaces";
 import type { ChannelDefinition } from "./channel";
 import { v } from "./validation";
 import { procedureErrorFromUnknown, ThrowableProcedureError } from "./errors";
+import { Logger, type LoggerLevel } from "./logger";
 
 
 export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends StandardSchemaV1, Derivation> = {
@@ -35,20 +36,26 @@ export class CovenantServer<
 
   private procedureDefinitions: ProcedureDefinitionMap<P, ContextSchema, Derived>;
   private channelDefinitions: ChannelDefinitionMap<C>;
+  private logger: Logger;
 
   constructor(covenant: Covenant<P, C, ContextSchema>, {
     contextGenerator,
     derivation,
     sidekickConnection,
+    logLevel,
   }: {
     contextGenerator: ContextGenerator<ContextSchema>,
-    derivation: Derivation<Derived, StandardSchemaV1.InferOutput<ContextSchema>>
-    sidekickConnection: ServerToSidekickConnection
+    derivation: Derivation<Derived, StandardSchemaV1.InferOutput<ContextSchema>>,
+    sidekickConnection: ServerToSidekickConnection,
+    logLevel?: LoggerLevel,
   }) {
     this.covenant = covenant;
     this.contextGenerator = contextGenerator;
     this.derivation = derivation;
     this.sidekickConnection = sidekickConnection;
+    this.logger = new Logger(logLevel ?? "info", [
+      () => new Date().toUTCString(),
+    ]);
 
 
     // both of these fail. We leave them emtpy and let the user
@@ -83,6 +90,7 @@ export class CovenantServer<
     params: ArrayToMap<C[N]["params"]>,
     message: StandardSchemaV1.InferOutput<C[N]["serverMessage"]>
   ): Promise<Error | null> {
+    this.logger.info(`Sending message to ${String(name)} with params ${JSON.stringify(params)}`);
     return await this.sidekickConnection.postMessage({
       channel: String(name),
       params,
@@ -93,18 +101,19 @@ export class CovenantServer<
   assertAllDefined(): void {
     for (const p of Object.keys(this.covenant.procedures)) {
       if (this.procedureDefinitions[p] === undefined) {
-        throw new Error(`Procedure ${p} was not defined`)
+        this.logger.fatal(`Procedure ${p} was not defined`);
       }
     }
 
     for (const c of Object.keys(this.covenant.channels)) {
       if (this.channelDefinitions[c] === undefined) {
-        throw new Error(`Channel ${c} was not defined`);
+        this.logger.fatal(`Channel ${c} was not defined`);
       }
     }
   }
 
   private async processProcedure(request: ProcedureRequest, newHeaders: Headers): Promise<ProcedureResponse> {
+    let l = this.logger.sublogger(`Processing ${request.procedure}`);
     try {
       const declaration = this.covenant.procedures[request.procedure];
       const definition = this.procedureDefinitions[request.procedure];
@@ -148,6 +157,7 @@ export class CovenantServer<
         });
       }
 
+      l.info("Returning OK")
       return {
         status: "OK",
         data: result,
@@ -156,6 +166,7 @@ export class CovenantServer<
 
     } catch (e) {
       const error = procedureErrorFromUnknown(e);
+      l.error(`Returning ERR ${error.code} - ${error.message}`);
       return {
         status: "ERR",
         error,
