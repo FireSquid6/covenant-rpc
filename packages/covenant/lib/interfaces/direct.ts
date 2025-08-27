@@ -5,7 +5,7 @@ import { v } from "../validation";
 import { procedureResponseSchema } from "../procedure";
 
 
-export function directClientToServerConnection(
+export function directClientToServer(
   server: CovenantServer<any, any, any, any>,
   extraHeaders: Record<string, string>
 ): ClientToServerConnection {
