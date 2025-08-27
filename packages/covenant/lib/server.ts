@@ -113,7 +113,7 @@ export class CovenantServer<
   }
 
   private async processProcedure(request: ProcedureRequest, newHeaders: Headers): Promise<ProcedureResponse> {
-    let l = this.logger.sublogger(`Processing ${request.procedure}`);
+    let l = this.logger.sublogger(`PROCEDURE ${request.procedure}`);
     try {
       const declaration = this.covenant.procedures[request.procedure];
       const definition = this.procedureDefinitions[request.procedure];
@@ -150,9 +150,8 @@ export class CovenantServer<
 
       if (declaration.type === "mutation") {
         this.sidekickConnection.update(resources).then((e) => {
-          // TODO - log this error if it's bad
           if (e !== null) {
-            throw e;
+            l.error(`Failed to send resource updates for ${resources.toString()} - ${e.message}`);
           }
         });
       }
@@ -178,6 +177,7 @@ export class CovenantServer<
     const { data: parsed, error, success } = await parseRequest(request);
 
     if (!success) {
+      this.logger.error(`Failed parsing procedure request: ${error.message}`);
       return new Response(`Error parsing request body. If you're a dev seeing this then this is probably my bad not yours. Create an issue on the covenant rpc github: ${error.message}`);
     }
 
@@ -208,13 +208,11 @@ export class CovenantServer<
     switch (type) {
       case "channel":
         throw new Error("handling channels is not implemented");
-        break;
       case "procedure":
         response = await this.handleProcedure(request);
         break;
       case "connect":
         throw new Error("handling connecitons is not implemented");
-        break;
     }
 
     return response;
@@ -228,7 +226,7 @@ export async function parseRequest(request: Request): AsyncResult<ProcedureReque
     const result = v.parseSafe(body, procedureRequestBodySchema);
     
     if (result === null) {
-      throw new Error(`Failed to parse body as a ProcedureRequestBody`);
+      throw new Error(`Failed to parse body as a ProcedureRequestBody: ${JSON.stringify(body)}`);
     }
     const url = new URL(request.url);
 

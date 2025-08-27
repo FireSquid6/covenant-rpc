@@ -2,6 +2,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ProcedureDeclaration, ProcedureType } from ".";
 import type { MaybePromise } from "bun";
 import { v } from "./validation";
+import type { Flatten } from "./utils";
 
 export interface ProcedureRequest {
   headers: Headers;
@@ -73,3 +74,30 @@ export const procedureRequestBodySchema = v.obj({
 });
 
 export type ProcedureRequestBody = v.Infer<typeof procedureRequestBodySchema>;
+
+
+export type InferProcedureInputs<P> = P extends ProcedureDeclaration<
+  infer InputSchema,
+  any,
+  any
+> ? StandardSchemaV1.InferInput<InputSchema> : never;
+
+
+export type InferProcedureOutputs<P> = P extends ProcedureDeclaration<
+  any,
+  infer OutputSchema,
+  any
+> ? StandardSchemaV1.InferOutput<OutputSchema> : never
+
+
+export type InferProcedureResult<P> = {
+  success: true,
+  data: Flatten<InferProcedureOutputs<P>>,
+  resources: string[]
+  error: null,
+} | {
+  success: false,
+  error: ProcedureError,
+  data: null,
+  resources: null,
+}

@@ -53,7 +53,7 @@ export interface Covenant<
 > {
   procedures: P,
   channels: C,
-  conext: ContextSchema
+  context: ContextSchema
 }
 
 export function declareCovenant<
@@ -62,6 +62,34 @@ export function declareCovenant<
   Context extends StandardSchemaV1,
 >(covenant: Covenant<P, C, Context>): Covenant<P, C, Context> {
   return covenant;
+}
+
+export function mutation<
+  Inputs extends StandardSchemaV1,
+  Outputs extends StandardSchemaV1,
+>({ input, output }: {
+  input: Inputs,
+  output: Outputs,
+}): ProcedureDeclaration<Inputs, Outputs, "mutation"> {
+  return {
+    type: "mutation",
+    input,
+    output,
+  }
+}
+
+export function query<
+  Inputs extends StandardSchemaV1,
+  Outputs extends StandardSchemaV1,
+>({ input, output }: {
+  input: Inputs,
+  output: Outputs,
+}): ProcedureDeclaration<Inputs, Outputs, "query"> {
+  return {
+    type: "query",
+    input,
+    output,
+  }
 }
 
 
