@@ -1,23 +1,10 @@
 import type { ClientToSidekickConnection, ServerToSidekickConnection } from ".";
-import type { MaybePromise } from "../utils";
-import type { SidekickOutgoingMessage, SidekickIncomingMessage } from "../sidekick/protocol";
+import type { Sidekick } from "../sidekick";
 
-export class MockSidekick {
-  private listeners: ((m: SidekickOutgoingMessage) => MaybePromise<void>)[] = [];
 
-  update() {
 
-  }
-  onMessage(handler: (m: SidekickOutgoingMessage) => MaybePromise<void>): () => void {
-    this.listeners.push(handler);
-    return () => {
-      const newListeners = this.listeners.filter(l => l !== handler);
-      this.listeners = newListeners;
-    }
-  }
-}
 
-export function mockServerToSidekick(): ServerToSidekickConnection {
+export function mockServerToSidekick(sidekick: Sidekick): ServerToSidekickConnection {
   return {
     async addConnection() {
       return null;
