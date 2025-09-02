@@ -75,6 +75,4 @@ export class MultiTopicPubsub<T> {
     const promises = listeners.map(l => l(data));
     await Promise.all(promises);
   }
-
-
 }
