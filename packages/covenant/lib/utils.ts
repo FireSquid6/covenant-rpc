@@ -45,3 +45,34 @@ export function issuesToString(issues: readonly StandardSchemaV1.Issue[]): strin
 
   return strs.join(", ");
 }
+
+
+
+export type PubsubListener<T> = (t: T) => MaybePromise<void>;
+
+export class MultiTopicPubsub<T> {
+  private listenerMap: Map<string, PubsubListener<T>[]> = new Map();
+  
+  subscribe(topic: string, listener: PubsubListener<T>) {
+    if (this.listenerMap.has(topic)) {
+      const newListeners = [...this.listenerMap.get(topic)!, listener];
+      this.listenerMap.set(topic, newListeners);
+    } else {
+      this.listenerMap.set(topic, [listener]);
+    }
+  }
+
+  unsubscribe(topic: string, listener: PubsubListener<T>) {
+    if (this.listenerMap.has(topic)) {
+      const listeners = this.listenerMap.get(topic)!;
+      this.listenerMap.set(topic, listeners.filter(l => l !== listener));
+    }
+  }
+
+  async publish(topic: string, data: T) {
+    const listeners = this.listenerMap.get(topic) ?? [];
+
+    const promises = listeners.map(l => l(data));
+    await Promise.all(promises);
+  }
+}

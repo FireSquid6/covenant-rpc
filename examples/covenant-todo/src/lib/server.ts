@@ -3,13 +3,14 @@ import { User } from "@/db/schema";
 import { deleteTodo, getAllTodosForUser, makeTodo, ownsTodo, updateTodo } from "@/db/todo";
 import { getUserAndSession } from "@/db/user";
 import { covenant } from "@/lib/covenant";
-import { emptyRealtimeConnection } from "covenant/realtime";
-import { CovenantServer } from "covenant/server";
+import { CovenantServer } from "@covenant/rpc/server";
+import { emptyServerToSidekick } from "@covenant/rpc/interfaces/empty";
 
 
 export const covenantServer = new CovenantServer(
   covenant,
   {
+    sidekickConnection: emptyServerToSidekick(),
     contextGenerator: async () => {
       const auth = await getUserAndSession(db);
       const user = auth?.user ?? null;
@@ -30,7 +31,6 @@ export const covenantServer = new CovenantServer(
         },
       }
     },
-    realtimeConnection: emptyRealtimeConnection(),
   }
 )
 

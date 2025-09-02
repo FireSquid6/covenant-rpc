@@ -120,42 +120,49 @@ test("procedure with local listen", async () => {
     serverConnection: directClientToServer(server, {}),
   });
 
-  await new Promise<void>(async (resolve) => {
-    let times = 0;
-    const unsubscribe = client.listen("getWidgets", null, (result) => {
-      times += 1;
-      expect(result.resources).toEqual(["widgets"]);
-      expect(result.error).toBe(null);
-      expect(result.success).toBe(true);
-      switch (times) {
-        case 1:
-          expect(result.data).toEqual([
-            {
-              id: 1,
-              name: "Widget one",
-              price: 1000000,
-            },
-          ]);
-          break;
-        case 2:
-          expect(result.data).toEqual([
-            {
-              id: 1,
-              name: "Widget one",
-              price: 1000000,
-            },
-            {
-              id: 2,
-              name: "Widget two",
-              price: 1000000,
-            },
-          ])
+  // this is really ugly
+  const p = new Promise<void>(async (resolveOuter) => {
 
-          resolve();
-          unsubscribe();
-          break;
-      }
+    await new Promise<void>(async (resolve) => {
+      let times = 0;
+      const unsubscribe = client.listen("getWidgets", null, (result) => {
+        times += 1;
+        expect(result.resources).toEqual(["widgets"]);
+        expect(result.error).toBe(null);
+        expect(result.success).toBe(true);
+
+        switch (times) {
+          case 1:
+            expect(result.data).toEqual([
+              {
+                id: 1,
+                name: "Widget one",
+                price: 1000000,
+              },
+            ]);
+            resolveOuter();
+            break;
+          case 2:
+            expect(result.data).toEqual([
+              {
+                id: 1,
+                name: "Widget one",
+                price: 1000000,
+              },
+              {
+                id: 2,
+                name: "Widget two",
+                price: 1000000,
+              },
+            ])
+
+            resolve();
+            unsubscribe();
+            break;
+        }
+      });
     });
+    await p;
 
     client.mutate("addWidget", {
       id: 2,

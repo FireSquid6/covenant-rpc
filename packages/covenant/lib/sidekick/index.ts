@@ -1,4 +1,3 @@
-import { promise } from "zod";
 import type { ChannelConnectionPayload, ServerMessage } from "../channel";
 import type { SidekickToServerConnection } from "../interfaces";
 import { httpSidekickToServer } from "../interfaces/http";

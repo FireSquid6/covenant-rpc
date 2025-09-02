@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { declareCovenant, query, mutation } from "covenant";
+import { declareCovenant, query, mutation } from "@covenant/rpc";
 import { selectUserSchema, todosSelectSchema } from "@/db/schema";
 
 
