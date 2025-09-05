@@ -1,6 +1,7 @@
+import type { ProcedureMap, ChannelMap } from "@covenant/rpc";
 
-export interface CovenantStore<T> {
+
+
+class CovenantProvider<P extends ProcedureMap> {
 
 }
-
-
