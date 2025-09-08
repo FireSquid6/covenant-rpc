@@ -1,10 +1,10 @@
-import type { ClientToServerConnection, SidekickToServerConnection } from ".";
+import type { ClientToServerConnection, ServerToSidekickConnection, SidekickToServerConnection } from ".";
 import type { ClientToSidekickConnection } from ".";
 import { procedureResponseSchema } from "../procedure";
 import { v } from "../validation";
 
-// TODO - include key in the args
-export function httpClientToSidekick(): ClientToSidekickConnection {
+export function httpClientToSidekick(url: string): ClientToSidekickConnection {
+  throw new Error("have not implemented the client to sidekick function yet");
   return {
     sendMessage(message) {
 
@@ -82,4 +82,9 @@ export function httpSidekickToServer(url: string, key: string): SidekickToServer
       throw new Error("not implemented httpSidekickToServer");
     },
   }
+}
+
+
+export function httpServerToSidekick(url: string, key: string): ServerToSidekickConnection {
+  throw new Error("Not implemented");
 }
