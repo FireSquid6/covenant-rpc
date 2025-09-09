@@ -1,17 +1,107 @@
 import type { ClientToServerConnection, ServerToSidekickConnection, SidekickToServerConnection } from ".";
 import type { ClientToSidekickConnection } from ".";
 import { procedureResponseSchema } from "../procedure";
+import { sidekickIncomingMessageSchema, type SidekickIncomingMessage, type SidekickOutgoingMessage } from "../sidekick/protocol";
+import { isPromise, type MaybePromise } from "../utils";
 import { v } from "../validation";
 
-export function httpClientToSidekick(url: string): ClientToSidekickConnection {
-  throw new Error("have not implemented the client to sidekick function yet");
-  return {
-    sendMessage(message) {
+export function httpClientToSidekick(rootUrl: string): ClientToSidekickConnection {
+  return new HttpClientToSidekick(rootUrl);
+}
 
-    },
-    onMessage() {
-      return () => { };
-    },
+class HttpClientToSidekick implements ClientToSidekickConnection {
+  socketUrl: string
+  listeners: ((m: SidekickOutgoingMessage) => MaybePromise<void>)[] = [];
+
+  //@ts-expect-error we define this in the reconnectSocket method which is called by the constructor
+  socket: WebSocket;
+  ready: boolean = false;
+  sendQueue: SidekickIncomingMessage[] = []
+
+  constructor(rootUrl: string) {
+    const url = new URL(rootUrl);
+    const protocol = url.protocol === "https:" ? "wss" : "ws";
+    this.socketUrl = `${protocol}://${url.host}/socket`;
+
+    this.reconnectSocket();
+  }
+
+  private reconnectSocket() {
+    this.socket = new WebSocket(this.socketUrl);
+    this.ready = false;
+
+
+    this.socket.onmessage = async (m) => {
+      const message = v.parseSafe(m, sidekickIncomingMessageSchema);
+
+      if (!message) {
+        await this.emitMessage({
+          type: "error",
+          error: {
+            fault: "sidekick",
+            message: "Error parsing incoming message from sidekick",
+            channel: "unknown",
+            params: {},
+          }
+        })
+      }
+    }
+
+    this.socket.onopen = () => {
+      this.ready = true;
+
+      for (const m of this.sendQueue) {
+        this.socket.send(JSON.stringify(m));
+      }
+    }
+
+    this.socket.onclose = () => {
+      this.ready = false;
+    }
+
+    this.socket.onerror = async () => {
+      this.ready = false;
+
+      await this.emitMessage({
+        type: "error",
+        error: {
+          fault: "client",
+          message: "Unknown websocket error",
+          channel: "unknown",
+          params: {},
+        }
+      })
+    }
+  }
+
+  private async emitMessage(m: SidekickOutgoingMessage) {
+    const promises: Promise<void>[] = [];
+    for (const l of this.listeners) {
+      const p = l(m);
+      if (isPromise(p)) {
+        promises.push(p);
+      }
+    }
+
+    await Promise.all(promises);
+  }
+
+  sendMessage(message: SidekickIncomingMessage): void {
+    if (this.ready) {
+      const json = JSON.stringify(message);
+      this.socket.send(json);
+    } else {
+      this.sendQueue.push(message);
+    }
+  }
+
+  onMessage(handler: (m: SidekickOutgoingMessage) => MaybePromise<void>): () => void {
+    this.listeners.push(handler);
+
+    return () => {
+      const newListeners = this.listeners.filter(l => l !== handler);
+      this.listeners = newListeners;
+    }
   }
 }
 

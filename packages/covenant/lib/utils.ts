@@ -52,7 +52,7 @@ export type PubsubListener<T> = (t: T) => MaybePromise<void>;
 
 export class MultiTopicPubsub<T> {
   private listenerMap: Map<string, PubsubListener<T>[]> = new Map();
-  
+
   subscribe(topic: string, listener: PubsubListener<T>) {
     if (this.listenerMap.has(topic)) {
       const newListeners = [...this.listenerMap.get(topic)!, listener];
@@ -75,4 +75,12 @@ export class MultiTopicPubsub<T> {
     const promises = listeners.map(l => l(data));
     await Promise.all(promises);
   }
+}
+
+
+
+export function isPromise(obj: unknown): obj is Promise<unknown> {
+  return obj != null &&
+    typeof obj === "object" &&
+    typeof (obj as any).then === "function";
 }
