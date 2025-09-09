@@ -9,7 +9,7 @@ import { procedureErrorFromUnknown, ThrowableProcedureError } from "./errors";
 import { Logger, type LoggerLevel } from "./logger";
 
 
-export type ProcedureDefinitionMap<T extends ProcedureMap, Context extends StandardSchemaV1, Derivation> = {
+export type ProcedureDefinitionMap<T extends ProcedureMap, Context, Derivation> = {
   [key in keyof T]: ProcedureDefinition<T[key], Context, Derivation> | undefined
 }
 
@@ -17,35 +17,35 @@ export type ChannelDefinitionMap<T extends ChannelMap> = {
   [key in keyof T]: ChannelDefinition<T[key]>
 }
 
-export type ContextGenerator<Context extends StandardSchemaV1> = 
-  (i: ProcedureInputs<unknown, undefined, undefined>) => MaybePromise<StandardSchemaV1.InferOutput<Context>>
+export type ContextGenerator<Context> = 
+  (i: ProcedureInputs<unknown, undefined, undefined>) => MaybePromise<Context>
 
-export type Derivation<Derived, Context> = (i: ProcedureInputs<undefined, Context, undefined>) => MaybePromise<Derived>;
+export type Derivation<Context, Derived> = (i: ProcedureInputs<undefined, Context, undefined>) => MaybePromise<Derived>;
 
 
 export class CovenantServer<
   P extends ProcedureMap,
   C extends ChannelMap,
-  ContextSchema extends StandardSchemaV1,
+  Context,
   Derived,
 > {
-  private covenant: Covenant<P, C, ContextSchema>;
-  private contextGenerator: ContextGenerator<ContextSchema>;
-  private derivation: Derivation<Derived, StandardSchemaV1.InferOutput<ContextSchema>>;
+  private covenant: Covenant<P, C>;
+  private contextGenerator: ContextGenerator<Context>;
+  private derivation: Derivation<Context, Derived>;
   private sidekickConnection: ServerToSidekickConnection
 
-  private procedureDefinitions: ProcedureDefinitionMap<P, ContextSchema, Derived>;
+  private procedureDefinitions: ProcedureDefinitionMap<P, Context, Derived>;
   private channelDefinitions: ChannelDefinitionMap<C>;
   private logger: Logger;
 
-  constructor(covenant: Covenant<P, C, ContextSchema>, {
+  constructor(covenant: Covenant<P, C>, {
     contextGenerator,
     derivation,
     sidekickConnection,
     logLevel,
   }: {
-    contextGenerator: ContextGenerator<ContextSchema>,
-    derivation: Derivation<Derived, StandardSchemaV1.InferOutput<ContextSchema>>,
+    contextGenerator: ContextGenerator<Context>,
+    derivation: Derivation<Context, Derived>,
     sidekickConnection: ServerToSidekickConnection,
     logLevel?: LoggerLevel,
   }) {
@@ -68,7 +68,7 @@ export class CovenantServer<
     this.channelDefinitions = {};
   }
 
-  defineProcedure<N extends keyof P>(name: N, definition: ProcedureDefinition<P[N], ContextSchema, Derived>) {
+  defineProcedure<N extends keyof P>(name: N, definition: ProcedureDefinition<P[N], Context, Derived>) {
     if (this.procedureDefinitions[name] !== undefined) {
       throw new Error(`Tried to define ${String(name)} twice!`);
     }
@@ -144,8 +144,9 @@ export class CovenantServer<
           throw new ThrowableProcedureError(message, code);
         }
       }
-      const ctx = await this.contextGenerator(initialInputs);
-      const derived = await this.derivation({ ...initialInputs, ctx });
+
+      const ctx: Context = await this.contextGenerator(initialInputs);
+      const derived: Derived = await this.derivation({ ...initialInputs, ctx });
       const result = await definition.procedure({ ...initialInputs, ctx, derived });
       const resources = await definition.resources({ inputs: validationResult.value, ctx, outputs: result, logger: l });
 

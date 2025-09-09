@@ -10,32 +10,16 @@ export function useTodos() {
   const [todos, setTodos] = useState<Todo[]>([])
 
   useEffect(() => {
-    const fn = async () => {
-      console.log("Calling the top lvel fn of useEffect")
-      const callback = await covenantClient.localListen("getTodos", null, ({ data, error, result }) => {
-        if (result !== "OK") {
-          console.error(error);
-          return;
-        }
-        setTodos(data);
-      });
+    console.log("Calling the top lvel fn of useEffect")
+    const callback = covenantClient.listen("getTodos", null, ({ data, error, success }) => {
+      if (!success) {
+        console.error(error);
+        return;
+      }
+      setTodos(data);
+    });
 
-      return callback;
-    }
-    const p = fn();
-
-    return () => {
-      console.log("UseEffect initialized an unsubcribe")
-      p.then((c) => {
-        if (c.type === "ERROR") {
-          console.log(c.error);
-          return;
-        }
-
-        console.log("Unsubscribing");
-        c.unsubscribe();
-      });
-    }
+    return callback;
   }, [covenantClient, setTodos])
 
   const createTodo = useCallback((text: string) => {

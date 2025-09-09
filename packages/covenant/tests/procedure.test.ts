@@ -21,7 +21,6 @@ test("simple procedure", async () => {
       })
     },
     channels: {},
-    context: z.undefined(),
   });
 
   const server = new CovenantServer(covenant, {
@@ -87,7 +86,6 @@ test("procedure with local listen", async () => {
       })
     },
     channels: {},
-    context: z.null(),
   });
 
   const server = new CovenantServer(covenant, {

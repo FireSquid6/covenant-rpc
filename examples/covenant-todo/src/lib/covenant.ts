@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { declareCovenant, query, mutation } from "@covenant/rpc";
-import { selectUserSchema, todosSelectSchema } from "@/db/schema";
+import { todosSelectSchema } from "@/db/schema";
 
 
 export const covenant = declareCovenant({
@@ -32,7 +32,4 @@ export const covenant = declareCovenant({
       output: z.null(),
     }),
   },
-  context: z.object({
-    user: z.nullable(selectUserSchema),
-  })
 })
