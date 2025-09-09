@@ -40,6 +40,8 @@ export function useTodos() {
       id,
       text: updates.text ?? todo.text,
       completed: updates.completed ?? todo.completed,
+    }).then(r => {
+      r.error
     })
   }, [todos])
 

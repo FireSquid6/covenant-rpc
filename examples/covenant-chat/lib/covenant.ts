@@ -6,5 +6,4 @@ import { type } from "arktype";
 export const covenant = declareCovenant({
   procedures: {},
   channels: {},
-  context: type("undefined"),
 })

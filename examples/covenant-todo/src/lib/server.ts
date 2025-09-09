@@ -24,6 +24,7 @@ export const covenantServer = new CovenantServer(
           const user = ctx.user;
 
           if (!user) {
+            // throwing an error like this is how we "return early" from a function
             throw error("Not authenticated", 401);
           }
 
@@ -37,9 +38,7 @@ export const covenantServer = new CovenantServer(
 covenantServer.defineProcedure("getTodos", {
   procedure: async ({ derived }) => {
     const user = await derived.forceAuthenticated();
-    console.log(`Refetching for ${user.id}`);
     const todos = await getAllTodosForUser(db, user.id);
-    console.log(todos);
     return todos;
   },
   resources: ({ ctx }) => [`/todos/${ctx.user?.id ?? "__null_user__"}`],
