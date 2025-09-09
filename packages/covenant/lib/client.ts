@@ -1,9 +1,7 @@
-import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ChannelMap, Covenant, ProcedureMap } from ".";
 import type { ClientToServerConnection, ClientToSidekickConnection } from "./interfaces";
 import type { InferProcedureInputs, InferProcedureOutputs, InferProcedureResult } from "./procedure";
 import { issuesToString } from "./utils";
-import { listen } from "bun";
 
 export type MutationKey<P extends ProcedureMap> = { [k in keyof P]: P[k]["type"] extends "mutation" ? k : never }[keyof P]
 export type QueryKey<P extends ProcedureMap> = {
@@ -15,16 +13,15 @@ export type Listener<T> = (s: T) => void | Promise<void>;
 export class CovenantClient<
   P extends ProcedureMap,
   C extends ChannelMap,
-  Context extends StandardSchemaV1,
 > {
-  private covenant: Covenant<P, C, Context>;
+  private covenant: Covenant<P, C>;
   private serverConnection: ClientToServerConnection;
   private sidekickConnection: ClientToSidekickConnection;
   private listeners: Map<string, (() => Promise<void>)[]> = new Map();
   private remoteListenersCount: Map<string, number> = new Map();
 
   constructor(
-    covenant: Covenant<P, C, Context>,
+    covenant: Covenant<P, C>,
     { serverConnection, sidekickConnection }: {
       serverConnection: ClientToServerConnection,
       sidekickConnection: ClientToSidekickConnection
@@ -160,6 +157,7 @@ export class CovenantClient<
   }
 
   private addListener(resources: string[], listener: () => Promise<void>, isRemote: boolean = true) {
+    // TODO - remote listeners
     for (const r of resources) {
       if (this.listeners.has(r)) {
         const newListeners = [...(this.listeners.get(r)!)];

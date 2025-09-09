@@ -32,18 +32,18 @@ export interface ResourceInputs<Inputs, Context, Outputs> {
   outputs: Outputs,
 }
 
-export type ProcedureDefinition<T, ContextSchema extends StandardSchemaV1, Derivation> = T extends ProcedureDeclaration<
+export type ProcedureDefinition<T, Context, Derivation> = T extends ProcedureDeclaration<
   infer InputSchema,
   infer OutputSchema,
   ProcedureType> ? {
     procedure: (i: ProcedureInputs<
       StandardSchemaV1.InferOutput<InputSchema>,
-      StandardSchemaV1.InferOutput<ContextSchema>,
+      Context,
       Derivation
     >) => MaybePromise<StandardSchemaV1.InferOutput<OutputSchema>>
     resources: (i: ResourceInputs<
       StandardSchemaV1.InferOutput<InputSchema>,
-      StandardSchemaV1.InferOutput<ContextSchema>,
+      Context,
       StandardSchemaV1.InferOutput<OutputSchema>
     >) => MaybePromise<string[]>
   } : never
