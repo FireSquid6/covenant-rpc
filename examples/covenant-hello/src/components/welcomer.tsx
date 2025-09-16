@@ -1,5 +1,6 @@
 import { covenantClient } from "@/client/api";
 
-export function Welcomer() {
 
+export function Welcomer() {
+  
 }
