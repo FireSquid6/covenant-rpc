@@ -1,5 +1,5 @@
 import type { ProcedureMap, ChannelMap, Covenant } from "@covenant/rpc";
-import { CovenantClient, type QueryKey } from "@covenant/rpc/client";
+import { CovenantClient, type MutationKey, type QueryKey } from "@covenant/rpc/client";
 import type { InferProcedureInputs, InferProcedureOutputs } from "@covenant/rpc/procedure";
 import { useEffect, useState } from "react";
 
@@ -24,13 +24,7 @@ export type ProcedureHook<T> = {
 }
 
 
-export class CovenantReact<P extends ProcedureMap, C extends ChannelMap> {
-  private client: CovenantClient<P, C>
-
-  constructor(client: CovenantClient<P, C>) {
-    this.client = client;
-  }
-
+export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> extends CovenantClient<P, C> {
   useQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): ProcedureHook<InferProcedureOutputs<P[Q]>> {
     const [state, setState] = useState<ProcedureHook<InferProcedureOutputs<P[Q]>>>({
       loading: true,
@@ -46,7 +40,7 @@ export class CovenantReact<P extends ProcedureMap, C extends ChannelMap> {
           error: null,
         });
 
-        const response = await this.client.query(procedureName, inputs);
+        const response = await this.query(procedureName, inputs);
 
         if (response.success) {
           setState({
@@ -63,11 +57,46 @@ export class CovenantReact<P extends ProcedureMap, C extends ChannelMap> {
         }
       }
       fn();
-    }, [inputs, this.client]);
+    }, [inputs]);
 
     return state;
-
   }
 
+  useMutation<Q extends MutationKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): ProcedureHook<InferProcedureOutputs<P[Q]>> {
+    const [state, setState] = useState<ProcedureHook<InferProcedureOutputs<P[Q]>>>({
+      loading: true,
+      data: null,
+      error: null,
+    });
+    
+    useEffect(() => {
+      const fn = async () => {
+        setState({
+          loading: true,
+          data: null,
+          error: null,
+        });
+
+        const response = await this.mutate(procedureName, inputs);
+
+        if (response.success) {
+          setState({
+            loading: false,
+            data: response.data,
+            error: null,
+          });
+        } else {
+          setState({
+            loading: false,
+            data: null,
+            error: response.error,
+          });
+        }
+      }
+      fn();
+    }, [inputs]);
+
+    return state;
+  }
 }
 
