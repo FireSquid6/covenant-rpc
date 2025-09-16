@@ -2,7 +2,6 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ProcedureDeclaration, ProcedureType } from ".";
 import type { MaybePromise } from "bun";
 import { v } from "./validation";
-import type { Flatten } from "./utils";
 import type { Logger } from "./logger";
 
 export interface ProcedureRequest {
@@ -95,7 +94,7 @@ export type InferProcedureOutputs<P> = P extends ProcedureDeclaration<
 
 export type InferProcedureResult<P> = {
   success: true,
-  data: Flatten<InferProcedureOutputs<P>>,
+  data: InferProcedureOutputs<P>,
   resources: string[]
   error: null,
 } | {

@@ -59,13 +59,11 @@ export class CovenantReact<P extends ProcedureMap, C extends ChannelMap> {
             loading: false,
             data: null,
             error: response.error,
-          })
-
+          });
         }
-
       }
       fn();
-    },)
+    }, [inputs, this.client]);
 
     return state;
 
