@@ -1,4 +1,7 @@
+#!/usr/bin/env bun
+
 import { createCommand } from "@commander-js/extra-typings";
+import { getSidekickApi } from "..";
 
 
 function prettyFatal(message: string): never {
@@ -35,7 +38,12 @@ program
       ? forceReadFromEnv("SIDEKICK_SECRET", "Try setting -p or including the env var")
       : opts.secret;
 
-  })
+    const app = getSidekickApi(secret);
+
+    app.listen(port, () => {
+      console.log(`Listening on ${port}`);
+    });
+  });
 
 
 
