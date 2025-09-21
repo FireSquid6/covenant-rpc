@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "sidekick": "bun run scripts/start-sidekick.ts",
     "build": "next build",
     "start": "next start"
   },
