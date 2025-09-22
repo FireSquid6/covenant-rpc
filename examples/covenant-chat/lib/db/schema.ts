@@ -17,6 +17,7 @@ export const user = sqliteTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
+export const userTableSchema = createSelectSchema(user);
 
 export const session = sqliteTable("session", {
   id: text("id").primaryKey(),
