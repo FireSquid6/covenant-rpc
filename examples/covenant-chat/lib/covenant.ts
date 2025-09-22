@@ -1,9 +1,13 @@
-import { declareCovenant } from "@covenant/rpc";
-import { type } from "arktype";
-
+import { declareCovenant, mutation, query } from "@covenant/rpc";
+import { z } from "zod";
 
 
 export const covenant = declareCovenant({
-  procedures: {},
+  procedures: {
+    getJoinedServers: query({
+      input: z.undefined(),
+      output
+    }),
+  },
   channels: {},
 })

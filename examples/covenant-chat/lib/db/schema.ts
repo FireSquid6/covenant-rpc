@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { createSelectSchema } from "drizzle-zod";
 
 export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
@@ -72,4 +73,31 @@ export const verification = sqliteTable("verification", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+});
+
+export const serverTable = sqliteTable("server", {
+  id: text("id").primaryKey().notNull().unique(),
+  name: text("name").notNull(),
+});
+
+export const serverTableSchema = createSelectSchema(serverTable);
+
+export const channelTable = sqliteTable("channel", {
+  id: text("id").primaryKey().notNull().unique(),
+  name: text("name").notNull(),
+  serverId: text("serverId").notNull().references(() => serverTable.id),
+});
+export const channelTableSchema = createSelectSchema(channelTable);
+
+export const messageTable = sqliteTable("message", {
+  id: text("id").primaryKey().notNull().unique(),
+  userId: text("userId").references(() => user.id),
+  channelId: text("id").notNull(),
+  content: text("content").notNull(),
+});
+export const messageTableSchema = createSelectSchema(messageTable);
+
+export const membershipTable = sqliteTable("membership", {
+  userId: text("userId").notNull(),
+  serverId: text("serverId").notNull(),
 });
