@@ -1,5 +1,5 @@
 import { server } from "../server";
-import { getServerWithChannels, getUserServersWithChannels } from "../db/servers";
+import { createChannel, deleteChannel, getServerWithChannels, getUserServersWithChannels } from "../db/servers";
 
 
 export function defineServerAndChannelProcs() {
@@ -27,7 +27,7 @@ export function defineServerAndChannelProcs() {
   });
 
   server.defineProcedure("getJoinedServers", {
-    procedure: async ({ inputs, derived, error }) => {
+    procedure: async ({ derived }) => {
       const { user } = derived.forceAuthenticated();
       const servers = await getUserServersWithChannels(user.id);
       return servers;
@@ -45,11 +45,23 @@ export function defineServerAndChannelProcs() {
   });
 
   server.defineProcedure("createChannel", {
-    resources: () => [],
+    procedure: async ({ derived, inputs }) => {
+      derived.forceAuthenticated();
+      // TODO - ensure user has the authority to do the thing 
+
+      const channel = await createChannel(inputs.serverId, inputs.name);
+      return channel;
+    },
+    resources: ({ outputs }) => [`/channels/${outputs.id}`],
   });
 
   server.defineProcedure("deleteChannel", {
-    resources: () => [],
+    procedure: async ({ derived, inputs }) => {
+      derived.forceAuthenticated();
+      await deleteChannel(inputs.channelId);
 
+      return undefined;
+    },
+    resources: ({ inputs }) => [`/channels/${inputs.channelId}`],
   });
 }

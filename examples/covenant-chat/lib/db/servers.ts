@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { serverTable, channelTable, membershipTable } from "./schema";
 import { eq, inArray } from "drizzle-orm";
+import type { Channel } from "./schema";
+import { randomUUID } from "crypto";
 
 export async function getServerWithChannels(serverId: string) {
   const server = await db
@@ -23,7 +25,9 @@ export async function getServerWithChannels(serverId: string) {
     channels,
   };
 
-}export async function getUserServersWithChannels(userId: string) {
+}
+
+export async function getUserServersWithChannels(userId: string) {
   const userMemberships = await db
     .select({
       server: serverTable,
@@ -47,4 +51,29 @@ export async function getServerWithChannels(serverId: string) {
     server: membership.server,
     channels: channels.filter(channel => channel.serverId === membership.server.id),
   }));
+}
+
+
+export async function createChannel(serverId: string, channelName: string): Promise<Channel> {
+  const id = randomUUID();
+  
+  await db
+    .insert(channelTable)
+    .values({
+      serverId,
+      name: channelName,
+      id,
+    });
+
+  return {
+    serverId,
+    name: channelName,
+    id,
+  }
+}
+
+export async function deleteChannel(channelId: string) {
+  await db
+    .delete(channelTable)
+    .where(eq(channelTable.id, channelId))
 }

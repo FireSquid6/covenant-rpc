@@ -14,7 +14,8 @@ export const covenant = declareCovenant({
     }),
     createChannel: mutation({
       input: z.object({
-        channelId: z.string(),
+        serverId: z.string(),
+        name: z.string(),
       }),
       output: channelTableSchema,
     }),
@@ -33,6 +34,8 @@ export const covenant = declareCovenant({
         channels: z.array(channelTableSchema),
       }),
     }),
+    // TODO: join server, create server, delete server, modify server
+    //
   },
   channels: {},
 })

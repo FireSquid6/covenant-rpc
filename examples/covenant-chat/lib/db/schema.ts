@@ -92,6 +92,7 @@ export const channelTable = sqliteTable("channel", {
   serverId: text("serverId").notNull().references(() => serverTable.id),
 });
 export const channelTableSchema = createSelectSchema(channelTable);
+export type Channel = InferSelectModel<typeof channelTable>;
 
 export const messageTable = sqliteTable("message", {
   id: text("id").primaryKey().notNull().unique(),
