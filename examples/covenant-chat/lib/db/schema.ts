@@ -1,3 +1,4 @@
+import type { InferSelectModel } from "drizzle-orm";
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createSelectSchema } from "drizzle-zod";
 
@@ -18,6 +19,8 @@ export const user = sqliteTable("user", {
     .notNull(),
 });
 export const userTableSchema = createSelectSchema(user);
+export type User = InferSelectModel<typeof user>;
+export type PublicUser = Omit<User,  "email" | "emailVerified" | "createdAt" | "updatedAt">;
 
 export const session = sqliteTable("session", {
   id: text("id").primaryKey(),

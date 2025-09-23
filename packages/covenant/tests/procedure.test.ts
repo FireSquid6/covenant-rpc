@@ -7,7 +7,6 @@ import { CovenantClient } from "../lib/client";
 import { directClientToServer } from "../lib/interfaces/direct";
 
 
-
 test("simple procedure", async () => {
   const covenant = declareCovenant({
     procedures: {
