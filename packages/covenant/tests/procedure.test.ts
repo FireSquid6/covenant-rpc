@@ -169,5 +169,69 @@ test("procedure with local listen", async () => {
   });
 });
 
+test("procedure error handling", async () => {
+  const covenant = declareCovenant({
+    procedures: {
+      failingProcedure: query({
+        input: z.object({
+          shouldFail: z.boolean(),
+        }),
+        output: z.object({
+          message: z.string(),
+        })
+      })
+    },
+    channels: {},
+  });
+
+  const server = new CovenantServer(covenant, {
+    contextGenerator: () => undefined,
+    derivation: () => { },
+    sidekickConnection: emptyServerToSidekick(),
+  });
+
+  server.defineProcedure("failingProcedure", {
+    resources: () => ["test"],
+    procedure: ({ inputs, error }) => {
+      if (inputs.shouldFail) {
+        error("This procedure failed intentionally", 400);
+      }
+      return {
+        message: "Success!",
+      }
+    },
+  })
+
+  const client = new CovenantClient(covenant, {
+    sidekickConnection: emptyClientToSidekick(),
+    serverConnection: directClientToServer(server, {}),
+  });
+
+  // Test successful case
+  const successResult = await client.query("failingProcedure", {
+    shouldFail: false,
+  });
+
+  expect(successResult.success).toBe(true);
+  expect(successResult.error).toBe(null);
+  expect(successResult.data).toEqual({
+    message: "Success!",
+  });
+  expect(successResult.resources).toEqual(["test"]);
+
+  // Test error case
+  const errorResult = await client.query("failingProcedure", {
+    shouldFail: true,
+  });
+
+  expect(errorResult.success).toBe(false);
+  expect(errorResult.data).toBe(null);
+  expect(errorResult.resources).toBe(null);
+  expect(errorResult.error).toEqual({
+    message: "This procedure failed intentionally",
+    code: 400,
+  });
+});
+
 // TODO: test procedure with context
 
