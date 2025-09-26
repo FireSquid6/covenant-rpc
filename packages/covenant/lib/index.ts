@@ -90,5 +90,23 @@ export function query<
 }
 
 
+// helper function to get better autocomplete
+export function channel<
+  ClientMessageSchema extends StandardSchemaV1,
+  ServerMessageSchema extends StandardSchemaV1,
+  ConnectionRequestSchema extends StandardSchemaV1,
+  ConnectionContextSchema extends StandardSchemaV1,
+  Params extends string[],
+>(c: {
+  clientMessage: ClientMessageSchema,
+  serverMessage: ServerMessageSchema,
+  connectionRequest: ConnectionRequestSchema,
+  connectionContext: ConnectionContextSchema,
+  params: Params,
+}) {
+  return c;
+}
+
+
 export type ContextGenerator<Context extends StandardSchemaV1> = 
   (i: ProcedureInputs<unknown, undefined, undefined>) => MaybePromise<StandardSchemaV1.InferOutput<Context>>
