@@ -60,22 +60,6 @@ export default function ChannelList({ server, channels, selectedChannelId, onCha
             ))}
           </div>
         </div>
-        
-        <div className="mb-4">
-          <div className="flex items-center justify-between px-2 py-1">
-            <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider">
-              Voice Channels
-            </h3>
-            <button className="text-gray-400 hover:text-white text-lg">+</button>
-          </div>
-          
-          <div className="space-y-1">
-            <button className="w-full flex items-center px-2 py-1.5 rounded text-left text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-150">
-              <span className="mr-2 text-gray-400">🔊</span>
-              <span className="text-sm font-medium">General</span>
-            </button>
-          </div>
-        </div>
       </div>
       
       <div className="h-16 bg-gray-900 border-t border-gray-700 flex items-center px-2">
