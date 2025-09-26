@@ -9,20 +9,21 @@ import type { MaybePromise } from "@covenant/rpc/utils";
 //
 // TODO - methods for sidekicks to communicate and stay in sync with each other. Need to figure out a smart way to do this.
 
-interface InternalSidekickConsumer {
-  client: SidekickClient,
-  onMessage: (m: SidekickOutgoingMessage) => MaybePromise<void>
-}
 
 
 export class InternalSidekick {
   private sidekick: Sidekick
-  private consumers: InternalSidekickConsumer[] = [];
+  private clients: InternalSidekickClient[] = [];
   // private listeners:
 
   constructor() {
-    this.sidekick = new Sidekick(async () => {
+    const clients = this.clients;
 
+    this.sidekick = new Sidekick(async (topic, message) => {
+      const subscribed = clients.filter(c => c.isSubscribed(topic));
+      for (const s of subscribed) {
+        s.directMessage(message)
+      }
     })
 
   }
@@ -34,36 +35,88 @@ export class InternalSidekick {
 
     return {
       // these will never fail - no network layer
-      async addConnection(payload) {
+      addConnection(payload) {
         sidekick.addConnection(payload); 
-        return null;
+        return Promise.resolve(null);
       },
       async update(resources) {
         await sidekick.updateResources(resources);
         return null;
       },
       async postMessage(message) {
-        const res = sidekick.postServerMessage(message);
+        await sidekick.postServerMessage(message);
         return null;
       },
     }
   }
 
   getConnectionFromClient(): ClientToSidekickConnection {
-    const id = crypto.randomUUID();
-    const consumer = {
-    }
-
+    const client = new InternalSidekickClient();
+    const sidekick = this.sidekick;
+    this.clients.push(client);
 
     return {
       sendMessage(message: SidekickIncomingMessage) {
-        
+        sidekick.handleClientMessage(client, message);
       },
       onMessage(handler) {
-          
+        return client.addHandler(handler);
       },
     }
   }
-
 }
 
+
+class InternalSidekickClient implements SidekickClient {
+  private id: string;
+  private subscribedTopics: Set<string>;
+  private handlers: ((m: SidekickOutgoingMessage) => MaybePromise<void>)[];
+
+  constructor() {
+    this.id = crypto.randomUUID();
+    this.subscribedTopics = new Set();
+    this.handlers = [];
+  }
+
+  subscribe(topic: string) {
+    this.subscribedTopics.add(topic);
+
+  }
+
+  directMessage(message: SidekickOutgoingMessage) {
+    for (const h of this.handlers) {
+      const p = h(message);
+      if (p instanceof Promise) {
+        p.catch((e) => {
+          throw new Error(`Unhandlable error in message handler: ${e}`);
+        });
+      }
+    }
+  }
+
+  getHandlers(): ((m: SidekickOutgoingMessage) => MaybePromise<void>)[] {
+    return this.handlers;
+  }
+
+  unsubscribe(topic: string): void {
+    this.subscribedTopics.delete(topic);
+  }
+
+  getId(): string {
+    return this.id;
+  }
+
+  isSubscribed(topic: string) {
+    return this.subscribedTopics.has(topic);
+  }
+
+  addHandler(handler: (m: SidekickOutgoingMessage) => MaybePromise<void>) {
+    this.handlers.push(handler);
+
+    return () => this.removeHandler(handler);
+  }
+
+  removeHandler(handler: (m: SidekickOutgoingMessage) => MaybePromise<void>) {
+    this.handlers = this.handlers.filter(h => h !== handler);
+  }
+}
