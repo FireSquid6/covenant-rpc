@@ -98,3 +98,42 @@ export type ChannelDefinition<T> = T extends ChannelDeclaration<
   >
 } : never
 
+export type InferChannelClientMessage<C> = C extends ChannelDeclaration<
+  infer ClientMessage,
+  any,
+  any,
+  any,
+  any
+> ? StandardSchemaV1.InferOutput<ClientMessage> : never
+
+export type InferChannelServerMessage<C> = C extends ChannelDeclaration<
+  any,
+  infer ServerMessage,
+  any,
+  any,
+  any
+> ? StandardSchemaV1.InferOutput<ServerMessage> : never
+
+export type InferChannelConnectionRequest<C> = C extends ChannelDeclaration<
+  any,
+  any,
+  infer ConnectionRequest,
+  any,
+  any
+> ? StandardSchemaV1.InferOutput<ConnectionRequest> : never
+
+export type InferChannelConnectionContext<C> = C extends ChannelDeclaration<
+  any,
+  any,
+  any,
+  infer ChannelContext,
+  any
+> ? StandardSchemaV1.InferOutput<ChannelContext> : never
+
+export type InferChannelParams<C> = C extends ChannelDeclaration<
+  any,
+  any,
+  any,
+  any,
+  infer Params
+> ? ArrayToMap<Params> : never

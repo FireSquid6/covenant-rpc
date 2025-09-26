@@ -2,6 +2,7 @@ import type { ProcedureMap, ChannelMap, Covenant } from "@covenant/rpc";
 import { CovenantClient, type MutationKey, type QueryKey } from "@covenant/rpc/client";
 import type { InferProcedureInputs, InferProcedureOutputs } from "@covenant/rpc/procedure";
 import { useEffect, useState } from "react";
+import { setSyntheticTrailingComments } from "typescript";
 
 
 export interface ReactProedureError {
@@ -98,5 +99,41 @@ export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> e
 
     return state;
   }
+
+  useListenedQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): ProcedureHook<InferProcedureOutputs<P[Q]>> {
+    const [state, setState] = useState<ProcedureHook<InferProcedureOutputs<P[Q]>>>({
+      loading: true,
+      data: null,
+      error: null,
+    });
+
+
+    useEffect(() => {
+       return this.listen(procedureName, inputs, ({ data, error }) => {
+
+         if (error !== null) {
+           setState({
+             loading: false,
+             error: error,
+             data: null,
+           });
+         } else {
+           setState({
+             loading: false,
+             error: null,
+             data: data,
+           });
+         }
+      });
+    }, [inputs])
+
+
+    return state;
+  }
+  
+
+  useLastChannelMessage<C extends ChannelName>(p)
 }
+
+
 

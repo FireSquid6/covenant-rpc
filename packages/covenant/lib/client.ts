@@ -1,4 +1,5 @@
 import type { ChannelMap, Covenant, ProcedureMap } from ".";
+import type { InferChannelConnectionContext, InferChannelParams, InferChannelServerMessage } from "./channel";
 import type { ClientToServerConnection, ClientToSidekickConnection } from "./interfaces";
 import type { InferProcedureInputs, InferProcedureOutputs, InferProcedureResult } from "./procedure";
 import { issuesToString } from "./utils";
@@ -30,6 +31,11 @@ export class CovenantClient<
     this.covenant = covenant;
     this.serverConnection = serverConnection;
     this.sidekickConnection = sidekickConnection;
+
+    this.sidekickConnection.onMessage(() => {
+      // TODO
+
+    })
   }
 
 
@@ -104,6 +110,37 @@ export class CovenantClient<
     await this.refetchResources(result.resources);
 
     return result;
+  }
+
+  subscribe<K extends keyof C>(
+    channelName: K,
+    params: InferChannelParams<C[K]>,
+    inputs: InferChannelConnectionContext<C[K]>,
+    callback: Listener<InferChannelServerMessage<C[K]>>
+  ) {
+
+    const p = async () => {
+      const { result } = await this.serverConnection.sendConnectionRequest({
+        channel: String(channelName),
+        params,
+        data: inputs,
+      });
+
+      if (result.type !== "OK") {
+        // TODO - handle error
+        return;
+      }
+
+      this.sidekickConnection.sendMessage({ 
+        type: "subscribe",
+        token: result.token,
+      });
+
+
+      // TODO - put the callback somewhere
+    }
+
+    p();
   }
 
 
