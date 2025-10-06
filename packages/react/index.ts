@@ -25,6 +25,7 @@ export type ProcedureHook<T> = {
 }
 
 
+// TODO - have a store that contains the results of a specific procedureName and inputs
 export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> extends CovenantClient<P, C> {
   useQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): ProcedureHook<InferProcedureOutputs<P[Q]>> {
     const [state, setState] = useState<ProcedureHook<InferProcedureOutputs<P[Q]>>>({
@@ -132,7 +133,9 @@ export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> e
   }
   
 
-  useLastChannelMessage<C extends ChannelName>(p)
+  useLastChannelMessage<N extends keyof C>(channel: N) {
+    // TODO
+  }
 }
 
 
