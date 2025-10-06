@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 
 import { db } from "@/lib/db";
+import { serverTable, user, membershipTable, channelTable } from "@/lib/db/schema";
 import { ArrayToMap, MaybePromise } from "@covenant/rpc/utils";
+import { eq } from "drizzle-orm";
 
 
 export interface Command<A extends readonly string[]> {
@@ -27,6 +29,57 @@ const commands: Command<any>[] = [
     args: ["person"],
     fn: ({ person }) => {
       console.log(`Hello, ${person}!`);
+    }
+  }),
+  makeCommand("createServer", {
+    args: ["name"],
+    fn: async ({ name }) => {
+      const id = crypto.randomUUID();
+      await db.insert(serverTable).values({
+        id,
+        name
+      });
+      console.log(`Created server "${name}" with ID: ${id}`);
+    }
+  }),
+  makeCommand("joinServer", {
+    args: ["email", "serverId"],
+    fn: async ({ email, serverId }) => {
+      const foundUser = await db.select().from(user).where(eq(user.email, email)).limit(1);
+      if (foundUser.length === 0) {
+        console.error(`User with email ${email} not found`);
+        return;
+      }
+      
+      const foundServer = await db.select().from(serverTable).where(eq(serverTable.id, serverId)).limit(1);
+      if (foundServer.length === 0) {
+        console.error(`Server with ID ${serverId} not found`);
+        return;
+      }
+
+      await db.insert(membershipTable).values({
+        userId: foundUser[0].id,
+        serverId
+      });
+      console.log(`User ${email} joined server "${foundServer[0].name}"`);
+    }
+  }),
+  makeCommand("createChannel", {
+    args: ["name", "serverId"],
+    fn: async ({ name, serverId }) => {
+      const foundServer = await db.select().from(serverTable).where(eq(serverTable.id, serverId)).limit(1);
+      if (foundServer.length === 0) {
+        console.error(`Server with ID ${serverId} not found`);
+        return;
+      }
+
+      const id = crypto.randomUUID();
+      await db.insert(channelTable).values({
+        id,
+        name,
+        serverId
+      });
+      console.log(`Created channel "${name}" in server "${foundServer[0].name}" with ID: ${id}`);
     }
   })
 ]
@@ -97,7 +150,7 @@ async function processCommand(line: string, commands: Command<any>[]) {
     return;
   }
 
-  const commandName = parts[0]!;
+  const commandName = parts.shift()!;
 
   const command = commands.find(c => c.name === commandName);
   if (!command) {
@@ -116,12 +169,15 @@ async function processCommand(line: string, commands: Command<any>[]) {
   }
   
   await command.fn(args);
+  console.log()
 }
 
 
 async function main() {
+  process.stdout.write("$ "); 
   for await (const line of console) {
     await processCommand(line, commands);
+    process.stdout.write("\n$ "); 
   }
 }
 
