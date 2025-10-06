@@ -1,5 +1,5 @@
 import { assertReadFromEnv } from "@/lib/utils";
-import { getSidekickApi } from "@covenant/sidekick";
+import { getSidekickApi } from "@covenant/sidekick/web";
 
 
 // change this if you want sidekick to run on a different port
