@@ -2,7 +2,7 @@
 
 import { authClient } from "@/client/auth"
 
-export default function SignInButton() {
+export function SignInButton() {
   return (
     <button
       className="btn btn-primary gap-2"

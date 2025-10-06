@@ -1,10 +1,15 @@
 import { authClient } from "@/client/auth"
 import { redirect } from "next/navigation";
+import { SignInButton } from "@/components/SignInButton";
 
 export default async function AuthPage() {
-  const session = await authClient.getSession();
+  const { data: session, error } = await authClient.getSession();
 
-  if (session) {
+  if (error !== null) {
+    redirect("/");
+  }
+
+  if (session !== null) {
     redirect("/");
   }
 
@@ -13,7 +18,6 @@ export default async function AuthPage() {
       <div className="card w-96 bg-base-200 shadow-xl">
         <div className="card-body items-center text-center">
           <h2 className="card-title">Sign In</h2>
-          <p>Welcome! Please sign in to continue.</p>
           <div className="card-actions justify-end">
             <SignInButton />
           </div>
@@ -21,7 +25,4 @@ export default async function AuthPage() {
       </div>
     </div>
   )
-
-
-
 }
