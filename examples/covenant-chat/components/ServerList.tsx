@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 
 function ServerSkeleton() {
   return (
-    <div className="w-12 h-12 rounded-2xl bg-gray-700 animate-pulse"></div>
+    <div className="w-12 h-12 rounded-2xl bg-base-content/30 animate-pulse"></div>
   );
 }
 
@@ -28,10 +28,10 @@ export function ServerList() {
           <ServerSkeleton key={index} />
         ))}
         
-        <div className="w-8 h-0.5 bg-gray-600 my-2 rounded-full"></div>
+        <div className="w-8 h-0.5 bg-base-content/30 my-2 rounded-full"></div>
         
         <div className="tooltip tooltip-right" data-tip="Add Server">
-          <button className="w-12 h-12 rounded-2xl bg-gray-700 hover:bg-green-600 hover:rounded-xl transition-all duration-200 flex items-center justify-center text-green-400 hover:text-white text-2xl">
+          <button className="w-12 h-12 rounded-2xl bg-base-content/30 hover:bg-success hover:rounded-xl transition-all duration-200 flex items-center justify-center text-success hover:text-success-content text-2xl">
             +
           </button>
         </div>
@@ -47,11 +47,11 @@ export function ServerList() {
             href={`/servers/${server.id}`}
             className={`
               w-12 h-12 rounded-2xl flex items-center justify-center
-              text-white font-semibold text-lg transition-all duration-200
-              hover:rounded-xl hover:bg-indigo-500
+              text-base-content font-semibold text-lg transition-all duration-200
+              hover:rounded-xl hover:bg-primary
               ${selectedServerId === server.id 
-                ? 'bg-indigo-600 rounded-xl' 
-                : 'bg-gray-700 hover:bg-gray-600'
+                ? 'bg-primary rounded-xl text-primary-content' 
+                : 'bg-base-content/30 hover:bg-base-content/20'
               }
             `}
           >
@@ -60,10 +60,10 @@ export function ServerList() {
         </div>
       ))}
       
-      <div className="w-8 h-0.5 bg-gray-600 my-2 rounded-full"></div>
+      <div className="w-8 h-0.5 bg-base-content/30 my-2 rounded-full"></div>
       
       <div className="tooltip tooltip-right" data-tip="Add Server">
-        <button className="w-12 h-12 rounded-2xl bg-gray-700 hover:bg-green-600 hover:rounded-xl transition-all duration-200 flex items-center justify-center text-green-400 hover:text-white text-2xl">
+        <button className="w-12 h-12 rounded-2xl bg-base-content/30 hover:bg-success hover:rounded-xl transition-all duration-200 flex items-center justify-center text-success hover:text-success-content text-2xl">
           +
         </button>
       </div>
