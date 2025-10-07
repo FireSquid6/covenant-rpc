@@ -2,7 +2,6 @@ import { CovenantServer } from "@covenant/rpc/server";
 import { covenant } from "./covenant";
 import { httpServerToSidekick } from "@covenant/rpc/interfaces/http";
 import { assertReadFromEnv } from "./utils";
-import { defineAll } from "./definitions";
 import { getUserAndSession } from "./db/user";
 
 const sidekickSecret = assertReadFromEnv("SIDEKICK_SECRET");
@@ -31,4 +30,3 @@ export const server = new CovenantServer(covenant, {
   sidekickConnection: httpServerToSidekick(sidekickUrl, sidekickSecret),
 });
 
-defineAll();

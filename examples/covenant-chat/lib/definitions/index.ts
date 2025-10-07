@@ -8,5 +8,3 @@ export function defineAll() {
   server.assertAllDefined();
 }
 
-defineAll();
-

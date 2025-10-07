@@ -1,11 +1,8 @@
 "use client";
-
+import Link from "next/link";
 import { useJoinedServers } from "@/hooks/useServers";
+import { usePathname } from "next/navigation";
 
-interface ServerListProps {
-  selectedServerId?: string;
-  onServerSelect: (serverId: string) => void;
-}
 
 function ServerSkeleton() {
   return (
@@ -13,8 +10,11 @@ function ServerSkeleton() {
   );
 }
 
-export default function ServerList({ selectedServerId, onServerSelect }: ServerListProps) {
+export function ServerList() {
   const { data: servers, loading, error } = useJoinedServers();
+  const pathname = usePathname();
+  const split = pathname.split("/");
+  const selectedServerId = split[2] ?? "none";
 
   if (error) {
     // TODO - better error management
@@ -23,7 +23,7 @@ export default function ServerList({ selectedServerId, onServerSelect }: ServerL
 
   if (loading) {
     return (
-      <div className="w-16 bg-gray-900 flex flex-col items-center py-3 gap-2">
+      <div className="w-16 bg-base-200 flex flex-col items-center py-3 gap-2">
         {Array.from({ length: 3 }).map((_, index) => (
           <ServerSkeleton key={index} />
         ))}
@@ -40,11 +40,11 @@ export default function ServerList({ selectedServerId, onServerSelect }: ServerL
   }
 
   return (
-    <div className="w-16 bg-gray-900 flex flex-col items-center py-3 gap-2">
+    <div className="w-16 bg-base-200 flex flex-col items-center py-3 gap-2">
       {(servers ?? []).map(({ server }) => (
         <div key={server.id} className="tooltip tooltip-right" data-tip={server.name}>
-          <button
-            onClick={() => onServerSelect(server.id)}
+          <Link
+            href={`/servers/${server.id}`}
             className={`
               w-12 h-12 rounded-2xl flex items-center justify-center
               text-white font-semibold text-lg transition-all duration-200
@@ -56,7 +56,7 @@ export default function ServerList({ selectedServerId, onServerSelect }: ServerL
             `}
           >
             {server.name.charAt(0).toUpperCase()}
-          </button>
+          </Link>
         </div>
       ))}
       

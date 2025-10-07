@@ -1,7 +1,9 @@
 import { vanillaAdapter } from "@covenant/rpc/adapters/vanilla";
 import { server } from "@/lib/server";
+import { defineAll } from "@/lib/definitions";
 
 
+defineAll();
 const handler = vanillaAdapter(server);
 
 

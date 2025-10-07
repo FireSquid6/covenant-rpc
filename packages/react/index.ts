@@ -1,11 +1,12 @@
 import type { ProcedureMap, ChannelMap, Covenant } from "@covenant/rpc";
 import { CovenantClient, type MutationKey, type QueryKey } from "@covenant/rpc/client";
 import type { InferProcedureInputs, InferProcedureOutputs } from "@covenant/rpc/procedure";
-import { useEffect, useState } from "react";
-import { setSyntheticTrailingComments } from "typescript";
+import { getChannelTopicName } from "@covenant/rpc/sidekick/protocol";
+import { cache, useEffect, useState } from "react";
+import { createTextChangeRange, setSyntheticTrailingComments } from "typescript";
 
 
-export interface ReactProedureError {
+export interface ReactProcedureError {
   code: number;
   message: string;
 }
@@ -21,19 +22,24 @@ export type ProcedureHook<T> = {
 } | {
   loading: false,
   data: null,
-  error: ReactProedureError,
+  error: ReactProcedureError,
 }
 
+type Listener = (k: ProcedureHook<any>) => void;
 
-// TODO - have a store that contains the results of a specific procedureName and inputs
+
 export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> extends CovenantClient<P, C> {
+  // this is any becuse we have no other choice. You just gotta trust me on this one.
+  private cache: Map<string, ProcedureHook<any>> = new Map();
+  private listenes: Map<string, Listener[]> = new Map();
+
   useQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): ProcedureHook<InferProcedureOutputs<P[Q]>> {
     const [state, setState] = useState<ProcedureHook<InferProcedureOutputs<P[Q]>>>({
       loading: true,
       data: null,
       error: null,
     });
-    
+
     useEffect(() => {
       const fn = async () => {
         setState({
@@ -70,7 +76,7 @@ export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> e
       data: null,
       error: null,
     });
-    
+
     useEffect(() => {
       const fn = async () => {
         setState({
@@ -110,31 +116,99 @@ export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> e
 
 
     useEffect(() => {
-       return this.listen(procedureName, inputs, ({ data, error }) => {
+      return this.listen(procedureName, inputs, ({ data, error }) => {
 
-         if (error !== null) {
-           setState({
-             loading: false,
-             error: error,
-             data: null,
-           });
-         } else {
-           setState({
-             loading: false,
-             error: null,
-             data: data,
-           });
-         }
+        if (error !== null) {
+          setState({
+            loading: false,
+            error: error,
+            data: null,
+          });
+        } else {
+          setState({
+            loading: false,
+            error: null,
+            data: data,
+          });
+        }
       });
     }, [inputs])
 
 
     return state;
   }
-  
+
+  private createCachedQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>) {
+    this.listen(procedureName, inputs, ({ data, error }) => {
+      const state: ProcedureHook<InferProcedureOutputs<P[Q]>> = error === null ? {
+        loading: false,
+        error: null,
+        data: data
+      } : {
+        loading: false,
+        error: error,
+        data: null,
+      }
+      const key = this.getCacheKey(String(procedureName), inputs);
+
+      const listeners = this.listenes.get(key) ?? [];
+      this.cache.set(key, state);
+
+      for (const l of listeners) {
+        l(state);
+      }
+    })
+  }
+
+  private getCacheKey(procedureName: string, inputs: any) {
+    return `${procedureName}-${JSON.stringify(inputs)}`;
+  }
+
+  private addCacheListener(key: string, l: Listener) {
+    const current = this.listenes.get(key) ?? [];
+    current.push(l);
+    this.listenes.set(key, current);
+  }
+  private removeCacheListener(listener: Listener) {
+    for (const [k, v] of this.listenes) {
+      if (v.find(l => l === listener) !== undefined) {
+        const n = v.filter(l => l !== listener);
+        this.listenes.set(k, n);
+      }
+    }
+  }
+
+
+  useCachedQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): ProcedureHook<InferProcedureOutputs<P[Q]>> {
+    const k = this.getCacheKey(String(procedureName), inputs);
+    const [state, setState] = useState<ProcedureHook<InferProcedureOutputs<P[Q]>>>(this.cache.has(k) ? this.cache.get(k)! : {
+      loading: true,
+      data: null,
+      error: null,
+    });
+
+    useEffect(() => {
+      // we have to refetch the key in case inputs changed
+      const newKey = this.getCacheKey(String(procedureName), inputs);
+
+      if (!this.cache.has(k)) {
+        this.createCachedQuery(procedureName, inputs);
+      }
+      const l: Listener = (s) => setState(s);
+
+      this.addCacheListener(newKey, l);
+
+      return () => this.removeCacheListener(l);
+
+    }, [setState, inputs]);
+
+
+    return state;
+  }
+
 
   useLastChannelMessage<N extends keyof C>(channel: N) {
-    // TODO
+    // TODO - channel listening isn't actually implemented yet
   }
 }
 
