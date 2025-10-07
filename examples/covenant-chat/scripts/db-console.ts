@@ -24,7 +24,7 @@ function makeCommand<A extends readonly string[]>(
   }
 }
 
-const commands: Command<any>[] = [
+const commands: Command<string[]>[] = [
   makeCommand("hello", {
     args: ["person"],
     fn: ({ person }) => {
@@ -80,6 +80,14 @@ const commands: Command<any>[] = [
         serverId
       });
       console.log(`Created channel "${name}" in server "${foundServer[0].name}" with ID: ${id}`);
+    }
+  }),
+  makeCommand("help", {
+    args: [],
+    fn: () => {
+      for (const c of commands) {
+        console.log(`${c.name}(${c.args.join(", ")})`);
+      }
     }
   })
 ]
@@ -169,7 +177,6 @@ async function processCommand(line: string, commands: Command<any>[]) {
   }
   
   await command.fn(args);
-  console.log()
 }
 
 

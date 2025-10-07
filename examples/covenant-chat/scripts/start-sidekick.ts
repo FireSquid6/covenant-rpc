@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import { assertReadFromEnv } from "@/lib/utils";
 import { getSidekickApi } from "@covenant/sidekick/web";
 
