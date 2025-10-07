@@ -4,6 +4,70 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useServerChannels } from "@/hooks/useServers";
 
+interface UserPanelProps {
+  isLoading?: boolean;
+}
+
+function UserPanel({ isLoading }: UserPanelProps) {
+  return (
+    <div className="h-16 bg-base-200 border-t border-base-content/20 flex items-center px-2">
+      <div className="flex items-center space-x-2">
+        <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+          {isLoading ? (
+            <div className="w-8 h-8 bg-base-content/30 rounded-full animate-pulse"></div>
+          ) : (
+            <span className="text-primary-content text-sm font-semibold">U</span>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          {isLoading ? (
+            <>
+              <div className="h-4 w-16 bg-base-content/30 rounded animate-pulse mb-1"></div>
+              <div className="h-3 w-12 bg-base-content/30 rounded animate-pulse"></div>
+            </>
+          ) : (
+            <>
+              <p className="text-base-content text-sm font-medium truncate">User</p>
+              <p className="text-base-content/60 text-xs">Online</p>
+            </>
+          )}
+        </div>
+        <div className="flex space-x-1">
+          <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
+            🎤
+          </button>
+          <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
+            🎧
+          </button>
+          <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
+            ⚙️
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ChannelHeaderProps {
+  title?: string;
+  isLoading?: boolean;
+  isError?: boolean;
+}
+
+function ChannelHeader({ title, isLoading, isError }: ChannelHeaderProps) {
+  return (
+    <div className="h-16 border-b border-base-content/20 flex items-center px-4">
+      {isLoading ? (
+        <div className="h-6 w-32 bg-base-content/30 rounded animate-pulse"></div>
+      ) : isError ? (
+        <h2 className="text-error font-semibold text-lg">Error</h2>
+      ) : (
+        <h2 className="text-base-content font-semibold text-lg truncate">{title}</h2>
+      )}
+    </div>
+  );
+}
+
 
 export default function ChannelList() {
   const pathname = usePathname();
@@ -15,9 +79,7 @@ export default function ChannelList() {
   if (loading) {
     return (
       <div className="w-60 bg-base-300 flex flex-col">
-        <div className="h-16 border-b border-base-content/20 flex items-center px-4">
-          <div className="h-6 w-32 bg-base-content/30 rounded animate-pulse"></div>
-        </div>
+        <ChannelHeader isLoading />
         
         <div className="flex-1 overflow-y-auto p-2">
           <div className="mb-4">
@@ -39,26 +101,7 @@ export default function ChannelList() {
           </div>
         </div>
 
-        <div className="h-16 bg-base-200 border-t border-base-content/20 flex items-center px-2">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-base-content/30 rounded-full animate-pulse"></div>
-            <div className="flex-1 min-w-0">
-              <div className="h-4 w-16 bg-base-content/30 rounded animate-pulse mb-1"></div>
-              <div className="h-3 w-12 bg-base-content/30 rounded animate-pulse"></div>
-            </div>
-            <div className="flex space-x-1">
-              <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
-                🎤
-              </button>
-              <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
-                🎧
-              </button>
-              <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
-                ⚙️
-              </button>
-            </div>
-          </div>
-        </div>
+        <UserPanel isLoading />
       </div>
     )
   }
@@ -66,9 +109,7 @@ export default function ChannelList() {
   if (error) {
     return (
       <div className="w-60 bg-base-300 flex flex-col">
-        <div className="h-16 border-b border-base-content/20 flex items-center px-4">
-          <h2 className="text-error font-semibold text-lg">Error</h2>
-        </div>
+        <ChannelHeader isError />
         
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="text-center">
@@ -83,28 +124,7 @@ export default function ChannelList() {
           </div>
         </div>
 
-        <div className="h-16 bg-base-200 border-t border-base-content/20 flex items-center px-2">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-primary-content text-sm font-semibold">U</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-base-content text-sm font-medium truncate">User</p>
-              <p className="text-base-content/60 text-xs">Online</p>
-            </div>
-            <div className="flex space-x-1">
-              <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
-                🎤
-              </button>
-              <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
-                🎧
-              </button>
-              <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
-                ⚙️
-              </button>
-            </div>
-          </div>
-        </div>
+        <UserPanel />
       </div>
     )
   }
@@ -113,9 +133,7 @@ export default function ChannelList() {
 
   return (
     <div className="w-60 bg-base-300 flex flex-col">
-      <div className="h-16 border-b border-base-content/20 flex items-center px-4">
-        <h2 className="text-base-content font-semibold text-lg truncate">{server.name}</h2>
-      </div>
+      <ChannelHeader title={server.name} />
 
       <div className="flex-1 overflow-y-auto p-2">
         <div className="mb-4">
@@ -148,28 +166,7 @@ export default function ChannelList() {
         </div>
       </div>
 
-      <div className="h-16 bg-base-200 border-t border-base-content/20 flex items-center px-2">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-primary-content text-sm font-semibold">U</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-base-content text-sm font-medium truncate">User</p>
-            <p className="text-base-content/60 text-xs">Online</p>
-          </div>
-          <div className="flex space-x-1">
-            <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
-              🎤
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
-              🎧
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors">
-              ⚙️
-            </button>
-          </div>
-        </div>
-      </div>
+      <UserPanel />
     </div>
   );
 }
