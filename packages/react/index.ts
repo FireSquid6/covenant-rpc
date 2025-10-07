@@ -1,9 +1,7 @@
-import type { ProcedureMap, ChannelMap, Covenant } from "@covenant/rpc";
+import type { ProcedureMap, ChannelMap } from "@covenant/rpc";
 import { CovenantClient, type MutationKey, type QueryKey } from "@covenant/rpc/client";
 import type { InferProcedureInputs, InferProcedureOutputs } from "@covenant/rpc/procedure";
-import { getChannelTopicName } from "@covenant/rpc/sidekick/protocol";
-import { cache, useEffect, useState } from "react";
-import { createTextChangeRange, setSyntheticTrailingComments } from "typescript";
+import { useEffect, useState } from "react";
 
 
 export interface ReactProcedureError {
