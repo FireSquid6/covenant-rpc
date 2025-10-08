@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useServerChannels } from "@/hooks/useServers";
+import { api } from "@/client/api";
 
 export default function ServerSettings() {
   const params = useParams();
@@ -18,8 +19,11 @@ export default function ServerSettings() {
     
     setIsCreating(true);
     // TODO: Implement actual channel creation
-    console.log("Creating channel:", newChannelName);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+    await api.mutate("createChannel", {
+      name: newChannelName,
+      serverId: serverId,
+    });
+
     setNewChannelName("");
     setIsCreating(false);
   };
@@ -27,9 +31,9 @@ export default function ServerSettings() {
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     if (!confirm(`Are you sure you want to delete #${channelName}?`)) return;
     
-    // TODO: Implement actual channel deletion
-    console.log("Deleting channel:", channelId);
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
+    await api.mutate("deleteChannel", {
+      channelId: channelId,
+    })
   };
 
   if (loading) {
