@@ -51,17 +51,27 @@ interface ChannelHeaderProps {
   title?: string;
   isLoading?: boolean;
   isError?: boolean;
+  serverId?: string;
 }
 
-function ChannelHeader({ title, isLoading, isError }: ChannelHeaderProps) {
+function ChannelHeader({ title, isLoading, isError, serverId }: ChannelHeaderProps) {
   return (
-    <div className="h-16 border-b border-base-content/20 flex items-center px-4">
+    <div className="h-16 border-b border-base-content/20 flex items-center px-4 justify-between">
       {isLoading ? (
         <div className="h-6 w-32 bg-base-content/30 rounded animate-pulse"></div>
       ) : isError ? (
         <h2 className="text-error font-semibold text-lg">Error</h2>
       ) : (
         <h2 className="text-base-content font-semibold text-lg truncate">{title}</h2>
+      )}
+      {!isLoading && !isError && serverId && (
+        <Link
+          href={`/servers/${serverId}/settings`}
+          className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-base-content rounded hover:bg-base-content/10 transition-colors"
+          title="Server Settings"
+        >
+          ⚙️
+        </Link>
       )}
     </div>
   );
@@ -134,7 +144,7 @@ export default function ChannelList({ serverId, channelId }: ChannelListProps) {
 
   return (
     <div className="w-60 bg-base-300 flex flex-col">
-      <ChannelHeader title={server.name} />
+      <ChannelHeader title={server.name} serverId={serverId} />
 
       <div className="flex-1 overflow-y-auto p-2">
         <div className="mb-4">
