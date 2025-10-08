@@ -87,7 +87,6 @@ export default function ChannelList({ serverId, channelId }: ChannelListProps) {
               <h3 className="text-base-content/60 text-xs font-semibold uppercase tracking-wider">
                 Text Channels
               </h3>
-              <button className="text-base-content/60 hover:text-base-content text-lg">+</button>
             </div>
             
             <div className="space-y-1">
@@ -106,6 +105,8 @@ export default function ChannelList({ serverId, channelId }: ChannelListProps) {
     )
   }
   
+  // TODO - in the future we should handle errors with a toast and then perpetually rendering the loading.
+  // Errors most likely mean bad internet connection
   if (error) {
     return (
       <div className="w-60 bg-base-300 flex flex-col">
@@ -141,7 +142,6 @@ export default function ChannelList({ serverId, channelId }: ChannelListProps) {
             <h3 className="text-base-content/60 text-xs font-semibold uppercase tracking-wider">
               Text Channels
             </h3>
-            <button className="text-base-content/60 hover:text-base-content text-lg">+</button>
           </div>
 
           <div className="space-y-1">
