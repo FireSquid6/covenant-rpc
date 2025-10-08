@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import { useJoinedServers } from "@/hooks/useServers";
-import { usePathname } from "next/navigation";
 
 
 function ServerSkeleton() {
@@ -10,11 +9,12 @@ function ServerSkeleton() {
   );
 }
 
-export function ServerList() {
+export interface ServersListProps {
+  selectedServerId?: string;
+}
+
+export function ServerList({ selectedServerId }: ServersListProps) {
   const { data: servers, loading, error } = useJoinedServers();
-  const pathname = usePathname();
-  const split = pathname.split("/");
-  const selectedServerId = split[2] ?? "none";
 
   if (error) {
     // TODO - better error management

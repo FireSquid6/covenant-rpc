@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useServerChannels } from "@/hooks/useServers";
 
 interface UserPanelProps {
@@ -68,12 +67,13 @@ function ChannelHeader({ title, isLoading, isError }: ChannelHeaderProps) {
   );
 }
 
+export interface ChannelListProps {
+  serverId: string;
+  channelId?: string
+}
 
-export default function ChannelList() {
-  const pathname = usePathname();
-  const split = pathname.split("/");
-  const serverId = split[2] ?? "none";
-  const selectedChannelId = split[3] ?? "none";
+
+export default function ChannelList({ serverId, channelId }: ChannelListProps) {
   const { data, error, loading } = useServerChannels(serverId);
 
   if (loading) {
@@ -152,7 +152,7 @@ export default function ChannelList() {
                 className={`
                   w-full flex items-center px-2 py-1.5 rounded text-left
                   transition-colors duration-150
-                  ${selectedChannelId === channel.id
+                  ${channelId === channel.id
                     ? 'bg-primary text-primary-content'
                     : 'text-base-content/70 hover:bg-base-content/10 hover:text-base-content'
                   }
