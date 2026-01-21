@@ -1,6 +1,6 @@
-import { declareCovenant, mutation, query } from "@covenant/rpc";
+import { declareCovenant, mutation, query, channel } from "@covenant/rpc";
 import { z } from "zod";
-import { channelTableSchema, serverTableSchema } from "./db/schema";
+import { channelTableSchema, serverTableSchema, messageTableSchema, userTableSchema } from "./db/schema";
 
 
 export const covenant = declareCovenant({
@@ -34,8 +34,44 @@ export const covenant = declareCovenant({
         channels: z.array(channelTableSchema),
       }),
     }),
+    getMessages: query({
+      input: z.object({
+        channelId: z.string(),
+        limit: z.number().optional(),
+      }),
+      output: z.array(z.object({
+        message: messageTableSchema,
+        user: userTableSchema.nullable(),
+      })),
+    }),
+    sendMessage: mutation({
+      input: z.object({
+        channelId: z.string(),
+        content: z.string(),
+      }),
+      output: messageTableSchema,
+    }),
     // TODO: join server, create server, delete server, modify server
     //
   },
-  channels: {},
+  channels: {
+    chat: channel({
+      clientMessage: z.object({
+        content: z.string(),
+      }),
+      serverMessage: z.object({
+        message: messageTableSchema,
+        user: userTableSchema.nullable(),
+      }),
+      connectionRequest: z.object({
+        channelId: z.string(),
+        userId: z.string(), // TODO: Replace with proper auth token
+      }),
+      connectionContext: z.object({
+        channelId: z.string(),
+        userId: z.string(),
+      }),
+      params: ["channelId"],
+    }),
+  },
 })

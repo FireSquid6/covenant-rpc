@@ -1,5 +1,8 @@
 import { server } from "../server";
-import { createChannel, deleteChannel, getServerWithChannels, getUserServersWithChannels } from "../db/servers";
+import { createChannel, deleteChannel, getServerWithChannels, getUserServersWithChannels, getMessages, createMessage } from "../db/servers";
+import { db } from "../db";
+import { user } from "../db/schema";
+import { eq } from "drizzle-orm";
 
 
 export function defineServerAndChannelProcs() {
@@ -63,5 +66,64 @@ export function defineServerAndChannelProcs() {
       return undefined;
     },
     resources: ({ inputs }) => [`/channels/${inputs.channelId}`],
+  });
+
+  server.defineProcedure("getMessages", {
+    procedure: async ({ derived, inputs }) => {
+      derived.forceAuthenticated();
+      const messages = await getMessages(inputs.channelId, inputs.limit);
+      return messages;
+    },
+    resources: ({ inputs }) => [`/channels/${inputs.channelId}/messages`],
+  });
+
+  server.defineProcedure("sendMessage", {
+    procedure: async ({ derived, inputs }) => {
+      const { user } = derived.forceAuthenticated();
+      const message = await createMessage(inputs.channelId, user.id, inputs.content);
+      return message;
+    },
+    resources: ({ inputs }) => [`/channels/${inputs.channelId}/messages`],
+  });
+}
+
+export function defineChat() {
+  server.defineChannel("chat", {
+    onConnect: async ({ inputs, params, reject }) => {
+      // Verify the channelId matches the params
+      if (inputs.channelId !== params.channelId) {
+        reject("Channel ID mismatch", "client");
+      }
+
+      // TODO: In production, verify user has access to this channel
+      // by checking membership/permissions in the database
+      // For now, we trust the userId from the client
+
+      // TODO: Replace userId in connectionRequest with proper auth
+      // This should validate a session token or JWT instead
+
+      return {
+        channelId: params.channelId,
+        userId: inputs.userId,
+      };
+    },
+    onMessage: async ({ inputs, params, context }) => {
+      // When a client sends a message, store it and broadcast to all subscribers
+      const channelId = params.channelId;
+      const userId = context.userId;
+
+      // Store the message in the database
+      const message = await createMessage(channelId, userId, inputs.content);
+
+      // Fetch user data for the broadcast
+      const users = await db.select().from(user).where(eq(user.id, userId)).limit(1);
+      const messageUser = users.length > 0 ? users[0] : null;
+
+      // Broadcast to all connected clients in this channel
+      await server.sendMessage("chat", { channelId }, {
+        message,
+        user: messageUser,
+      });
+    },
   });
 }

@@ -1,10 +1,11 @@
 import { server } from "../server";
-import { defineServerAndChannelProcs } from "./channels";
+import { defineServerAndChannelProcs, defineChat } from "./channels";
 
 
 
 export function defineAll() {
   defineServerAndChannelProcs();
+  defineChat();
   server.assertAllDefined();
 }
 

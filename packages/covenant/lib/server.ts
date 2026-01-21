@@ -145,7 +145,7 @@ export class CovenantServer<
         const error = channelErrorFromUnknown(e, channelName, params);
         l.error(`Message processing failed: ${error.message}`);
         return {
-          fault: error.fault,
+          fault: error.fault === "sidekick" ? "server" : error.fault,
           message: error.message,
         };
       }

@@ -97,10 +97,14 @@ export type Channel = InferSelectModel<typeof channelTable>;
 export const messageTable = sqliteTable("message", {
   id: text("id").primaryKey().notNull().unique(),
   userId: text("userId").references(() => user.id),
-  channelId: text("id").notNull(),
+  channelId: text("channelId").notNull().references(() => channelTable.id),
   content: text("content").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .defaultNow()
+    .notNull(),
 });
 export const messageTableSchema = createSelectSchema(messageTable);
+export type Message = InferSelectModel<typeof messageTable>;
 
 export const membershipTable = sqliteTable("membership", {
   userId: text("userId").notNull(),
