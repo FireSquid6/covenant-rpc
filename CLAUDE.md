@@ -1,107 +1,118 @@
----
+# CLAUDE.md
 
-Default to using Bun instead of Node.js.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
+## Runtime and Package Manager
 
-## APIs
+Default to using Bun instead of Node.js:
+- Use `bun install` for dependencies
+- Use `bun test` for running tests
+- Use `bun <file>` to execute TypeScript files directly
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+## Monorepo Structure
 
-## Testing
+This is a Bun workspace monorepo with the following packages:
 
-Use `bun test` to run tests.
+### Packages
+- **packages/covenant** (`@covenant/rpc`) - Core RPC framework with client, server, and type system
+- **packages/react** (`@covenant/react`) - React hooks for Covenant (useQuery, useMutation, useListenedQuery, useCachedQuery)
+- **packages/sidekick** (`@covenant/sidekick`) - Standalone WebSocket service for realtime channels and resource invalidation (allows edge deployments)
+- **packages/request-serializer** (`@covenant/request-serializer`) - Utilities for serializing/deserializing Request objects
+- **packages/website** - Marketing website
+- **docs** - Astro-based documentation site
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
+### Examples
+- **examples/covenant-hello** - Minimal Next.js example showing basic query usage
+- **examples/covenant-todo** - Full-featured example with NextAuth, Drizzle ORM, context/derivation patterns
+- **examples/covenant-chat** - Demonstrates realtime channels and bidirectional communication
 
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
+## Core Architecture
 
-## Frontend
+### The Covenant Pattern
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+The fundamental pattern is strict separation of frontend and backend via a shared "covenant" definition:
 
-Server:
+1. **Covenant Definition** (shared): Define the contract in an isolated file
+   - Use `declareCovenant()` with `procedures` and `channels`
+   - Use `query()` and `mutation()` for procedure declarations
+   - Use `channel()` for realtime channel declarations
+   - Only import validation schemas (like Zod schemas or Drizzle table schemas)
+   - NEVER import backend implementation code
 
-```ts#index.ts
-import index from "./index.html"
+2. **Server Implementation** (backend only):
+   - Create `CovenantServer` with the covenant
+   - Provide `contextGenerator` (e.g., auth data from request)
+   - Provide `derivation` (utility functions available to all procedures)
+   - Use `defineProcedure()` to implement each procedure
+   - Use `defineChannel()` to implement channel handlers
+   - Call `assertAllDefined()` to ensure all procedures are implemented
 
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
+3. **Client Setup** (frontend only):
+   - Create `CovenantClient` with the covenant
+   - Provide `serverConnection` (typically `httpClientToServer()`)
+   - Provide `sidekickConnection` (or `emptyClientToSidekick()` if not using channels)
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+### Key Modules in @covenant/rpc
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
+- **lib/index.ts** - Core type definitions and `declareCovenant()`, `query()`, `mutation()`, `channel()` helpers
+- **lib/server.ts** - `CovenantServer` class for handling RPC requests
+- **lib/client.ts** - `CovenantClient` class for making RPC calls
+- **lib/procedure.ts** - Procedure types, schemas, and inference utilities
+- **lib/channel.ts** - Channel types and WebSocket message schemas
+- **lib/validation.ts** - Internal validation library (not Standard Schema compliant, for internal use only)
+- **lib/interfaces/** - Connection layer abstractions (http, direct, empty, mock)
+- **lib/sidekick/** - Sidekick service internals for WebSocket management
+- **lib/adapters/** - Framework adapters (vanilla adapter for Request → Response)
 
-With the following `frontend.tsx`:
+### Testing
 
-```tsx#frontend.tsx
-import React from "react";
+- **Framework**: Bun's built-in test runner
+- **Pattern**: Use `directClientToServer()` for in-memory testing (bypasses HTTP)
+- **Pattern**: Use `emptyServerToSidekick()` and `emptyClientToSidekick()` when channels aren't needed
+- **Location**: Tests are in `packages/*/tests/*.test.ts`
+- **Run**: `bun test` from package directory or root
 
-// import .css files directly and it works
-import './index.css';
+### Resource Tracking and Invalidation
 
-import { createRoot } from "react-dom/client";
+Procedures define "resources" they touch:
+- Mutations return resource identifiers (e.g., `["todo/123"]`)
+- Clients with `listen()` or `useListenedQuery()` automatically refetch when their resources are updated
+- Sidekick (optional) enables cross-client invalidation via WebSocket
 
-const root = createRoot(document.body);
+### Context and Derivation
 
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
+- **Context** (`contextGenerator`): Generated per-request, typically contains auth data
+- **Derivation** (`derivation`): Functions available to all procedures, receives `ctx`, `error`, and `logger`
+- **Pattern**: Use derivation for common operations like `forceAuthenticated()` that throws if not logged in
 
-root.render(<Frontend />);
-```
+### Sidekick (Optional)
 
-Then, run index.ts
+Sidekick is a separate service for handling:
+- WebSocket connections (for realtime channels)
+- Resource update notifications (for cross-client cache invalidation)
+- Allows edge deployments (which can't run WebSockets) to delegate to origin
 
-```sh
-bun --hot ./index.ts
-```
+If not using realtime features, use `emptyServerToSidekick()` and `emptyClientToSidekick()`.
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+## Validation Libraries
+
+Covenant supports any validation library implementing [Standard Schema](https://github.com/standard-schema/standard-schema):
+- Zod (most common in examples)
+- ArcType
+- Other Standard Schema compliant libraries
+
+Do NOT use `lib/validation.ts` from @covenant/rpc in user code - it's for internal framework use only.
+
+## UI Patterns
+
+Follow patterns in SKELETON_UI_PATTERNS.md:
+- Extract common components that appear in loading, error, and success states
+- Never repeat UI structures across different states
+- Use conditional props (isLoading, isError) instead of duplicating components
+
+## Development Workflow
+
+- The monorepo uses Bun workspaces
+- Install dependencies from root: `bun install`
+- Examples use Next.js and have their own `package.json` with additional dependencies
+- Changes to packages are immediately available to examples (workspace linking)

@@ -14,10 +14,11 @@ import type { MaybePromise } from "@covenant/rpc/utils";
 export class InternalSidekick {
   private sidekick: Sidekick
   private clients: InternalSidekickClient[] = [];
-  // private listeners:
+  private serverCallback: ((channelName: string, params: Record<string, string>, data: any, context: any) => Promise<{ fault: "client" | "server"; message: string } | null>) | null = null;
 
   constructor() {
     const clients = this.clients;
+    const getServerCallback = () => this.serverCallback;
 
     this.sidekick = new Sidekick(async (topic, message) => {
       const subscribed = clients.filter(c => c.isSubscribed(topic));
@@ -26,6 +27,35 @@ export class InternalSidekick {
       }
     })
 
+    // Override the sidekick's server connection
+    // @ts-expect-error - accessing private field
+    this.sidekick.state.serverConnection = {
+      async sendMessage(message) {
+        const callback = getServerCallback();
+        if (!callback) {
+          return {
+            fault: "server" as const,
+            message: "Server connection not initialized",
+            channel: message.channel,
+            params: message.params,
+          };
+        }
+
+        const result = await callback(message.channel, message.params, message.data, message.context);
+        if (result) {
+          return {
+            ...result,
+            channel: message.channel,
+            params: message.params,
+          };
+        }
+        return null;
+      },
+    };
+  }
+
+  setServerCallback(callback: (channelName: string, params: Record<string, string>, data: any, context: any) => Promise<{ fault: "client" | "server"; message: string } | null>) {
+    this.serverCallback = callback;
   }
 
   getConnectionFromServer(): ServerToSidekickConnection {

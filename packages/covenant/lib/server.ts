@@ -3,9 +3,9 @@ import { procedureRequestBodySchema, type ProcedureDefinition, type ProcedureInp
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { err, issuesToString, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from "./utils";
 import type { ServerToSidekickConnection } from "./interfaces";
-import type { ChannelDefinition } from "./channel";
+import { channelConnectionRequestSchema, serverMessageWithContext, type ChannelConnectionResponse, type ChannelDefinition } from "./channel";
 import { v } from "./validation";
-import { procedureErrorFromUnknown, ThrowableProcedureError } from "./errors";
+import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelError, channelErrorFromUnknown } from "./errors";
 import { Logger, type LoggerLevel } from "./logger";
 
 
@@ -96,6 +96,67 @@ export class CovenantServer<
       params,
       data: message,
     });
+  }
+
+  async postChannelMessage<N extends keyof C>(
+    name: N,
+    params: ArrayToMap<C[N]["params"]>,
+    message: StandardSchemaV1.InferOutput<C[N]["serverMessage"]>
+  ): Promise<Error | null> {
+    return await this.sendMessage(name, params, message);
+  }
+
+  async processChannelMessage(channelName: string, params: Record<string, string>, data: any, context: any): Promise<{ fault: "client" | "server"; message: string } | null> {
+    let l = this.logger.sublogger(`CHANNEL ${channelName}`);
+    try {
+      const declaration = this.covenant.channels[channelName];
+      const definition = this.channelDefinitions[channelName];
+
+      if (!declaration || !definition) {
+        return {
+          fault: "server",
+          message: `Channel ${channelName} not found`,
+        };
+      }
+
+      // Validate client message
+      const validation = await declaration.clientMessage["~standard"].validate(data);
+      if (validation.issues) {
+        return {
+          fault: "client",
+          message: `Invalid message data: ${issuesToString(validation.issues)}`,
+        };
+      }
+
+      // Call onMessage handler
+      try {
+        await definition.onMessage({
+          inputs: validation.value,
+          params: params as any,
+          context,
+          error(reason: string, cause: "client" | "server"): never {
+            throw new ThrowableChannelError(reason, channelName, params, cause);
+          },
+        });
+
+        l.info(`Processed message successfully`);
+        return null;
+      } catch (e) {
+        const error = channelErrorFromUnknown(e, channelName, params);
+        l.error(`Message processing failed: ${error.message}`);
+        return {
+          fault: error.fault,
+          message: error.message,
+        };
+      }
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      l.error(`Unexpected error: ${error}`);
+      return {
+        fault: "server",
+        message: error,
+      };
+    }
   }
 
   assertAllDefined(): void {
@@ -196,6 +257,145 @@ export class CovenantServer<
     });
   }
 
+  private async handleChannelMessage(request: Request): Promise<Response> {
+    let l = this.logger.sublogger(`CHANNEL_MESSAGE`);
+    try {
+      const body = await request.json();
+      const validation = v.parseSafe(body, serverMessageWithContext);
+
+      if (validation === null) {
+        throw new Error(`Invalid channel message: ${JSON.stringify(body)}`);
+      }
+
+      const { channel, params, data, context } = validation;
+
+      const result = await this.processChannelMessage(channel, params, data, context);
+
+      if (result !== null) {
+        l.error(`Channel message processing failed: ${result.fault} - ${result.message}`);
+        return new Response(JSON.stringify(result), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(null, {
+        status: 204,
+      });
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      l.error(`Channel message failed: ${error}`);
+      return new Response(JSON.stringify({ error }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
+  private async handleConnectionRequest(request: Request): Promise<Response> {
+    let l = this.logger.sublogger(`CONNECTION`);
+
+    let channelName = "unknown";
+    let params: Record<string, string> = {};
+
+    try {
+      const body = await request.json();
+      const validation = v.parseSafe(body, channelConnectionRequestSchema);
+
+      if (validation === null) {
+        throw new Error(`Invalid connection request: ${JSON.stringify(body)}`);
+      }
+
+      channelName = validation.channel;
+      params = validation.params;
+      const data = validation.data;
+
+      const declaration = this.covenant.channels[channelName];
+      const definition = this.channelDefinitions[channelName];
+
+      if (!declaration || !definition) {
+        throw new ThrowableChannelError(
+          `Channel ${channelName} not found`,
+          channelName,
+          params,
+          "server"
+        );
+      }
+
+      // Validate connection request data
+      const connectionRequestValidation = await declaration.connectionRequest["~standard"].validate(data);
+      if (connectionRequestValidation.issues) {
+        throw new ThrowableChannelError(
+          `Invalid connection request data: ${issuesToString(connectionRequestValidation.issues)}`,
+          channelName,
+          params,
+          "client"
+        );
+      }
+
+      // Call onConnect handler
+      const context = await definition.onConnect({
+        inputs: connectionRequestValidation.value,
+        params: params as any,
+        reject(reason: string, cause: "client" | "server"): never {
+          throw new ThrowableChannelError(reason, channelName, params, cause);
+        },
+      });
+
+      // Generate token
+      const token = crypto.randomUUID();
+
+      // Add connection to sidekick
+      await this.sidekickConnection.addConnection({
+        token,
+        channel: channelName,
+        params,
+        context,
+      });
+
+      l.info(`Connection established for ${channelName} with token ${token}`);
+
+      const response: ChannelConnectionResponse = {
+        channel: channelName,
+        params,
+        result: {
+          type: "OK",
+          token,
+        },
+      };
+
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (e) {
+      if (e instanceof ThrowableChannelError) {
+        const error = e.toChannelError();
+        l.error(`Connection rejected: ${error.message}`);
+
+        const response: ChannelConnectionResponse = {
+          channel: channelName,
+          params,
+          result: {
+            type: "ERROR",
+            error,
+          },
+        };
+
+        return new Response(JSON.stringify(response), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const error = e instanceof Error ? e.message : String(e);
+      l.error(`Connection failed: ${error}`);
+      return new Response(JSON.stringify({ error }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
 
   async handle(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -209,12 +409,14 @@ export class CovenantServer<
 
     switch (type) {
       case "channel":
-        throw new Error("handling channels is not implemented");
+        response = await this.handleChannelMessage(request);
+        break;
       case "procedure":
         response = await this.handleProcedure(request);
         break;
       case "connect":
-        throw new Error("handling connecitons is not implemented");
+        response = await this.handleConnectionRequest(request);
+        break;
     }
 
     return response;

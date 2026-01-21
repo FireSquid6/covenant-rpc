@@ -37,22 +37,49 @@ export async function handleUnlistenMessage(message: UnlistenMessage, { client, 
 }
 
 export async function handleSendMessage(message: SendMessage, { client, logger, state }: SidekickHandlerContext) {
-  const topic = getChannelTopicName(message.channel, message.params);
-  const mapId = getMapId(client.getId(), topic);
-  const context = state.contextMap.get(mapId);
+  // Check if token exists in unused tokens (not yet subscribed)
+  let payload = state.tokenMap.get(message.token);
+  let context: unknown = undefined;
 
-  if (!context) {
-    logger.error(`Tried to send data on ${topic} but was not subscribed`);
-    client.directMessage({
-      type: "error",
-      error: {
-        channel: message.channel,
-        params: message.params,
-        fault: "client",
-        message: "Not connected to channel",
-      }
-    });
-    return;
+  if (payload) {
+    // Token exists but client hasn't subscribed yet - use the context from the payload
+    context = payload.context;
+
+    // Verify the channel and params match
+    if (payload.channel !== message.channel) {
+      logger.error(`Token is for channel ${payload.channel} but message is for ${message.channel}`);
+      client.directMessage({
+        type: "error",
+        error: {
+          channel: message.channel,
+          params: message.params,
+          fault: "client",
+          message: "Token channel mismatch",
+        }
+      });
+      return;
+    }
+  } else {
+    // Check if token has been used (client is subscribed)
+    const usedToken = state.usedTokenMap.get(message.token);
+    if (!usedToken || usedToken.id !== client.getId()) {
+      logger.error(`Invalid or unauthorized token for send`);
+      client.directMessage({
+        type: "error",
+        error: {
+          channel: message.channel,
+          params: message.params,
+          fault: "client",
+          message: "Invalid or unauthorized token",
+        }
+      });
+      return;
+    }
+
+    // Get context from context map
+    const topic = getChannelTopicName(usedToken.channel, usedToken.params);
+    const mapId = getMapId(client.getId(), topic);
+    context = state.contextMap.get(mapId);
   }
 
   const result = await state.serverConnection.sendMessage({
@@ -63,7 +90,7 @@ export async function handleSendMessage(message: SendMessage, { client, logger, 
   });
 
   if (result !== null) {
-    logger.error(`Got bad response sending message in ${topic}: ${result.fault} - ${result.message}`);
+    logger.error(`Got bad response sending message: ${result.fault} - ${result.message}`);
     client.directMessage({
       type: "error",
       error: result,
@@ -71,7 +98,7 @@ export async function handleSendMessage(message: SendMessage, { client, logger, 
     return;
   }
 
-  logger.info(`Processed message on ${topic} successfully`);
+  logger.info(`Processed message successfully`);
 }
 
 export async function handleSubscribeMessage(message: SubscribeMessage, { client, logger, state }: SidekickHandlerContext) {

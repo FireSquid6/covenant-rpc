@@ -3,6 +3,7 @@ import type { ProcedureRequestBody, ProcedureResponse } from "../procedure";
 import type { CovenantServer } from "../server";
 import { v } from "../validation";
 import { procedureResponseSchema } from "../procedure";
+import { channelConnectionRequestSchema, channelConnectionResponseSchema, type ChannelConnectionRequest, type ChannelConnectionResponse } from "../channel";
 
 
 export function directClientToServer(
@@ -26,8 +27,50 @@ export function directClientToServer(
   }
 
   return {
-    sendConnectionRequest: () => {
-      throw new Error("not implemented");
+    async sendConnectionRequest(body: ChannelConnectionRequest): Promise<ChannelConnectionResponse> {
+      try {
+        const request = new Request(getUrl("connect"), {
+          body: JSON.stringify(body),
+          method: "POST",
+          headers: getHeaders(),
+        });
+
+        const response = await server.handle(request);
+        const responseBody = await response.json();
+        const connectionResponse = v.parseSafe(responseBody, channelConnectionResponseSchema);
+
+        if (connectionResponse === null) {
+          return {
+            channel: body.channel,
+            params: body.params,
+            result: {
+              type: "ERROR",
+              error: {
+                channel: body.channel,
+                params: body.params,
+                fault: "server",
+                message: `Bad response from server: ${JSON.stringify(responseBody)}`,
+              },
+            },
+          };
+        }
+
+        return connectionResponse;
+      } catch (e) {
+        return {
+          channel: body.channel,
+          params: body.params,
+          result: {
+            type: "ERROR",
+            error: {
+              channel: body.channel,
+              params: body.params,
+              fault: "server",
+              message: `Unknown error connecting to channel: ${e}`,
+            },
+          },
+        };
+      }
     },
     async runProcedure(body: ProcedureRequestBody) {
       try {

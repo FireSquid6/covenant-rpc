@@ -1,5 +1,5 @@
 import { test } from "bun:test";
-import { v } from "../validation";
+import { v } from "../lib/validation";
 
 // Type-level testing helper
 type Expect<T extends true> = T;

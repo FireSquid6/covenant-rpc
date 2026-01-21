@@ -1,8 +1,9 @@
 import type { ClientToServerConnection, ServerToSidekickConnection, SidekickToServerConnection } from ".";
 import type { ClientToSidekickConnection } from ".";
-import type { ChannelConnectionPayload, ServerMessage } from "../channel";
+import type { ChannelConnectionPayload, ServerMessage, ChannelConnectionRequest, ChannelConnectionResponse } from "../channel";
 import { procedureResponseSchema } from "../procedure";
-import { sidekickIncomingMessageSchema, type SidekickIncomingMessage, type SidekickOutgoingMessage } from "../sidekick/protocol";
+import { channelConnectionResponseSchema } from "../channel";
+import { sidekickIncomingMessageSchema, sidekickOutgoingMessageSchema, type SidekickIncomingMessage, type SidekickOutgoingMessage } from "../sidekick/protocol";
 import { isPromise, type MaybePromise } from "../utils";
 import { v } from "../validation";
 
@@ -33,7 +34,23 @@ class HttpClientToSidekick implements ClientToSidekickConnection {
 
 
     this.socket.onmessage = async (m) => {
-      const message = v.parseSafe(m, sidekickIncomingMessageSchema);
+      let data: unknown;
+      try {
+        data = typeof m.data === 'string' ? JSON.parse(m.data) : m.data;
+      } catch (e) {
+        await this.emitMessage({
+          type: "error",
+          error: {
+            fault: "sidekick",
+            message: "Error parsing JSON from sidekick message",
+            channel: "unknown",
+            params: {},
+          }
+        });
+        return;
+      }
+
+      const message = v.parseSafe(data, sidekickOutgoingMessageSchema);
 
       if (!message) {
         await this.emitMessage({
@@ -44,8 +61,11 @@ class HttpClientToSidekick implements ClientToSidekickConnection {
             channel: "unknown",
             params: {},
           }
-        })
+        });
+        return;
       }
+
+      await this.emitMessage(message);
     }
 
     this.socket.onopen = () => {
@@ -125,8 +145,52 @@ export function httpClientToServer(covenantUrl: string, extraHeaders: Record<str
   }
 
   return {
-    async sendConnectionRequest(r) {
-      throw new Error("connection request not implemented yet");
+    async sendConnectionRequest(body: ChannelConnectionRequest): Promise<ChannelConnectionResponse> {
+      try {
+        const headers = getHeaders();
+        const url = getUrl("connect");
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        });
+
+        const responseBody = await response.json();
+        const connectionResponse = v.parseSafe(responseBody, channelConnectionResponseSchema);
+
+        if (connectionResponse === null) {
+          return {
+            channel: body.channel,
+            params: body.params,
+            result: {
+              type: "ERROR",
+              error: {
+                channel: body.channel,
+                params: body.params,
+                fault: "server",
+                message: `Bad response from server: ${JSON.stringify(responseBody)}`,
+              },
+            },
+          };
+        }
+
+        return connectionResponse;
+      } catch (e) {
+        return {
+          channel: body.channel,
+          params: body.params,
+          result: {
+            type: "ERROR",
+            error: {
+              channel: body.channel,
+              params: body.params,
+              fault: "server",
+              message: `Unknown error connecting to channel: ${e}`,
+            },
+          },
+        };
+      }
     },
     async runProcedure(body) {
       try {
@@ -167,12 +231,18 @@ export function httpClientToServer(covenantUrl: string, extraHeaders: Record<str
 }
 
 
-export function httpSidekickToServer(url: string, key: string): SidekickToServerConnection {
+export function httpSidekickToServer(baseUrl: string, key: string): SidekickToServerConnection {
+  const getUrl = (type: string) => {
+    const url = new URL(baseUrl);
+    url.searchParams.set("type", type);
+    return url.toString();
+  };
+
   return {
     async sendMessage(message) {
-      const json = JSON.stringify(message); 
+      const json = JSON.stringify(message);
 
-      const res = await fetch(url, {
+      const res = await fetch(getUrl("channel"), {
         headers: {
           "Authorization": `Bearer ${key}`,
           "Content-Type": "application/json",

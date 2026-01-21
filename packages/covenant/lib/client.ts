@@ -1,5 +1,5 @@
 import type { ChannelMap, Covenant, ProcedureMap } from ".";
-import type { InferChannelConnectionContext, InferChannelParams, InferChannelServerMessage } from "./channel";
+import type { InferChannelConnectionContext, InferChannelConnectionRequest, InferChannelParams, InferChannelServerMessage, InferChannelClientMessage } from "./channel";
 import type { ClientToServerConnection, ClientToSidekickConnection } from "./interfaces";
 import type { InferProcedureInputs, InferProcedureOutputs, InferProcedureResult } from "./procedure";
 import { issuesToString } from "./utils";
@@ -11,6 +11,18 @@ export type QueryKey<P extends ProcedureMap> = {
 
 export type Listener<T> = (s: T) => void | Promise<void>;
 
+type ChannelConnectionResult<E> =
+  | { success: true; token: string; error: null }
+  | { success: false; token: null; error: E };
+
+function getChannelKey(channel: string, params: Record<string, string>): string {
+  const paramStr = Object.keys(params)
+    .sort()
+    .map(k => `${k}:${params[k]}`)
+    .join(",");
+  return `${channel}/${paramStr}`;
+}
+
 export class CovenantClient<
   P extends ProcedureMap,
   C extends ChannelMap,
@@ -20,6 +32,9 @@ export class CovenantClient<
   private sidekickConnection: ClientToSidekickConnection;
   private listeners: Map<string, (() => Promise<void>)[]> = new Map();
   private remoteListenersCount: Map<string, number> = new Map();
+  private channelSubscriptions: Map<string, Listener<any>[]> = new Map();
+  private pendingSendPromises: Map<string, { resolve: () => void; reject: (error: Error) => void }> = new Map();
+  private sendCounter: number = 0;
 
   constructor(
     covenant: Covenant<P, C>,
@@ -32,9 +47,28 @@ export class CovenantClient<
     this.serverConnection = serverConnection;
     this.sidekickConnection = sidekickConnection;
 
-    this.sidekickConnection.onMessage(() => {
-      // TODO
-
+    this.sidekickConnection.onMessage(async (message) => {
+      if (message.type === "message") {
+        // Route message to channel subscribers
+        const key = getChannelKey(message.channel, message.params);
+        const callbacks = this.channelSubscriptions.get(key) || [];
+        for (const callback of callbacks) {
+          await callback(message.data);
+        }
+      } else if (message.type === "updated") {
+        // Handle resource updates
+        await this.refetchResources([message.resource]);
+      } else if (message.type === "error") {
+        // Handle errors - resolve any pending send promises with error
+        const pendingKeys = Array.from(this.pendingSendPromises.keys());
+        for (const key of pendingKeys) {
+          const pending = this.pendingSendPromises.get(key);
+          if (pending) {
+            this.pendingSendPromises.delete(key);
+            pending.reject(new Error(message.error.message));
+          }
+        }
+      }
     })
   }
 
@@ -112,35 +146,100 @@ export class CovenantClient<
     return result;
   }
 
-  subscribe<K extends keyof C>(
+  async connect<K extends keyof C>(
     channelName: K,
     params: InferChannelParams<C[K]>,
-    inputs: InferChannelConnectionContext<C[K]>,
-    callback: Listener<InferChannelServerMessage<C[K]>>
-  ) {
+    data: InferChannelConnectionRequest<C[K]>
+  ): Promise<ChannelConnectionResult<any>> {
+    const response = await this.serverConnection.sendConnectionRequest({
+      channel: String(channelName),
+      params: params as Record<string, string>,
+      data,
+    });
 
-    const p = async () => {
-      const { result } = await this.serverConnection.sendConnectionRequest({
-        channel: String(channelName),
-        params,
-        data: inputs,
-      });
-
-      if (result.type !== "OK") {
-        // TODO - handle error
-        return;
-      }
-
-      this.sidekickConnection.sendMessage({ 
-        type: "subscribe",
-        token: result.token,
-      });
-
-
-      // TODO - put the callback somewhere
+    if (response.result.type !== "OK") {
+      return {
+        success: false,
+        token: null,
+        error: response.result.error,
+      };
     }
 
-    p();
+    return {
+      success: true,
+      token: response.result.token,
+      error: null,
+    };
+  }
+
+  async send<K extends keyof C>(
+    channelName: K,
+    params: InferChannelParams<C[K]>,
+    token: string,
+    data: InferChannelClientMessage<C[K]>
+  ): Promise<void> {
+    const sendId = `send-${this.sendCounter++}`;
+
+    return new Promise<void>((resolve, reject) => {
+      this.pendingSendPromises.set(sendId, { resolve, reject });
+
+      // Send the message
+      this.sidekickConnection.sendMessage({
+        type: "send",
+        token,
+        channel: String(channelName),
+        params: params as Record<string, string>,
+        data,
+      });
+
+      // Set a timeout to auto-resolve if no error comes back
+      setTimeout(() => {
+        const pending = this.pendingSendPromises.get(sendId);
+        if (pending) {
+          this.pendingSendPromises.delete(sendId);
+          resolve();
+        }
+      }, 100); // Wait 100ms for potential errors
+    });
+  }
+
+  async subscribe<K extends keyof C>(
+    channelName: K,
+    params: InferChannelParams<C[K]>,
+    token: string,
+    callback: Listener<InferChannelServerMessage<C[K]>>
+  ): Promise<() => void> {
+    const key = getChannelKey(String(channelName), params as Record<string, string>);
+
+    // Add callback to subscriptions
+    if (!this.channelSubscriptions.has(key)) {
+      this.channelSubscriptions.set(key, []);
+    }
+    this.channelSubscriptions.get(key)!.push(callback);
+
+    // Subscribe to channel via sidekick
+    this.sidekickConnection.sendMessage({
+      type: "subscribe",
+      token,
+    });
+
+    // Return unsubscribe function
+    return () => {
+      const callbacks = this.channelSubscriptions.get(key) || [];
+      const index = callbacks.indexOf(callback);
+      if (index !== -1) {
+        callbacks.splice(index, 1);
+      }
+      if (callbacks.length === 0) {
+        this.channelSubscriptions.delete(key);
+      }
+
+      // Unsubscribe from channel via sidekick
+      this.sidekickConnection.sendMessage({
+        type: "unsubscribe",
+        token,
+      });
+    };
   }
 
 

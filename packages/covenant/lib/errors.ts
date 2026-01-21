@@ -40,25 +40,29 @@ export function procedureErrorFromUnknown(e: unknown) {
 export class ThrowableChannelError {
   message: string;
   cause: "client" | "server" | "sidekick";
+  channel: string;
+  params: Record<string, string>;
 
-  constructor(message: string, cause: "client" | "server" | "sidekick") {
+  constructor(message: string, channel: string, params: Record<string, string>, cause: "client" | "server" | "sidekick") {
     this.message = message;
+    this.channel = channel;
+    this.params = params;
     this.cause = cause;
   }
 
-  static fromError(error: Error): ThrowableChannelError {
-    return new ThrowableChannelError(error.message, "server");
+  static fromError(error: Error, channel: string, params: Record<string, string>): ThrowableChannelError {
+    return new ThrowableChannelError(error.message, channel, params, "server");
   }
 
-  static fromUnknown(error: unknown): ThrowableChannelError {
-    return new ThrowableChannelError(`Uknown error: ${error}`, "server");
+  static fromUnknown(error: unknown, channel: string, params: Record<string, string>): ThrowableChannelError {
+    return new ThrowableChannelError(`Unknown error: ${error}`, channel, params, "server");
   }
 
 
-  toChannelError(channel: string, params: Record<string, string>): ChannelError {
+  toChannelError(): ChannelError {
     return {
-      channel,
-      params,
+      channel: this.channel,
+      params: this.params,
       message: this.message,
       fault: this.cause,
     }
@@ -66,11 +70,11 @@ export class ThrowableChannelError {
 }
 
 
-export function channelErrorFromUnkown(channel: string, params: Record<string, string>, e: unknown) {
+export function channelErrorFromUnknown(e: unknown, channel: string, params: Record<string, string>) {
   const err = e instanceof ThrowableChannelError
     ? e : e instanceof Error
-    ? ThrowableChannelError.fromError(e)
-    : ThrowableChannelError.fromUnknown(e);
+    ? ThrowableChannelError.fromError(e, channel, params)
+    : ThrowableChannelError.fromUnknown(e, channel, params);
 
-  return err.toChannelError(channel, params);
+  return err.toChannelError();
 }

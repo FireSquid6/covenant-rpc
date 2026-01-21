@@ -18,8 +18,9 @@ export type UnsubscribeMessage = v.Infer<typeof unsubscribeMessageSchema>;
 
 export const sendMessageSchema = v.obj({
   type: v.literal("send"),
-  params: v.record(v.string(), v.string()),
+  token: v.string(),
   channel: v.string(),
+  params: v.record(v.string(), v.string()),
   data: v.unknown(),
 });
 export type SendMessage = v.Infer<typeof sendMessageSchema>;
