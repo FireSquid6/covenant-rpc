@@ -181,6 +181,9 @@ export function sayHello(to: string) {
 TODO - react and other frontend specific query libraries. For now, you'll just have to write your own hooks. Expect `@covenant/react` to be in the works and finished first, with `@covenant/vue`, `@covenant/svelte` and others coming after (although I am not an expert any either vue or svelte so if you are help would be greatly appreciated).
 
 # Documentation
-Covenant is still very much in the oven so documentation is still not up. If you're intere in 
+Covenant is still very much in the oven so documentation is still not up. If you're interested in helping out development, email `me@jdeiss.com`.
 
-# 
+# Current Pain Points
+
+- Drizzle ORM sucks to use with covenant. It ends up messing up the validation with dates.
+
