@@ -81,6 +81,7 @@ export function defineServerAndChannelProcs() {
     procedure: async ({ derived, inputs }) => {
       const { user } = derived.forceAuthenticated();
       const message = await createMessage(inputs.channelId, user.id, inputs.content);
+      console.log(message);
       return message;
     },
     resources: ({ inputs }) => [`/channels/${inputs.channelId}/messages`],

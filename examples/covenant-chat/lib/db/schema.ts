@@ -10,24 +10,24 @@ export const user = sqliteTable("user", {
     .default(false)
     .notNull(),
   image: text("image"),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .defaultNow()
+  createdAt: integer("created_at")
+    .$defaultFn(() => Date.now())
     .notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
+  updatedAt: integer("updated_at")
+    .$defaultFn(() => Date.now())
+    .$onUpdate(() => Date.now())
     .notNull(),
 });
 export const userTableSchema = createSelectSchema(user);
 export type User = InferSelectModel<typeof user>;
-export type PublicUser = Omit<User,  "email" | "emailVerified" | "createdAt" | "updatedAt">;
+export type PublicUser = Omit<User, "email" | "emailVerified" | "createdAt" | "updatedAt">;
 
 export const session = sqliteTable("session", {
   id: text("id").primaryKey(),
   expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
   token: text("token").notNull().unique(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .defaultNow()
+  createdAt: integer("created_at")
+    .$defaultFn(() => Date.now())
     .notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .$onUpdate(() => /* @__PURE__ */ new Date())
@@ -57,8 +57,8 @@ export const account = sqliteTable("account", {
   }),
   scope: text("scope"),
   password: text("password"),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .defaultNow()
+  createdAt: integer("created_at")
+    .$defaultFn(() => Date.now())
     .notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .$onUpdate(() => /* @__PURE__ */ new Date())
@@ -70,8 +70,8 @@ export const verification = sqliteTable("verification", {
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
   expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .defaultNow()
+  createdAt: integer("created_at")
+    .$defaultFn(() => Date.now())
     .notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .defaultNow()
@@ -99,8 +99,8 @@ export const messageTable = sqliteTable("message", {
   userId: text("userId").references(() => user.id),
   channelId: text("channelId").notNull().references(() => channelTable.id),
   content: text("content").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .defaultNow()
+  createdAt: integer("created_at")
+    .$defaultFn(() => Date.now())
     .notNull(),
 });
 export const messageTableSchema = createSelectSchema(messageTable);

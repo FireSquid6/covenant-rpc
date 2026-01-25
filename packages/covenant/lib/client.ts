@@ -101,7 +101,7 @@ export class CovenantClient<
         resources: null,
         error: {
           code: 500,
-          message: `Improper response from server: ${issuesToString(validation.issues)}`,
+          message: `Improper response from server from procedure ${String(procedure)}: ${issuesToString(validation.issues)}`,
         }
       }
     }

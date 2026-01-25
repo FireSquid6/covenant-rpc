@@ -134,7 +134,7 @@ export default function ChannelChat({ channelId, channel }: ChannelChatProps) {
         console.error("Failed to send message:", result.error);
       }
     } catch (err) {
-      console.error("Failed to send message:", err);
+      console.error(`Unhandled failed to send message:`, err);
     } finally {
       setIsSending(false);
     }

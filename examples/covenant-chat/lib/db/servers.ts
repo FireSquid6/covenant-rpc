@@ -95,7 +95,7 @@ export async function getMessages(channelId: string, limit: number = 100) {
 
 export async function createMessage(channelId: string, userId: string, content: string): Promise<Message> {
   const id = randomUUID();
-  const createdAt = new Date();
+  const createdAt = Date.now();
 
   await db
     .insert(messageTable)
