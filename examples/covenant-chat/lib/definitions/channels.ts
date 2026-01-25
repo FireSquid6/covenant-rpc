@@ -3,6 +3,7 @@ import { createChannel, deleteChannel, getServerWithChannels, getUserServersWith
 import { db } from "../db";
 import { user } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { covenant } from "../covenant";
 
 
 export function defineServerAndChannelProcs() {
@@ -81,7 +82,21 @@ export function defineServerAndChannelProcs() {
     procedure: async ({ derived, inputs }) => {
       const { user } = derived.forceAuthenticated();
       const message = await createMessage(inputs.channelId, user.id, inputs.content);
-      console.log(message);
+
+      server.sendMessage("chat", { channelId: message.channelId }, {
+        message: message,
+        // Figure out why user.image is either null or undefined in this case. Weird.
+        user: {
+          id: user.id,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          name: user.name,
+          image: user.image ?? null,
+          updatedAt: user.updatedAt,
+          createdAt: user.createdAt,
+        },
+      })
+
       return message;
     },
     resources: ({ inputs }) => [`/channels/${inputs.channelId}/messages`],
