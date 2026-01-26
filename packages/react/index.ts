@@ -1,4 +1,5 @@
 import type { ProcedureMap, ChannelMap } from "@covenant/rpc";
+import { InferChannelServerMessage, type InferChannelConnectionRequest, type InferChannelParams } from "@covenant/rpc/channel";
 import { CovenantClient, type MutationKey, type QueryKey } from "@covenant/rpc/client";
 import type { InferProcedureInputs, InferProcedureOutputs } from "@covenant/rpc/procedure";
 import { useEffect, useState } from "react";
@@ -9,7 +10,7 @@ export interface ReactProcedureError {
   message: string;
 }
 
-export type ProcedureHook<T> = {
+export type AsyncHook<T> = {
   loading: true,
   data: null,
   error: null,
@@ -23,16 +24,16 @@ export type ProcedureHook<T> = {
   error: ReactProcedureError,
 }
 
-type Listener = (k: ProcedureHook<any>) => void;
+type Listener = (k: AsyncHook<any>) => void;
 
 
 export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> extends CovenantClient<P, C> {
   // this is any becuse we have no other choice. You just gotta trust me on this one.
-  private cache: Map<string, ProcedureHook<any>> = new Map();
+  private cache: Map<string, AsyncHook<any>> = new Map();
   private listenes: Map<string, Listener[]> = new Map();
 
-  useQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): ProcedureHook<InferProcedureOutputs<P[Q]>> {
-    const [state, setState] = useState<ProcedureHook<InferProcedureOutputs<P[Q]>>>({
+  useQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): AsyncHook<InferProcedureOutputs<P[Q]>> {
+    const [state, setState] = useState<AsyncHook<InferProcedureOutputs<P[Q]>>>({
       loading: true,
       data: null,
       error: null,
@@ -68,8 +69,8 @@ export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> e
     return state;
   }
 
-  useMutation<Q extends MutationKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): ProcedureHook<InferProcedureOutputs<P[Q]>> {
-    const [state, setState] = useState<ProcedureHook<InferProcedureOutputs<P[Q]>>>({
+  useMutation<Q extends MutationKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): AsyncHook<InferProcedureOutputs<P[Q]>> {
+    const [state, setState] = useState<AsyncHook<InferProcedureOutputs<P[Q]>>>({
       loading: true,
       data: null,
       error: null,
@@ -105,8 +106,8 @@ export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> e
     return state;
   }
 
-  useListenedQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): ProcedureHook<InferProcedureOutputs<P[Q]>> {
-    const [state, setState] = useState<ProcedureHook<InferProcedureOutputs<P[Q]>>>({
+  useListenedQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): AsyncHook<InferProcedureOutputs<P[Q]>> {
+    const [state, setState] = useState<AsyncHook<InferProcedureOutputs<P[Q]>>>({
       loading: true,
       data: null,
       error: null,
@@ -138,7 +139,7 @@ export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> e
 
   private createCachedQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>) {
     this.listen(procedureName, inputs, ({ data, error }) => {
-      const state: ProcedureHook<InferProcedureOutputs<P[Q]>> = error === null ? {
+      const state: AsyncHook<InferProcedureOutputs<P[Q]>> = error === null ? {
         loading: false,
         error: null,
         data: data
@@ -177,9 +178,9 @@ export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> e
   }
 
 
-  useCachedQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): ProcedureHook<InferProcedureOutputs<P[Q]>> {
+  useCachedQuery<Q extends QueryKey<P>>(procedureName: Q, inputs: InferProcedureInputs<P[Q]>): AsyncHook<InferProcedureOutputs<P[Q]>> {
     const k = this.getCacheKey(String(procedureName), inputs);
-    const [state, setState] = useState<ProcedureHook<InferProcedureOutputs<P[Q]>>>(this.cache.has(k) ? this.cache.get(k)! : {
+    const [state, setState] = useState<AsyncHook<InferProcedureOutputs<P[Q]>>>(this.cache.has(k) ? this.cache.get(k)! : {
       loading: true,
       data: null,
       error: null,
@@ -202,11 +203,6 @@ export class CovenantReactClient<P extends ProcedureMap, C extends ChannelMap> e
 
 
     return state;
-  }
-
-
-  useLastChannelMessage<N extends keyof C>(channel: N) {
-    // TODO - channel listening isn't actually implemented yet
   }
 }
 
