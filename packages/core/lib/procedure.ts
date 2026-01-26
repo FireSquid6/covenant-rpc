@@ -1,6 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ProcedureDeclaration, ProcedureType } from ".";
-import type { MaybePromise } from "bun";
+import type { MaybePromise } from "./utils";
 import { v } from "./validation";
 import type { Logger } from "./logger";
 

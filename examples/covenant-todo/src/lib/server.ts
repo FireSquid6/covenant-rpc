@@ -3,8 +3,8 @@ import { User } from "@/db/schema";
 import { deleteTodo, getAllTodosForUser, makeTodo, ownsTodo, updateTodo } from "@/db/todo";
 import { getUserAndSession } from "@/db/user";
 import { covenant } from "@/lib/covenant";
-import { CovenantServer } from "@covenant/rpc/server";
-import { emptyServerToSidekick } from "@covenant/rpc/interfaces/empty";
+import { CovenantServer } from "@covenant/server";
+import { emptyServerToSidekick } from "@covenant/client/lib/interfaces/empty";
 
 
 export const covenantServer = new CovenantServer(

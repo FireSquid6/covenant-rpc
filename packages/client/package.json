@@ -1,16 +1,16 @@
 {
-  "name": "@covenant/rpc",
-  "module": "index.ts",
+  "name": "@covenant/client",
+  "module": "lib/index.ts",
   "version": "0.1.0",
   "type": "module",
   "exports": {
     ".": "./lib/index.ts",
-    "./*": "./lib/*.ts"
+    "./lib/*": "./lib/*.ts"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@standard-schema/spec": "^1.0.0"
+    "@covenant/core": "workspace:*"
   }
 }

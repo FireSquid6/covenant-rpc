@@ -1,8 +1,8 @@
-import type { ChannelMap, Covenant, ProcedureMap } from ".";
-import type { InferChannelConnectionContext, InferChannelConnectionRequest, InferChannelParams, InferChannelServerMessage, InferChannelClientMessage } from "./channel";
-import type { ClientToServerConnection, ClientToSidekickConnection } from "./interfaces";
-import type { InferProcedureInputs, InferProcedureOutputs, InferProcedureResult } from "./procedure";
-import { issuesToString } from "./utils";
+import type { ChannelMap, Covenant, ProcedureMap } from "@covenant/core";
+import type { InferChannelConnectionContext, InferChannelConnectionRequest, InferChannelParams, InferChannelServerMessage, InferChannelClientMessage } from "@covenant/core/lib/channel";
+import type { ClientToServerConnection, ClientToSidekickConnection } from "@covenant/core/lib/interfaces";
+import type { InferProcedureInputs, InferProcedureOutputs, InferProcedureResult } from "@covenant/core/lib/procedure";
+import { issuesToString } from "@covenant/core/lib/utils";
 
 export type MutationKey<P extends ProcedureMap> = { [k in keyof P]: P[k]["type"] extends "mutation" ? k : never }[keyof P]
 export type QueryKey<P extends ProcedureMap> = {

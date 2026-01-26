@@ -1,11 +1,11 @@
-import type { ChannelMap, Covenant, ProcedureMap } from ".";
-import { procedureRequestBodySchema, type ProcedureDefinition, type ProcedureInputs, type ProcedureRequest, type ProcedureResponse } from "./procedure";
+import type { ChannelMap, Covenant, ProcedureMap } from "@covenant/core";
+import { procedureRequestBodySchema, type ProcedureDefinition, type ProcedureInputs, type ProcedureRequest, type ProcedureResponse } from "@covenant/core/lib/procedure";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import { err, issuesToString, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from "./utils";
-import type { ServerToSidekickConnection } from "./interfaces";
-import { channelConnectionRequestSchema, serverMessageWithContext, type ChannelConnectionResponse, type ChannelDefinition } from "./channel";
-import { v } from "./validation";
-import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelError, channelErrorFromUnknown } from "./errors";
+import { err, issuesToString, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from "@covenant/core/lib/utils";
+import type { ServerToSidekickConnection } from "@covenant/core/lib/interfaces";
+import { channelConnectionRequestSchema, serverMessageWithContext, type ChannelConnectionResponse, type ChannelDefinition } from "@covenant/core/lib/channel";
+import { v } from "@covenant/core/lib/validation";
+import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelError, channelErrorFromUnknown } from "@covenant/core/lib/errors";
 import { Logger, type LoggerLevel } from "./logger";
 
 
@@ -343,7 +343,7 @@ export class CovenantServer<
       });
 
       // Generate token
-      const token = crypto.randomUUID();
+      const token = globalThis.crypto.randomUUID();
 
       // Add connection to sidekick
       await this.sidekickConnection.addConnection({

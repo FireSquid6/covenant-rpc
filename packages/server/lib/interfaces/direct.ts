@@ -1,9 +1,9 @@
-import type { ClientToServerConnection, ServerToSidekickConnection, ClientToSidekickConnection } from ".";
-import type { ProcedureRequestBody, ProcedureResponse } from "../procedure";
+import type { ClientToServerConnection, ServerToSidekickConnection, ClientToSidekickConnection } from "@covenant/core/lib/interfaces";
+import type { ProcedureRequestBody, ProcedureResponse } from "@covenant/core/lib/procedure";
 import type { CovenantServer } from "../server";
-import { v } from "../validation";
-import { procedureResponseSchema } from "../procedure";
-import { channelConnectionRequestSchema, channelConnectionResponseSchema, type ChannelConnectionRequest, type ChannelConnectionResponse } from "../channel";
+import { v } from "@covenant/core/lib/validation";
+import { procedureResponseSchema } from "@covenant/core/lib/procedure";
+import { channelConnectionRequestSchema, channelConnectionResponseSchema, type ChannelConnectionRequest, type ChannelConnectionResponse } from "@covenant/core/lib/channel";
 
 
 export function directClientToServer(

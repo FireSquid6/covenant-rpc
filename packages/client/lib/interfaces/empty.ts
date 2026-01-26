@@ -1,4 +1,4 @@
-import type { ClientToServerConnection, ServerToSidekickConnection, ClientToSidekickConnection } from ".";
+import type { ClientToServerConnection, ClientToSidekickConnection } from "@covenant/core/lib/interfaces";
 
 export function emptyClientToSidekick(): ClientToSidekickConnection {
   return {
@@ -39,14 +39,5 @@ export function emptyClientToServer(): ClientToServerConnection {
         resources: [],
       }
     }
-  }
-}
-
-
-export function emptyServerToSidekick(): ServerToSidekickConnection {
-  return {
-    addConnection: async () => null,
-    update: async () => null,
-    postMessage: async () => null,
   }
 }

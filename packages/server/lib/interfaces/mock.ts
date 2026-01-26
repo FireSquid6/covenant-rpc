@@ -1,6 +1,6 @@
-import type { ClientToSidekickConnection, ServerToSidekickConnection } from ".";
+import type { ClientToSidekickConnection, ServerToSidekickConnection } from "@covenant/core/lib/interfaces";
 import type { Sidekick, SidekickClient } from "../sidekick";
-import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "../sidekick/protocol";
+import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "@covenant/core/lib/sidekick/protocol";
 
 
 export function mockServerToSidekick(sidekick: Sidekick): ServerToSidekickConnection {

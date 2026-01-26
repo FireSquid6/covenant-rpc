@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { test, expect } from "bun:test";
-import { declareCovenant, channel } from "../lib";
+import { declareCovenant, channel } from "@covenant/core";
 import { CovenantServer } from "../lib/server";
-import { CovenantClient } from "../lib/client";
+import { CovenantClient } from "@covenant/client";
 import { directClientToServer } from "../lib/interfaces/direct";
 import { InternalSidekick } from "../../sidekick/internal";
 

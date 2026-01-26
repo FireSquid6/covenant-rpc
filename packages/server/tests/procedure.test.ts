@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { test, expect } from "bun:test";
-import { declareCovenant, query, mutation } from "../lib";
+import { declareCovenant, query, mutation } from "@covenant/core";
 import { CovenantServer } from "../lib/server";
-import { emptyClientToSidekick, emptyServerToSidekick } from "../lib/interfaces/empty";
-import { CovenantClient } from "../lib/client";
+import { emptyServerToSidekick } from "../lib/interfaces/empty";
+import { emptyClientToSidekick } from "@covenant/client";
+import { CovenantClient } from "@covenant/client";
 import { directClientToServer } from "../lib/interfaces/direct";
 
 

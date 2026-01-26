@@ -1,16 +1,12 @@
+import type { Logger as ILogger, LoggerLevel, Prefix } from "@covenant/core/lib/logger";
 
-
-
-export type LoggerLevel = "info" | "error" | "warn" | "slient" | "debug";
 const loggerLevels: Record<LoggerLevel, number> = { "slient": 0, "error": 1, "warn": 2, "info": 3, "debug": 4 };
 
 function levelSatisfies(currentLevel: LoggerLevel, maxLevel: LoggerLevel): boolean {
   return loggerLevels[currentLevel] <= loggerLevels[maxLevel];
 }
 
-export type Prefix = string | (() => string);
-
-export class Logger {
+export class Logger implements ILogger {
   prefixes: Prefix[];
   level: LoggerLevel
 
@@ -68,7 +64,7 @@ export class Logger {
     console.log("---------------------------------");
     console.log(`${this.getPrefix()}FATAL: ${text}`);
     console.log("---------------------------------");
-    process.exit(1);
+    throw new Error(`FATAL: ${text}`);
   }
 
   private getPrefix(): string {
