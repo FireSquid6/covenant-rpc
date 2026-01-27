@@ -11,6 +11,8 @@
   "dependencies": {
     "@commander-js/extra-typings": "^14.0.0",
     "commander": "^14.0.1",
-    "elysia": "^1.3.21"
+    "elysia": "^1.3.21",
+    "@covenant/core": "workspace:*",
+    "@covenant/server": "workspace:*"
   }
 }

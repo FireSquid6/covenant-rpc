@@ -1,7 +1,8 @@
-import type { ClientToSidekickConnection, ServerToSidekickConnection } from "@covenant/rpc/interfaces/index";
-import { Sidekick, type SidekickClient } from "@covenant/rpc/sidekick/index";
-import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "@covenant/rpc/sidekick/protocol";
-import type { MaybePromise } from "@covenant/rpc/utils";
+import type { ClientToSidekickConnection, ServerToSidekickConnection } from "@covenant/core/lib/interfaces";
+import { Sidekick } from "@covenant/server";
+import type { SidekickClient } from "@covenant/server/lib/sidekick";
+import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "@covenant/core/lib/sidekick/protocol";
+import type { MaybePromise } from "@covenant/core/lib/utils";
 
 // internal sidekick is good when you want you have a single server that can act as a sidekick and the core api (for example,
 // when you are not on the edge)

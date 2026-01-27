@@ -1,4 +1,4 @@
-import { declareCovenant, query } from "@covenant/rpc";
+import { declareCovenant, query } from "@covenant/core";
 import { z } from "zod";
 
 

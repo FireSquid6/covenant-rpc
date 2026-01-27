@@ -1,5 +1,5 @@
 import { covenantServer } from "@/lib/server";
-import { vanillaAdapter } from "@covenant/rpc/adapters/vanilla";
+import { vanillaAdapter } from "@covenant/server";
 
 
 const handler = vanillaAdapter(covenantServer);

@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { serverTable, user, membershipTable, channelTable } from "@/lib/db/schema";
-import { ArrayToMap, MaybePromise } from "@covenant/rpc/utils";
+import { ArrayToMap, MaybePromise } from "@covenant/core/lib/utils";
 import { eq } from "drizzle-orm";
 
 

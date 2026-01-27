@@ -1,4 +1,4 @@
-import { vanillaAdapter } from "@covenant/rpc/adapters/vanilla";
+import { vanillaAdapter } from "@covenant/server";
 import { server } from "@/procedures";
 
 

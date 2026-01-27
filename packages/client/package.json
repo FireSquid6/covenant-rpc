@@ -1,0 +1,16 @@
+{
+  "name": "@covenant/client",
+  "module": "lib/index.ts",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./lib/index.ts",
+    "./lib/*": "./lib/*.ts"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@covenant/core": "workspace:*"
+  }
+}

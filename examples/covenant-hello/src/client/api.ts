@@ -1,6 +1,6 @@
-import { CovenantClient } from "@covenant/rpc/client";
-import { httpClientToServer } from "@covenant/rpc/interfaces/http";
-import { emptyClientToSidekick } from "@covenant/rpc/interfaces/empty";
+import { CovenantClient } from "@covenant/client";
+import { httpClientToServer } from "@covenant/client/lib/interfaces/http";
+import { emptyClientToSidekick } from "@covenant/client/lib/interfaces/empty";
 import { assertEnvVar } from "@/utils";
 import { covenant } from "@/lib/covenant";
 

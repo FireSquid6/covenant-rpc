@@ -1,4 +1,4 @@
-import { declareCovenant, mutation, query, channel } from "@covenant/rpc";
+import { declareCovenant, mutation, query, channel } from "@covenant/core";
 import { z } from "zod";
 import { channelTableSchema, serverTableSchema, messageTableSchema, userTableSchema } from "./db/schema";
 
