@@ -1,7 +1,7 @@
 import type { ProcedureMap, ChannelMap } from "@covenant/core";
-import { InferChannelServerMessage, type InferChannelConnectionRequest, type InferChannelParams } from "@covenant/core/lib/channel";
+import { InferChannelServerMessage, type InferChannelConnectionRequest, type InferChannelParams } from "@covenant/core/channel";
 import { CovenantClient, type MutationKey, type QueryKey } from "@covenant/client";
-import type { InferProcedureInputs, InferProcedureOutputs } from "@covenant/core/lib/procedure";
+import type { InferProcedureInputs, InferProcedureOutputs } from "@covenant/core/procedure";
 import { useEffect, useState } from "react";
 
 

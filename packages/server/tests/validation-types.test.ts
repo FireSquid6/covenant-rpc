@@ -1,5 +1,5 @@
 import { test } from "bun:test";
-import { v } from "@covenant/core/lib/validation";
+import { v } from "@covenant/core/validation";
 
 // Type-level testing helper
 type Expect<T extends true> = T;

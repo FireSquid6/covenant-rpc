@@ -5,7 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./lib/index.ts",
-    "./lib/*": "./lib/*.ts"
+    "./*": "./lib/*.ts"
   },
   "peerDependencies": {
     "typescript": "^5"

@@ -1,10 +1,10 @@
-import type { ClientToServerConnection, ClientToSidekickConnection } from "@covenant/core/lib/interfaces";
-import type { ChannelConnectionRequest, ChannelConnectionResponse } from "@covenant/core/lib/channel";
-import { procedureResponseSchema } from "@covenant/core/lib/procedure";
-import { channelConnectionResponseSchema } from "@covenant/core/lib/channel";
-import { sidekickOutgoingMessageSchema, type SidekickIncomingMessage, type SidekickOutgoingMessage } from "@covenant/core/lib/sidekick/protocol";
-import { isPromise, type MaybePromise } from "@covenant/core/lib/utils";
-import { v } from "@covenant/core/lib/validation";
+import type { ClientToServerConnection, ClientToSidekickConnection } from "@covenant/core/interfaces";
+import type { ChannelConnectionRequest, ChannelConnectionResponse } from "@covenant/core/channel";
+import { procedureResponseSchema } from "@covenant/core/procedure";
+import { channelConnectionResponseSchema } from "@covenant/core/channel";
+import { sidekickOutgoingMessageSchema, type SidekickIncomingMessage, type SidekickOutgoingMessage } from "@covenant/core/sidekick/protocol";
+import { isPromise, type MaybePromise } from "@covenant/core/utils";
+import { v } from "@covenant/core/validation";
 
 export function httpClientToSidekick(rootUrl: string): ClientToSidekickConnection {
   return new HttpClientToSidekick(rootUrl);

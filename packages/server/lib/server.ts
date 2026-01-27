@@ -1,11 +1,11 @@
 import type { ChannelMap, Covenant, ProcedureMap } from "@covenant/core";
-import { procedureRequestBodySchema, type ProcedureDefinition, type ProcedureInputs, type ProcedureRequest, type ProcedureResponse } from "@covenant/core/lib/procedure";
+import { procedureRequestBodySchema, type ProcedureDefinition, type ProcedureInputs, type ProcedureRequest, type ProcedureResponse } from "@covenant/core/procedure";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import { err, issuesToString, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from "@covenant/core/lib/utils";
-import type { ServerToSidekickConnection } from "@covenant/core/lib/interfaces";
-import { channelConnectionRequestSchema, serverMessageWithContext, type ChannelConnectionResponse, type ChannelDefinition } from "@covenant/core/lib/channel";
-import { v } from "@covenant/core/lib/validation";
-import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelError, channelErrorFromUnknown } from "@covenant/core/lib/errors";
+import { err, issuesToString, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from "@covenant/core/utils";
+import type { ServerToSidekickConnection } from "@covenant/core/interfaces";
+import { channelConnectionRequestSchema, serverMessageWithContext, type ChannelConnectionResponse, type ChannelDefinition } from "@covenant/core/channel";
+import { v } from "@covenant/core/validation";
+import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelError, channelErrorFromUnknown } from "@covenant/core/errors";
 import { Logger, type LoggerLevel } from "./logger";
 
 

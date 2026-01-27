@@ -1,4 +1,4 @@
-import type { ServerToSidekickConnection } from "@covenant/core/lib/interfaces";
+import type { ServerToSidekickConnection } from "@covenant/core/interfaces";
 
 export function emptyServerToSidekick(): ServerToSidekickConnection {
   return {

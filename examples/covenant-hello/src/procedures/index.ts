@@ -1,6 +1,5 @@
 import { covenant } from "@/lib/covenant";
-import { emptyServerToSidekick } from "@covenant/client/lib/interfaces/empty";
-import { CovenantServer } from "@covenant/server";
+import { CovenantServer, emptyServerToSidekick } from "@covenant/server";
 
 
 export const server = new CovenantServer(covenant, {

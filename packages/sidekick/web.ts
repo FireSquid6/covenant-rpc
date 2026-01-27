@@ -1,9 +1,8 @@
 import { Elysia, t } from "elysia";
-import { Sidekick } from "@covenant/server/lib/sidekick";
-import type { SidekickClient } from "@covenant/server/lib/sidekick";
-import { v } from "@covenant/rpc/validation";
-import { channelConnectionPayload, serverMessageSchema } from "@covenant/rpc/channel";
-import { sidekickIncomingMessageSchema, type SidekickOutgoingMessage } from "@covenant/core/lib/sidekick/protocol";
+import { Sidekick, type SidekickClient } from "@covenant/server";
+import { v } from "@covenant/core/validation";
+import { channelConnectionPayload, serverMessageSchema } from "@covenant/core/channel";
+import { sidekickIncomingMessageSchema, type SidekickOutgoingMessage } from "@covenant/core/sidekick/protocol";
 
 const app = new Elysia()
   // we set the actual sidekick later

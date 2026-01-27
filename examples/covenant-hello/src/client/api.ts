@@ -1,6 +1,6 @@
 import { CovenantClient } from "@covenant/client";
-import { httpClientToServer } from "@covenant/client/lib/interfaces/http";
-import { emptyClientToSidekick } from "@covenant/client/lib/interfaces/empty";
+import { httpClientToServer } from "@covenant/client/interfaces/http";
+import { emptyClientToSidekick } from "@covenant/client/interfaces/empty";
 import { assertEnvVar } from "@/utils";
 import { covenant } from "@/lib/covenant";
 

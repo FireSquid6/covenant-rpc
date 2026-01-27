@@ -1,5 +1,5 @@
 import { covenant } from "@/lib/covenant";
-import { httpClientToServer, httpClientToSidekick } from "@covenant/client/lib/interfaces/http";
+import { httpClientToServer, httpClientToSidekick } from "@covenant/client/interfaces/http";
 import { CovenantReactClient } from "@covenant/react";
 
 // we can't use assertReadFromEnv because of the way next works

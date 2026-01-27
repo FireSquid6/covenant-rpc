@@ -1,6 +1,5 @@
-import { CovenantServer } from "@covenant/server";
+import { CovenantServer, httpServerToSidekick } from "@covenant/server";
 import { covenant } from "./covenant";
-import { httpServerToSidekick } from "@covenant/client/lib/interfaces/http";
 import { assertReadFromEnv } from "./utils";
 import { getUserAndSession } from "./db/user";
 

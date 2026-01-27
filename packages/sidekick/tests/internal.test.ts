@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { InternalSidekick } from "../internal";
-import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "@covenant/core/lib/sidekick/protocol";
-import type { ChannelConnectionPayload, ServerMessage } from "@covenant/rpc/channel";
+import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "@covenant/core/sidekick/protocol";
+import type { ChannelConnectionPayload, ServerMessage } from "@covenant/core/channel";
 
 test("InternalSidekick - basic instantiation", () => {
   const sidekick = new InternalSidekick();

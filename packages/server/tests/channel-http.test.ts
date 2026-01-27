@@ -3,7 +3,7 @@ import { test, expect } from "bun:test";
 import { declareCovenant, channel } from "@covenant/core";
 import { CovenantServer } from "../lib/server";
 import { CovenantClient } from "@covenant/client";
-import { httpClientToServer } from "@covenant/client/lib/interfaces/http";
+import { httpClientToServer } from "@covenant/client/interfaces/http";
 import { httpServerToSidekick } from "../lib/interfaces/http";
 import { InternalSidekick } from "@covenant/sidekick/internal";
 
