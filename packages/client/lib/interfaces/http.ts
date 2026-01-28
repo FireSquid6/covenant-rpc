@@ -31,7 +31,6 @@ class HttpClientToSidekick implements ClientToSidekickConnection {
     this.socket = new WebSocket(this.socketUrl);
     this.ready = false;
 
-
     this.socket.onmessage = async (m) => {
       let data: unknown;
       try {
