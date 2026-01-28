@@ -5,6 +5,7 @@ import { channelConnectionResponseSchema } from "@covenant/core/channel";
 import { sidekickOutgoingMessageSchema, type SidekickIncomingMessage, type SidekickOutgoingMessage } from "@covenant/core/sidekick/protocol";
 import { isPromise, type MaybePromise } from "@covenant/core/utils";
 import { v } from "@covenant/core/validation";
+import ION from "@covenant/ion";
 
 export function httpClientToSidekick(rootUrl: string): ClientToSidekickConnection {
   return new HttpClientToSidekick(rootUrl);
@@ -34,7 +35,7 @@ class HttpClientToSidekick implements ClientToSidekickConnection {
     this.socket.onmessage = async (m) => {
       let data: unknown;
       try {
-        data = typeof m.data === 'string' ? JSON.parse(m.data) : m.data;
+        data = typeof m.data === 'string' ? ION.parse(m.data) : m.data;
       } catch (e) {
         await this.emitMessage({
           type: "error",
@@ -70,7 +71,7 @@ class HttpClientToSidekick implements ClientToSidekickConnection {
       this.ready = true;
 
       for (const m of this.sendQueue) {
-        this.socket.send(JSON.stringify(m));
+        this.socket.send(ION.stringify(m));
       }
     }
 
@@ -107,7 +108,7 @@ class HttpClientToSidekick implements ClientToSidekickConnection {
 
   sendMessage(message: SidekickIncomingMessage): void {
     if (this.ready) {
-      const json = JSON.stringify(message);
+      const json = ION.stringify(message);
       this.socket.send(json);
     } else {
       this.sendQueue.push(message);
@@ -151,10 +152,11 @@ export function httpClientToServer(covenantUrl: string, extraHeaders: Record<str
         const response = await fetch(url, {
           method: "POST",
           headers,
-          body: JSON.stringify(body),
+          body: ION.stringify(body),
         });
 
-        const responseBody = await response.json();
+        const responseText = await response.text();
+        const responseBody = ION.parse(responseText);
         const connectionResponse = v.parseSafe(responseBody, channelConnectionResponseSchema);
 
         if (connectionResponse === null) {
@@ -198,10 +200,11 @@ export function httpClientToServer(covenantUrl: string, extraHeaders: Record<str
         const response = await fetch(url, {
           method: "POST",
           headers,
-          body: JSON.stringify(body),
+          body: ION.stringify(body),
         });
 
-        const responseBody = await response.json();
+        const responseText = await response.text();
+        const responseBody = ION.parse(responseText);
         const procedureResponse = v.parseSafe(responseBody, procedureResponseSchema)
 
         if (procedureResponse === null) {

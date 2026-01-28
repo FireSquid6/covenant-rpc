@@ -4,6 +4,7 @@ import type { CovenantServer } from "../server";
 import { v } from "@covenant/core/validation";
 import { procedureResponseSchema } from "@covenant/core/procedure";
 import { channelConnectionRequestSchema, channelConnectionResponseSchema, type ChannelConnectionRequest, type ChannelConnectionResponse } from "@covenant/core/channel";
+import ION from "@covenant/ion";
 
 
 export function directClientToServer(
@@ -30,13 +31,14 @@ export function directClientToServer(
     async sendConnectionRequest(body: ChannelConnectionRequest): Promise<ChannelConnectionResponse> {
       try {
         const request = new Request(getUrl("connect"), {
-          body: JSON.stringify(body),
+          body: ION.stringify(body),
           method: "POST",
           headers: getHeaders(),
         });
 
         const response = await server.handle(request);
-        const responseBody = await response.json();
+        const responseText = await response.text();
+        const responseBody = ION.parse(responseText);
         const connectionResponse = v.parseSafe(responseBody, channelConnectionResponseSchema);
 
         if (connectionResponse === null) {
@@ -75,13 +77,14 @@ export function directClientToServer(
     async runProcedure(body: ProcedureRequestBody) {
       try {
         const request = new Request(getUrl("procedure"), {
-          body: JSON.stringify(body),
+          body: ION.stringify(body),
           method: "POST",
           headers: getHeaders(),
         });
 
         const response = await server.handle(request);
-        const responseBody = await response.json();
+        const responseText = await response.text();
+        const responseBody = ION.parse(responseText);
         const procedureResponse = v.parseSafe(responseBody, procedureResponseSchema)
 
         if (procedureResponse === null) {

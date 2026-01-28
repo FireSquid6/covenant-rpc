@@ -7,6 +7,7 @@ import { channelConnectionRequestSchema, serverMessageWithContext, type ChannelC
 import { v } from "@covenant/core/validation";
 import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelError, channelErrorFromUnknown } from "@covenant/core/errors";
 import { Logger, type LoggerLevel } from "./logger";
+import ION from "@covenant/ion";
 
 
 export type ProcedureDefinitionMap<T extends ProcedureMap, Context, Derivation> = {
@@ -251,7 +252,7 @@ export class CovenantServer<
 
     const status = res.status === "OK" ? 201 : res.error.code;
 
-    return new Response(JSON.stringify(res), {
+    return new Response(ION.stringify(res), {
       headers,
       status,
     });
@@ -260,7 +261,8 @@ export class CovenantServer<
   private async handleChannelMessage(request: Request): Promise<Response> {
     let l = this.logger.sublogger(`CHANNEL_MESSAGE`);
     try {
-      const body = await request.json();
+      const bodyText = await request.text();
+      const body = ION.parse(bodyText);
       const validation = v.parseSafe(body, serverMessageWithContext);
 
       if (validation === null) {
@@ -273,7 +275,7 @@ export class CovenantServer<
 
       if (result !== null) {
         l.error(`Channel message processing failed: ${result.fault} - ${result.message}`);
-        return new Response(JSON.stringify(result), {
+        return new Response(ION.stringify(result), {
           status: 400,
           headers: { "Content-Type": "application/json" },
         });
@@ -285,7 +287,7 @@ export class CovenantServer<
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);
       l.error(`Channel message failed: ${error}`);
-      return new Response(JSON.stringify({ error }), {
+      return new Response(ION.stringify({ error }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
       });
@@ -299,7 +301,8 @@ export class CovenantServer<
     let params: Record<string, string> = {};
 
     try {
-      const body = await request.json();
+      const bodyText = await request.text();
+      const body = ION.parse(bodyText);
       const validation = v.parseSafe(body, channelConnectionRequestSchema);
 
       if (validation === null) {
@@ -364,7 +367,7 @@ export class CovenantServer<
         },
       };
 
-      return new Response(JSON.stringify(response), {
+      return new Response(ION.stringify(response), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
@@ -382,7 +385,7 @@ export class CovenantServer<
           },
         };
 
-        return new Response(JSON.stringify(response), {
+        return new Response(ION.stringify(response), {
           status: 400,
           headers: { "Content-Type": "application/json" },
         });
@@ -390,7 +393,7 @@ export class CovenantServer<
 
       const error = e instanceof Error ? e.message : String(e);
       l.error(`Connection failed: ${error}`);
-      return new Response(JSON.stringify({ error }), {
+      return new Response(ION.stringify({ error }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
       });
@@ -426,7 +429,8 @@ export class CovenantServer<
 
 export async function parseRequest(request: Request): AsyncResult<ProcedureRequest> {
   try {
-    const body = await request.json();
+    const bodyText = await request.text();
+    const body = ION.parse(bodyText);
     const result = v.parseSafe(body, procedureRequestBodySchema);
     
     if (result === null) {
