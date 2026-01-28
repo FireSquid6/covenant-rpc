@@ -50,14 +50,14 @@ In cases where something can't be perfectly recreated from parsing, ION will thr
 ```
 
 `JSON` has support for several types: `boolean`, `number`, `string`, `object`, and `array`. `ION` adds a couple more:
-- `Infinty`
-- `-Infinty`
+- `Infinity`
+- `-Infinity`
 - `NaN`
 - `Date`
 - `Map`
 - `Set`
-- `WeakMap`
-- `WeakSet`
+
+Note: `WeakMap` and `WeakSet` cannot be serialized and will throw an error if encountered.
 
 
 If an object has any `undefined` properties, they are simply omitted. These advanced properties look like:
@@ -66,13 +66,13 @@ If an object has any `undefined` properties, they are simply omitted. These adva
 {
     "date": date:2026-01-27T15:30:00Z,
     "not-a-number": NaN,
-    "infinity": infinity,
-    "negativeInf": -infinity,
-    "someMap": map<string, number> {
+    "infinity": Infinity,
+    "negativeInf": -Infinity,
+    "someMap": map {
         "property": 1,
         "another": 2
     },
-    "someSet": set<string> {
+    "someSet": set {
         "a",
         "b"
     }
