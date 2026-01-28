@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@covenant/core": "workspace:*",
+    "@covenant/ion": "workspace:*",
     "@covenant/request-serializer": "workspace:*"
   }
 }

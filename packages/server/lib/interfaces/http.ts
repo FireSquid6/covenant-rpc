@@ -1,5 +1,6 @@
 import type { ServerToSidekickConnection, SidekickToServerConnection } from "@covenant/core/interfaces";
 import type { ChannelConnectionPayload, ServerMessage } from "@covenant/core/channel";
+import ION from "@covenant/ion";
 
 export function httpSidekickToServer(baseUrl: string, key: string): SidekickToServerConnection {
   const getUrl = (type: string) => {
@@ -10,7 +11,7 @@ export function httpSidekickToServer(baseUrl: string, key: string): SidekickToSe
 
   return {
     async sendMessage(message) {
-      const json = JSON.stringify(message);
+      const json = ION.stringify(message);
 
       const res = await fetch(getUrl("channel"), {
         headers: {
@@ -50,7 +51,7 @@ class HttpServerToSidekick implements ServerToSidekickConnection {
     url.pathname = "/connection";
 
     const res = await fetch(url.toString(), {
-      body: JSON.stringify(payload),
+      body: ION.stringify(payload),
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${this.key}`,
@@ -69,7 +70,7 @@ class HttpServerToSidekick implements ServerToSidekickConnection {
     url.pathname = "/resources";
 
     const res = await fetch(url.toString(), {
-      body: JSON.stringify({
+      body: ION.stringify({
         resources: resources,
       }),
       headers: {
@@ -90,7 +91,7 @@ class HttpServerToSidekick implements ServerToSidekickConnection {
     url.pathname = "/message";
 
     const res = await fetch(url.toString(), {
-      body: JSON.stringify(message),
+      body: ION.stringify(message),
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${this.key}`,

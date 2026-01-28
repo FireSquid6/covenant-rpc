@@ -3,6 +3,7 @@ import { Sidekick, type SidekickClient } from "@covenant/server";
 import { v } from "@covenant/core/validation";
 import { channelConnectionPayload, serverMessageSchema } from "@covenant/core/channel";
 import { sidekickIncomingMessageSchema, type SidekickOutgoingMessage } from "@covenant/core/sidekick/protocol";
+import ION from "@covenant/ion";
 
 const app = new Elysia()
   // we set the actual sidekick later
@@ -36,7 +37,7 @@ const app = new Elysia()
           }
         }
 
-        ws.send(JSON.stringify(err));
+        ws.send(ION.stringify(err));
         return;
       }
     
@@ -51,7 +52,7 @@ const app = new Elysia()
           return ws.id;
         },
         directMessage(message: SidekickOutgoingMessage) {
-          ws.send(JSON.stringify(message));
+          ws.send(ION.stringify(message));
         },
       }
 
@@ -72,10 +73,11 @@ const app = new Elysia()
     await validateKey();
 
     let body: unknown = undefined;
-    try { 
-      body = await request.json();
+    try {
+      const bodyText = await request.text();
+      body = ION.parse(bodyText);
     } catch (e) {
-      return status("Bad Request", `Error parsing json: ${e}`);
+      return status("Bad Request", `Error parsing ION: ${e}`);
     }
 
     const payload = v.parseSafe(body, channelConnectionPayload);
@@ -91,10 +93,11 @@ const app = new Elysia()
     await validateKey();
 
     let body: unknown = undefined;
-    try { 
-      body = await request.json();
+    try {
+      const bodyText = await request.text();
+      body = ION.parse(bodyText);
     } catch (e) {
-      return status("Bad Request", `Error parsing json: ${e}`);
+      return status("Bad Request", `Error parsing ION: ${e}`);
     }
 
     const message = v.parseSafe(body, serverMessageSchema);
@@ -114,7 +117,7 @@ export function getSidekickApi(secret: string) {
       throw new Error("Server was null. Elysia is not functioning properly");
     }
 
-    server.publish(topic, JSON.stringify(message));
+    server.publish(topic, ION.stringify(message));
   })
   app.store.sidekick = sidekick;
   app.store.key = secret;
