@@ -137,7 +137,7 @@ describe('ION', () => {
         users: [
           {
             name: 'Alice',
-            metadata: new Map([
+            metadata: new Map<string, Date | Set<string>>([
               ['lastLogin', new Date('2026-01-27T15:30:00Z')],
               ['roles', new Set(['admin', 'user'])],
             ]),

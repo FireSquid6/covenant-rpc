@@ -19,194 +19,274 @@ const ION = {
     class Tokenizer {
       private pos = 0;
       private input: string;
+      private len: number;
 
       constructor(input: string) {
         this.input = input;
+        this.len = input.length;
       }
 
       private skipWhitespace(): void {
-        while (this.pos < this.input.length && /\s/.test(this.input[this.pos]!)) {
-          this.pos++;
+        const input = this.input;
+        const len = this.len;
+        let pos = this.pos;
+
+        while (pos < len) {
+          const ch = input.charCodeAt(pos);
+          // Check for common whitespace: space(32), tab(9), newline(10), carriage return(13)
+          if (ch === 32 || ch === 9 || ch === 10 || ch === 13) {
+            pos++;
+          } else {
+            break;
+          }
         }
-      }
 
-      private peek(offset = 0): string {
-        return this.input[this.pos + offset] ?? '';
-      }
-
-      private advance(): string {
-        return this.input[this.pos++] ?? '';
-      }
-
-      private match(str: string): boolean {
-        if (this.input.slice(this.pos, this.pos + str.length) === str) {
-          this.pos += str.length;
-          return true;
-        }
-        return false;
+        this.pos = pos;
       }
 
       private scanString(): string {
-        let result = '';
-        this.advance(); // consume opening quote
+        const input = this.input;
+        const len = this.len;
+        let pos = this.pos + 1; // skip opening quote
+        let start = pos;
 
-        while (this.pos < this.input.length) {
-          const ch = this.peek();
+        // Fast path: scan for simple string without escapes
+        while (pos < len) {
+          const ch = input.charCodeAt(pos);
 
-          if (ch === '"') {
-            this.advance(); // consume closing quote
-            return result;
+          if (ch === 34) { // '"'
+            this.pos = pos + 1;
+            return input.slice(start, pos);
           }
 
-          if (ch === '\\') {
-            this.advance();
-            const escaped = this.advance();
+          if (ch === 92) { // '\\'
+            // Found escape, switch to slow path
+            break;
+          }
+
+          pos++;
+        }
+
+        // Slow path: handle escapes
+        const parts: string[] = [];
+        if (pos > start) {
+          parts.push(input.slice(start, pos));
+        }
+
+        while (pos < len) {
+          const ch = input.charCodeAt(pos);
+
+          if (ch === 34) { // '"'
+            this.pos = pos + 1;
+            return parts.join('');
+          }
+
+          if (ch === 92) { // '\\'
+            pos++;
+            const escaped = input.charCodeAt(pos);
+            pos++;
+
             switch (escaped) {
-              case 'n': result += '\n'; break;
-              case 't': result += '\t'; break;
-              case 'r': result += '\r'; break;
-              case '\\': result += '\\'; break;
-              case '"': result += '"'; break;
-              case '/': result += '/'; break;
-              case 'b': result += '\b'; break;
-              case 'f': result += '\f'; break;
-              case 'u': {
-                const hex = this.input.slice(this.pos, this.pos + 4);
-                this.pos += 4;
-                result += String.fromCharCode(parseInt(hex, 16));
+              case 110: parts.push('\n'); break; // 'n'
+              case 116: parts.push('\t'); break; // 't'
+              case 114: parts.push('\r'); break; // 'r'
+              case 92: parts.push('\\'); break; // '\\'
+              case 34: parts.push('"'); break; // '"'
+              case 47: parts.push('/'); break; // '/'
+              case 98: parts.push('\b'); break; // 'b'
+              case 102: parts.push('\f'); break; // 'f'
+              case 117: { // 'u'
+                const hex = input.slice(pos, pos + 4);
+                pos += 4;
+                parts.push(String.fromCharCode(parseInt(hex, 16)));
                 break;
               }
               default:
-                throw new Error(`Invalid escape sequence \\${escaped} at position ${this.pos}`);
+                throw new Error(`Invalid escape sequence at position ${pos}`);
             }
+            start = pos;
           } else {
-            result += this.advance();
+            // Accumulate unescaped chars
+            const chunkStart = pos;
+            pos++;
+            while (pos < len) {
+              const c = input.charCodeAt(pos);
+              if (c === 34 || c === 92) break;
+              pos++;
+            }
+            parts.push(input.slice(chunkStart, pos));
           }
         }
 
-        throw new Error(`Unterminated string at position ${this.pos}`);
+        throw new Error(`Unterminated string at position ${pos}`);
       }
 
       private scanNumber(): number {
-        const start = this.pos;
+        const input = this.input;
+        const len = this.len;
+        let pos = this.pos;
+        const start = pos;
 
-        if (this.peek() === '-') {
-          this.advance();
+        // Check for negative
+        if (input.charCodeAt(pos) === 45) { // '-'
+          pos++;
         }
 
-        if (this.peek() === '0') {
-          this.advance();
-        } else {
-          while (/\d/.test(this.peek())) {
-            this.advance();
+        // Scan integer part
+        const firstDigit = input.charCodeAt(pos);
+        if (firstDigit === 48) { // '0'
+          pos++;
+        } else if (firstDigit >= 49 && firstDigit <= 57) { // '1'-'9'
+          pos++;
+          while (pos < len && input.charCodeAt(pos) >= 48 && input.charCodeAt(pos) <= 57) {
+            pos++;
           }
         }
 
-        if (this.peek() === '.') {
-          this.advance();
-          while (/\d/.test(this.peek())) {
-            this.advance();
+        // Check for decimal
+        let hasDot = false;
+        if (pos < len && input.charCodeAt(pos) === 46) { // '.'
+          hasDot = true;
+          pos++;
+          while (pos < len && input.charCodeAt(pos) >= 48 && input.charCodeAt(pos) <= 57) {
+            pos++;
           }
         }
 
-        if (this.peek() === 'e' || this.peek() === 'E') {
-          this.advance();
-          if (this.peek() === '+' || this.peek() === '-') {
-            this.advance();
-          }
-          while (/\d/.test(this.peek())) {
-            this.advance();
+        // Check for exponent
+        let hasExp = false;
+        if (pos < len) {
+          const ch = input.charCodeAt(pos);
+          if (ch === 101 || ch === 69) { // 'e' or 'E'
+            hasExp = true;
+            pos++;
+            if (pos < len) {
+              const sign = input.charCodeAt(pos);
+              if (sign === 43 || sign === 45) { // '+' or '-'
+                pos++;
+              }
+            }
+            while (pos < len && input.charCodeAt(pos) >= 48 && input.charCodeAt(pos) <= 57) {
+              pos++;
+            }
           }
         }
 
-        const numStr = this.input.slice(start, this.pos);
-        return parseFloat(numStr);
+        this.pos = pos;
+
+        // Fast path for simple integers
+        if (!hasDot && !hasExp) {
+          const numStr = input.slice(start, pos);
+          const num = parseInt(numStr, 10);
+          if (num.toString() === numStr) {
+            return num;
+          }
+        }
+
+        return parseFloat(input.slice(start, pos));
       }
 
       nextToken(): Token {
         this.skipWhitespace();
 
-        if (this.pos >= this.input.length) {
-          return { type: 'EOF', position: this.pos };
+        const pos = this.pos;
+        if (pos >= this.len) {
+          return { type: 'EOF', position: pos };
         }
 
-        const position = this.pos;
-        const ch = this.peek();
+        const input = this.input;
+        const ch = input.charCodeAt(pos);
 
-        // Single character tokens
-        if (ch === '{') {
-          this.advance();
-          return { type: 'LBRACE', position };
-        }
-        if (ch === '}') {
-          this.advance();
-          return { type: 'RBRACE', position };
-        }
-        if (ch === '[') {
-          this.advance();
-          return { type: 'LBRACKET', position };
-        }
-        if (ch === ']') {
-          this.advance();
-          return { type: 'RBRACKET', position };
-        }
-        if (ch === ',') {
-          this.advance();
-          return { type: 'COMMA', position };
-        }
-        if (ch === ':') {
-          this.advance();
-          return { type: 'COLON', position };
+        // Single character tokens (using charCode for speed)
+        switch (ch) {
+          case 123: // '{'
+            this.pos = pos + 1;
+            return { type: 'LBRACE', position: pos };
+          case 125: // '}'
+            this.pos = pos + 1;
+            return { type: 'RBRACE', position: pos };
+          case 91: // '['
+            this.pos = pos + 1;
+            return { type: 'LBRACKET', position: pos };
+          case 93: // ']'
+            this.pos = pos + 1;
+            return { type: 'RBRACKET', position: pos };
+          case 44: // ','
+            this.pos = pos + 1;
+            return { type: 'COMMA', position: pos };
+          case 58: // ':'
+            this.pos = pos + 1;
+            return { type: 'COLON', position: pos };
+          case 34: // '"'
+            return { type: 'STRING', value: this.scanString(), position: pos };
         }
 
-        // String
-        if (ch === '"') {
-          return { type: 'STRING', value: this.scanString(), position };
-        }
-
-        // Number
-        if (ch === '-' || /\d/.test(ch)) {
-          // Check for -Infinity first
-          if (ch === '-' && this.input.slice(this.pos, this.pos + 9) === '-Infinity') {
-            this.pos += 9;
-            return { type: 'NEG_INFINITY', position };
+        // Number or -Infinity
+        if (ch === 45 || (ch >= 48 && ch <= 57)) { // '-' or '0'-'9'
+          // Check for -Infinity
+          if (ch === 45 && input.slice(pos, pos + 9) === '-Infinity') {
+            this.pos = pos + 9;
+            return { type: 'NEG_INFINITY', position: pos };
           }
-          return { type: 'NUMBER', value: this.scanNumber(), position };
+          return { type: 'NUMBER', value: this.scanNumber(), position: pos };
         }
 
-        // Keywords
-        if (this.match('Infinity')) {
-          return { type: 'INFINITY', position };
-        }
-        if (this.match('NaN')) {
-          return { type: 'NAN', position };
-        }
-        if (this.match('true')) {
-          return { type: 'TRUE', position };
-        }
-        if (this.match('false')) {
-          return { type: 'FALSE', position };
-        }
-        if (this.match('null')) {
-          return { type: 'NULL', position };
-        }
-        if (this.match('date:')) {
-          // Read the ISO 8601 date string (unquoted)
-          const start = this.pos;
-          while (this.pos < this.input.length && !/[\s,}\]]/.test(this.peek())) {
-            this.advance();
+        // Keywords - check first character for fast path
+        const remaining = input.slice(pos);
+
+        if (ch === 73) { // 'I'
+          if (remaining.startsWith('Infinity')) {
+            this.pos = pos + 8;
+            return { type: 'INFINITY', position: pos };
           }
-          const dateStr = this.input.slice(start, this.pos);
-          return { type: 'DATE', value: dateStr, position };
-        }
-        if (this.match('map')) {
-          return { type: 'MAP', position };
-        }
-        if (this.match('set')) {
-          return { type: 'SET', position };
+        } else if (ch === 78) { // 'N'
+          if (remaining.startsWith('NaN')) {
+            this.pos = pos + 3;
+            return { type: 'NAN', position: pos };
+          }
+        } else if (ch === 116) { // 't'
+          if (remaining.startsWith('true')) {
+            this.pos = pos + 4;
+            return { type: 'TRUE', position: pos };
+          }
+        } else if (ch === 102) { // 'f'
+          if (remaining.startsWith('false')) {
+            this.pos = pos + 5;
+            return { type: 'FALSE', position: pos };
+          }
+        } else if (ch === 110) { // 'n'
+          if (remaining.startsWith('null')) {
+            this.pos = pos + 4;
+            return { type: 'NULL', position: pos };
+          }
+        } else if (ch === 100) { // 'd'
+          if (remaining.startsWith('date:')) {
+            this.pos = pos + 5;
+            const start = this.pos;
+            // Scan until whitespace or delimiter
+            while (this.pos < this.len) {
+              const c = input.charCodeAt(this.pos);
+              if (c === 32 || c === 9 || c === 10 || c === 13 || c === 44 || c === 125 || c === 93) { // whitespace or , } ]
+                break;
+              }
+              this.pos++;
+            }
+            const dateStr = input.slice(start, this.pos);
+            return { type: 'DATE', value: dateStr, position: pos };
+          }
+        } else if (ch === 109) { // 'm'
+          if (remaining.startsWith('map')) {
+            this.pos = pos + 3;
+            return { type: 'MAP', position: pos };
+          }
+        } else if (ch === 115) { // 's'
+          if (remaining.startsWith('set')) {
+            this.pos = pos + 3;
+            return { type: 'SET', position: pos };
+          }
         }
 
-        throw new Error(`Unexpected character '${ch}' at position ${this.pos}`);
+        throw new Error(`Unexpected character '${input[pos]}' at position ${pos}`);
       }
     }
 
@@ -224,20 +304,22 @@ const ION = {
       }
 
       private expect(type: TokenType): Token {
-        if (this.currentToken.type !== type) {
+        const token = this.currentToken;
+        if (token.type !== type) {
           throw new Error(
-            `Expected ${type} but got ${this.currentToken.type} at position ${this.currentToken.position}`
+            `Expected ${type} but got ${token.type} at position ${token.position}`
           );
         }
-        const token = this.currentToken;
         this.advance();
         return token;
       }
 
       private parseValue(): unknown {
         const token = this.currentToken;
+        const type = token.type;
 
-        switch (token.type) {
+        // Inline simple cases for speed
+        switch (type) {
           case 'STRING':
             this.advance();
             return token.value;
@@ -270,150 +352,165 @@ const ION = {
             this.advance();
             return -Infinity;
 
-          case 'DATE':
-            return this.parseDate();
+          case 'DATE': {
+            this.advance();
+            const dateStr = token.value as string;
+            const date = new Date(dateStr);
+            const time = date.getTime();
+            if (time !== time) { // isNaN check
+              throw new Error(`Invalid date string "${dateStr}" at position ${token.position}`);
+            }
+            return date;
+          }
 
-          case 'MAP':
-            return this.parseMap();
+          case 'LBRACKET': {
+            this.advance(); // consume '['
+            const arr: unknown[] = [];
 
-          case 'SET':
-            return this.parseSet();
+            if (this.currentToken.type === 'RBRACKET') {
+              this.advance();
+              return arr;
+            }
 
-          case 'LBRACE':
-            return this.parseObject();
+            while (true) {
+              arr.push(this.parseValue());
 
-          case 'LBRACKET':
-            return this.parseArray();
+              const currentType = this.currentToken.type as TokenType;
+              if (currentType === 'COMMA') {
+                this.advance();
+                continue;
+              }
+              if (currentType === 'RBRACKET') {
+                this.advance();
+                break;
+              }
+              throw new Error(
+                `Expected COMMA or RBRACKET but got ${currentType} at position ${this.currentToken.position}`
+              );
+            }
+
+            return arr;
+          }
+
+          case 'LBRACE': {
+            this.advance(); // consume '{'
+            const obj: Record<string, unknown> = {};
+
+            if (this.currentToken.type === 'RBRACE') {
+              this.advance();
+              return obj;
+            }
+
+            while (true) {
+              const keyToken = this.currentToken;
+              if (keyToken.type !== 'STRING') {
+                throw new Error(
+                  `Expected STRING but got ${keyToken.type} at position ${keyToken.position}`
+                );
+              }
+              this.advance();
+              const key = keyToken.value as string;
+
+              this.expect('COLON');
+
+              obj[key] = this.parseValue();
+
+              const currentType = this.currentToken.type as TokenType;
+              if (currentType === 'COMMA') {
+                this.advance();
+                continue;
+              }
+              if (currentType === 'RBRACE') {
+                this.advance();
+                break;
+              }
+              throw new Error(
+                `Expected COMMA or RBRACE but got ${currentType} at position ${this.currentToken.position}`
+              );
+            }
+
+            return obj;
+          }
+
+          case 'MAP': {
+            this.advance(); // consume 'map'
+            this.expect('LBRACE');
+
+            const map = new Map();
+
+            if (this.currentToken.type === 'RBRACE') {
+              this.advance();
+              return map;
+            }
+
+            while (true) {
+              const key = this.parseValue();
+              this.expect('COLON');
+              const value = this.parseValue();
+              map.set(key, value);
+
+              const currentType = this.currentToken.type as TokenType;
+              if (currentType === 'COMMA') {
+                this.advance();
+                continue;
+              }
+              if (currentType === 'RBRACE') {
+                this.advance();
+                break;
+              }
+              throw new Error(
+                `Expected COMMA or RBRACE but got ${currentType} at position ${this.currentToken.position}`
+              );
+            }
+
+            return map;
+          }
+
+          case 'SET': {
+            this.advance(); // consume 'set'
+            this.expect('LBRACE');
+
+            const set = new Set();
+
+            if (this.currentToken.type === 'RBRACE') {
+              this.advance();
+              return set;
+            }
+
+            while (true) {
+              set.add(this.parseValue());
+
+              const currentType = this.currentToken.type as TokenType;
+              if (currentType === 'COMMA') {
+                this.advance();
+                continue;
+              }
+              if (currentType === 'RBRACE') {
+                this.advance();
+                break;
+              }
+              throw new Error(
+                `Expected COMMA or RBRACE but got ${currentType} at position ${this.currentToken.position}`
+              );
+            }
+
+            return set;
+          }
 
           default:
             throw new Error(
-              `Unexpected token ${token.type} at position ${token.position}`
+              `Unexpected token ${type} at position ${token.position}`
             );
         }
       }
 
-      private parseDate(): Date {
-        const token = this.currentToken;
-        this.advance(); // consume DATE token
-
-        const dateStr = token.value as string;
-        const date = new Date(dateStr);
-
-        if (isNaN(date.getTime())) {
-          throw new Error(`Invalid date string "${dateStr}" at position ${token.position}`);
-        }
-
-        return date;
-      }
-
-      private parseMap(): Map<unknown, unknown> {
-        this.advance(); // consume 'map'
-        this.expect('LBRACE');
-
-        const map = new Map();
-
-        if (this.currentToken.type === 'RBRACE') {
-          this.advance();
-          return map;
-        }
-
-        while (true) {
-          const key = this.parseValue();
-          this.expect('COLON');
-          const value = this.parseValue();
-          map.set(key, value);
-
-          if (this.currentToken.type === 'COMMA') {
-            this.advance();
-          } else {
-            break;
-          }
-        }
-
-        this.expect('RBRACE');
-        return map;
-      }
-
-      private parseSet(): Set<unknown> {
-        this.advance(); // consume 'set'
-        this.expect('LBRACE');
-
-        const set = new Set();
-
-        if (this.currentToken.type === 'RBRACE') {
-          this.advance();
-          return set;
-        }
-
-        while (true) {
-          set.add(this.parseValue());
-
-          if (this.currentToken.type === 'COMMA') {
-            this.advance();
-          } else {
-            break;
-          }
-        }
-
-        this.expect('RBRACE');
-        return set;
-      }
-
-      private parseObject(): Record<string, unknown> {
-        this.expect('LBRACE');
-
-        const obj: Record<string, unknown> = {};
-
-        if (this.currentToken.type === 'RBRACE') {
-          this.advance();
-          return obj;
-        }
-
-        while (true) {
-          const keyToken = this.expect('STRING');
-          const key = keyToken.value as string;
-          this.expect('COLON');
-          const value = this.parseValue();
-          obj[key] = value;
-
-          if (this.currentToken.type === 'COMMA') {
-            this.advance();
-          } else {
-            break;
-          }
-        }
-
-        this.expect('RBRACE');
-        return obj;
-      }
-
-      private parseArray(): unknown[] {
-        this.expect('LBRACKET');
-
-        const arr: unknown[] = [];
-
-        if (this.currentToken.type === 'RBRACKET') {
-          this.advance();
-          return arr;
-        }
-
-        while (true) {
-          arr.push(this.parseValue());
-
-          if (this.currentToken.type === 'COMMA') {
-            this.advance();
-          } else {
-            break;
-          }
-        }
-
-        this.expect('RBRACKET');
-        return arr;
-      }
-
       parse(): unknown {
         const value = this.parseValue();
-        this.expect('EOF');
+        if (this.currentToken.type !== 'EOF') {
+          throw new Error(
+            `Expected EOF but got ${this.currentToken.type} at position ${this.currentToken.position}`
+          );
+        }
         return value;
       }
     }
@@ -425,128 +522,176 @@ const ION = {
   stringify(object: unknown): string {
     const seen = new WeakSet<object>();
 
-    function stringifyValue(value: unknown, path: string): string {
-      // Handle primitives
+    function stringifyValue(value: unknown): string {
+      // Handle null first (most common primitive in many use cases)
       if (value === null) return 'null';
-      if (value === undefined) {
-        throw new Error(`Cannot serialize undefined at ${path}`);
-      }
 
       const type = typeof value;
 
-      // Handle booleans
+      // Handle primitives (optimized order: most common first)
+      if (type === 'string') {
+        // Inline simple string escaping for common cases
+        const len = (value as string).length;
+        let needsEscape = false;
+        for (let i = 0; i < len; i++) {
+          const ch = (value as string).charCodeAt(i);
+          if (ch === 34 || ch === 92 || ch < 32) {
+            needsEscape = true;
+            break;
+          }
+        }
+        if (!needsEscape) {
+          return `"${value}"`;
+        }
+        return JSON.stringify(value);
+      }
+
+      if (type === 'number') {
+        // Fast path for normal numbers
+        if (value === (value as number)) { // NaN check (NaN !== NaN)
+          if (isFinite(value as number)) {
+            return String(value);
+          }
+          // Handle Infinity
+          return value === Infinity ? 'Infinity' : '-Infinity';
+        }
+        return 'NaN';
+      }
+
       if (type === 'boolean') {
         return value ? 'true' : 'false';
       }
 
-      // Handle numbers
-      if (type === 'number') {
-        if (Number.isNaN(value)) return 'NaN';
-        if (value === Infinity) return 'Infinity';
-        if (value === -Infinity) return '-Infinity';
-        return String(value);
+      if (value === undefined) {
+        throw new Error('Cannot serialize undefined');
       }
 
-      // Handle strings
-      if (type === 'string') {
-        return JSON.stringify(value);
-      }
-
-      // Handle bigint - unsupported
+      // Handle unsupported primitives early
       if (type === 'bigint') {
-        throw new Error(`Cannot serialize BigInt at ${path}`);
+        throw new Error('Cannot serialize BigInt');
       }
-
-      // Handle functions - unsupported
       if (type === 'function') {
-        throw new Error(`Cannot serialize function at ${path}`);
+        throw new Error('Cannot serialize function');
       }
-
-      // Handle symbols - unsupported
       if (type === 'symbol') {
-        throw new Error(`Cannot serialize symbol at ${path}`);
+        throw new Error('Cannot serialize symbol');
       }
 
-      // Handle objects
-      if (type === 'object' && value !== null) {
-        // Circular reference check
-        if (seen.has(value as object)) {
-          throw new Error(`Circular reference detected at ${path}`);
-        }
-        seen.add(value as object);
-
-        try {
-          // Handle Date
-          if (value instanceof Date) {
-            if (isNaN(value.getTime())) {
-              throw new Error(`Invalid Date at ${path}`);
-            }
-            return `date:${value.toISOString()}`;
-          }
-
-          // Handle WeakMap - unsupported
-          if (value instanceof WeakMap) {
-            throw new Error(`Cannot serialize WeakMap at ${path}`);
-          }
-
-          // Handle WeakSet - unsupported
-          if (value instanceof WeakSet) {
-            throw new Error(`Cannot serialize WeakSet at ${path}`);
-          }
-
-          // Handle Map
-          if (value instanceof Map) {
-            const entries: string[] = [];
-            let index = 0;
-            for (const [k, v] of value.entries()) {
-              const keyStr = stringifyValue(k, `${path}[map key ${index}]`);
-              const valueStr = stringifyValue(v, `${path}[map value ${index}]`);
-              entries.push(`${keyStr}: ${valueStr}`);
-              index++;
-            }
-            return `map { ${entries.join(', ')} }`;
-          }
-
-          // Handle Set
-          if (value instanceof Set) {
-            const values: string[] = [];
-            let index = 0;
-            for (const v of value.values()) {
-              values.push(stringifyValue(v, `${path}[set item ${index}]`));
-              index++;
-            }
-            return `set { ${values.join(', ')} }`;
-          }
-
-          // Handle Array
-          if (Array.isArray(value)) {
-            const items: string[] = [];
-            for (let i = 0; i < value.length; i++) {
-              items.push(stringifyValue(value[i], `${path}[${i}]`));
-            }
-            return `[${items.join(', ')}]`;
-          }
-
-          // Handle plain objects
-          const entries: string[] = [];
-          for (const [key, val] of Object.entries(value)) {
-            // Skip undefined properties
-            if (val === undefined) continue;
-
-            const keyStr = JSON.stringify(key);
-            const valueStr = stringifyValue(val, `${path}.${key}`);
-            entries.push(`${keyStr}: ${valueStr}`);
-          }
-          return `{${entries.length > 0 ? ' ' : ''}${entries.join(', ')}${entries.length > 0 ? ' ' : ''}}`;
-        } finally {
-          seen.delete(value as object);
-        }
+      // Handle objects - type === 'object' at this point
+      // Circular reference check
+      if (seen.has(value as object)) {
+        throw new Error('Circular reference detected');
       }
+      seen.add(value as object);
 
-      throw new Error(`Cannot serialize value of type ${type} at ${path}`);
+      try {
+        // Order by frequency: Array -> Plain Object -> Date -> Map -> Set -> Unsupported
+
+        // Handle Array (very common)
+        if (Array.isArray(value)) {
+          const len = value.length;
+          if (len === 0) return '[]';
+
+          let result = '[';
+          for (let i = 0; i < len; i++) {
+            if (i > 0) result += ', ';
+            result += stringifyValue(value[i]);
+          }
+          result += ']';
+          return result;
+        }
+
+        // Handle Date before checking for plain objects
+        if (value instanceof Date) {
+          const time = value.getTime();
+          if (time !== time) { // isNaN check
+            throw new Error('Invalid Date');
+          }
+          return `date:${value.toISOString()}`;
+        }
+
+        // Handle Map
+        if (value instanceof Map) {
+          if (value.size === 0) return 'map {  }';
+
+          let result = 'map { ';
+          let first = true;
+          for (const [k, v] of value) {
+            if (!first) result += ', ';
+            first = false;
+            result += stringifyValue(k);
+            result += ': ';
+            result += stringifyValue(v);
+          }
+          result += ' }';
+          return result;
+        }
+
+        // Handle Set
+        if (value instanceof Set) {
+          if (value.size === 0) return 'set {  }';
+
+          let result = 'set { ';
+          let first = true;
+          for (const v of value) {
+            if (!first) result += ', ';
+            first = false;
+            result += stringifyValue(v);
+          }
+          result += ' }';
+          return result;
+        }
+
+        // Handle WeakMap/WeakSet (must check before plain objects)
+        if (value instanceof WeakMap) {
+          throw new Error('Cannot serialize WeakMap');
+        }
+        if (value instanceof WeakSet) {
+          throw new Error('Cannot serialize WeakSet');
+        }
+
+        // Handle plain objects (most common object type)
+        const keys = Object.keys(value);
+        const len = keys.length;
+        if (len === 0) return '{}';
+
+        let result = '{ ';
+        let first = true;
+        for (let i = 0; i < len; i++) {
+          const key = keys[i]!;
+          const val = (value as Record<string, unknown>)[key];
+
+          // Skip undefined properties
+          if (val === undefined) continue;
+
+          if (!first) result += ', ';
+          first = false;
+
+          // Inline string key escaping
+          let keyStr: string;
+          const keyLen = key.length;
+          let needsEscape = false;
+          for (let j = 0; j < keyLen; j++) {
+            const ch = key.charCodeAt(j);
+            if (ch === 34 || ch === 92 || ch < 32) {
+              needsEscape = true;
+              break;
+            }
+          }
+          keyStr = needsEscape ? JSON.stringify(key) : `"${key}"`;
+
+          result += keyStr;
+          result += ': ';
+          result += stringifyValue(val);
+        }
+        result += ' }';
+        return result;
+      } finally {
+        seen.delete(value as object);
+      }
     }
 
-    return stringifyValue(object, 'root');
+    return stringifyValue(object);
   },
 }
 

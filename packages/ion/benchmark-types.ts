@@ -10,7 +10,7 @@ console.log('-'.repeat(100));
 const dateObj = { timestamp: new Date('2026-01-27T15:30:00Z'), name: 'Event' };
 
 const jsonDate = JSON.parse(JSON.stringify(dateObj));
-const ionDate = ION.parse(ION.stringify(dateObj));
+const ionDate = ION.parse(ION.stringify(dateObj)) as typeof dateObj;
 
 console.log('Original:', dateObj);
 console.log('JSON:    ', jsonDate);
@@ -31,7 +31,7 @@ const specialNumbers = {
 };
 
 const jsonSpecial = JSON.parse(JSON.stringify(specialNumbers));
-const ionSpecial = ION.parse(ION.stringify(specialNumbers));
+const ionSpecial = ION.parse(ION.stringify(specialNumbers)) as typeof specialNumbers;
 
 console.log('Original:', specialNumbers);
 console.log('JSON:    ', jsonSpecial);
@@ -46,7 +46,7 @@ console.log('  - negInfinity is -Infinity:', ionSpecial.negInfinity === -Infinit
 console.log('\n3. Map Handling');
 console.log('-'.repeat(100));
 const mapObj = {
-  config: new Map([
+  config: new Map<string | number, string | number>([
     ['theme', 'dark'],
     ['fontSize', 14],
     [123, 'numeric key'],
@@ -54,7 +54,7 @@ const mapObj = {
 };
 
 const jsonMap = JSON.parse(JSON.stringify(mapObj));
-const ionMap = ION.parse(ION.stringify(mapObj));
+const ionMap = ION.parse(ION.stringify(mapObj)) as typeof mapObj;
 
 console.log('Original:', mapObj);
 console.log('  - config instanceof Map:', mapObj.config instanceof Map);
@@ -76,7 +76,7 @@ const setObj = {
 };
 
 const jsonSet = JSON.parse(JSON.stringify(setObj));
-const ionSet = ION.parse(ION.stringify(setObj));
+const ionSet = ION.parse(ION.stringify(setObj)) as typeof setObj;
 
 console.log('Original:', setObj);
 console.log('  - tags instanceof Set:', setObj.tags instanceof Set);
@@ -99,7 +99,7 @@ const undefinedObj = {
 };
 
 const jsonUndefined = JSON.parse(JSON.stringify(undefinedObj));
-const ionUndefined = ION.parse(ION.stringify(undefinedObj));
+const ionUndefined = ION.parse(ION.stringify(undefinedObj)) as Record<string, unknown>;
 
 console.log('Original:', undefinedObj);
 console.log('  - has "age" property:', 'age' in undefinedObj);
@@ -120,7 +120,7 @@ const apiResponse = {
     name: 'Alice',
     lastLogin: new Date('2026-01-27T15:30:00Z'),
     score: NaN, // not yet calculated
-    preferences: new Map([
+    preferences: new Map<string, string | boolean>([
       ['theme', 'dark'],
       ['notifications', true],
     ]),
@@ -150,7 +150,7 @@ console.log('  - user.preferences instanceof Map:', jsonApi.user.preferences ins
 console.log('  - user.roles instanceof Set:', jsonApi.user.roles instanceof Set);
 console.log('  - user has "optionalField":', 'optionalField' in jsonApi.user);
 
-const ionApi = ION.parse(ION.stringify(apiResponse));
+const ionApi = ION.parse(ION.stringify(apiResponse)) as typeof apiResponse;
 console.log('\nION round-trip:');
 console.log('  - user.lastLogin instanceof Date:', ionApi.user.lastLogin instanceof Date);
 console.log('  - user.score is NaN:', Number.isNaN(ionApi.user.score));
