@@ -18,7 +18,7 @@ This is a Bun workspace monorepo with the following packages:
 - **packages/react** (`@covenant/react`) - React hooks for Covenant (useQuery, useMutation, useListenedQuery, useCachedQuery)
 - **packages/sidekick** (`@covenant/sidekick`) - Standalone WebSocket service for realtime channels and resource invalidation (allows edge deployments)
 - **packages/request-serializer** (`@covenant/request-serializer`) - Utilities for serializing/deserializing Request objects
-- **packages/website** - Marketing website
+- **packages/ion** (`@covenant/ion`) - A superset of JSON used for communication (has support for `Date`, `Map`, etc.)
 - **docs** - Astro-based documentation site
 
 ### Examples
