@@ -3,6 +3,7 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import * as readline from "node:readline";
+import { $ } from "bun";
 
 const PACKAGES_DIR = "packages";
 
@@ -50,7 +51,25 @@ function createPrompt(): (message: string) => Promise<string> {
   };
 }
 
+async function isGitClean(): Promise<boolean> {
+  const result = await $`git status --porcelain`.quiet();
+  return result.text().trim() === "";
+}
+
+function getTagName(pkgName: string, version: string): string {
+  // @covenant-rpc/core@1.0.0 -> covenant-rpc-core-v1.0.0
+  const safeName = pkgName.replace("@", "").replace("/", "-");
+  return `${safeName}-v${version}`;
+}
+
 async function main() {
+  // Check for clean git repo
+  if (!(await isGitClean())) {
+    console.error("Error: Git working directory is not clean.");
+    console.error("Please commit or stash your changes before updating versions.");
+    process.exit(1);
+  }
+
   // Get all packages
   const dirs = await readdir(PACKAGES_DIR);
   const packages: { dir: string; pkg: PackageJson }[] = [];
@@ -116,6 +135,35 @@ async function main() {
   for (const { pkg, newVersion } of updates) {
     console.log(`  ${pkg.name}: ${newVersion}`);
   }
+
+  // Git: stage changes
+  console.log("\nStaging changes...");
+  for (const { dir } of updates) {
+    await $`git add ${join(dir, "package.json")}`.quiet();
+  }
+
+  // Git: create commit
+  const commitMessage = updates
+    .map(({ pkg, newVersion }) => `${pkg.name}@${newVersion}`)
+    .join(", ");
+
+  console.log("Creating commit...");
+  await $`git commit -m ${"release: " + commitMessage}`.quiet();
+
+  // Git: create tags
+  console.log("Creating tags...");
+  const tags: string[] = [];
+  for (const { pkg, newVersion } of updates) {
+    const tag = getTagName(pkg.name, newVersion);
+    tags.push(tag);
+    await $`git tag ${tag}`.quiet();
+    console.log(`  ${tag}`);
+  }
+
+  // Git: push commit and tags
+  console.log("\nPushing commit and tags...");
+  await $`git push`.quiet();
+  await $`git push --tags`.quiet();
 
   console.log("\nDone! Run `bun run publish` to publish packages.");
 }

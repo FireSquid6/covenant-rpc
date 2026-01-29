@@ -47,7 +47,19 @@ async function versionExistsOnNpm(name: string, version: string): Promise<boolea
   }
 }
 
+async function isGitClean(): Promise<boolean> {
+  const result = await $`git status --porcelain`.quiet();
+  return result.text().trim() === "";
+}
+
 async function main() {
+  // Check for clean git repo
+  if (!(await isGitClean())) {
+    console.error("Error: Git working directory is not clean.");
+    console.error("Please commit or stash your changes before publishing.");
+    process.exit(1);
+  }
+
   // Get all packages
   const dirs = await readdir(PACKAGES_DIR);
   const packages: { dir: string; pkg: PackageJson }[] = [];
