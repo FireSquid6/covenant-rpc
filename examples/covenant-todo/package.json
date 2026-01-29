@@ -1,0 +1,36 @@
+{
+  "name": "covenant-todo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "bun test tests/unit/ tests/integration/",
+    "test:e2e": "playwright test",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@covenant/core": "workspace:*",
+    "@covenant/server": "workspace:*",
+    "@covenant/client": "workspace:*",
+    "@covenant/react": "workspace:*",
+    "@covenant/sidekick": "workspace:*",
+    "@covenant/ion": "workspace:*",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "drizzle-orm": "^0.36.4",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "drizzle-kit": "^0.29.1",
+    "@playwright/test": "^1.40.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -14,8 +14,8 @@ export type ProcedureDefinitionMap<T extends ProcedureMap, Context, Derivation> 
   [key in keyof T]: ProcedureDefinition<T[key], Context, Derivation> | undefined
 }
 
-export type ChannelDefinitionMap<T extends ChannelMap> = {
-  [key in keyof T]: ChannelDefinition<T[key]>
+export type ChannelDefinitionMap<T extends ChannelMap, Context, Derived> = {
+  [key in keyof T]: ChannelDefinition<T[key], Context, Derived>
 }
 
 export type ContextGenerator<Context> = 
@@ -36,7 +36,7 @@ export class CovenantServer<
   private sidekickConnection: ServerToSidekickConnection
 
   private procedureDefinitions: ProcedureDefinitionMap<P, Context, Derived>;
-  private channelDefinitions: ChannelDefinitionMap<C>;
+  private channelDefinitions: ChannelDefinitionMap<C, Context, Derived>;
   private logger: Logger;
 
   constructor(covenant: Covenant<P, C>, {
@@ -131,10 +131,26 @@ export class CovenantServer<
 
       // Call onMessage handler
       try {
+        // For onMessage, we pass empty derived since there's no HTTP request context
+        // The connection is already authenticated via onConnect
+        const emptyDerived = await this.derivation({
+          inputs: undefined,
+          request: undefined as any,
+          ctx: undefined as any,
+          derived: undefined,
+          logger: l,
+          setHeader() {},
+          deleteHeader() {},
+          error(message, code) {
+            throw new ThrowableChannelError(message, channelName, params, "server");
+          }
+        });
+
         await definition.onMessage({
           inputs: validation.value,
           params: params as any,
           context,
+          derived: emptyDerived,
           error(reason: string, cause: "client" | "server"): never {
             throw new ThrowableChannelError(reason, channelName, params, cause);
           },
@@ -336,11 +352,33 @@ export class CovenantServer<
         );
       }
 
+      // Generate context and derivation (same as procedures)
+      const initialInputs: ProcedureInputs<any, undefined, undefined> = {
+        inputs: connectionRequestValidation.value,
+        request,
+        ctx: undefined,
+        derived: undefined,
+        logger: l,
+        setHeader() {},
+        deleteHeader() {},
+        error(message, code) {
+          throw new ThrowableChannelError(message, channelName, params, "server");
+        }
+      };
+
+      const ctx: Context = await this.contextGenerator(initialInputs);
+      const derived: Derived = await this.derivation({ ...initialInputs, ctx });
+
       // Call onConnect handler
       const context = await definition.onConnect({
         inputs: connectionRequestValidation.value,
         params: params as any,
+        ctx,
+        derived,
         reject(reason: string, cause: "client" | "server"): never {
+          throw new ThrowableChannelError(reason, channelName, params, cause);
+        },
+        error(reason: string, cause: "client" | "server"): never {
           throw new ThrowableChannelError(reason, channelName, params, cause);
         },
       });
