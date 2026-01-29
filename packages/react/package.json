@@ -1,7 +1,11 @@
 {
-  "name": "@covenant/react",
+  "name": "@covenant-rpc/react",
   "module": "index.ts",
   "type": "module",
+  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

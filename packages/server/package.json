@@ -1,8 +1,11 @@
 {
-  "name": "@covenant/server",
+  "name": "@covenant-rpc/server",
   "module": "lib/index.ts",
   "version": "0.1.0",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": "./lib/index.ts",
     "./*": "./lib/*.ts"
