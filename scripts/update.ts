@@ -2,6 +2,7 @@
 
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
+import * as readline from "node:readline";
 
 const PACKAGES_DIR = "packages";
 
@@ -34,12 +35,19 @@ function bumpVersion(version: string, type: "major" | "minor" | "patch"): string
   }
 }
 
-async function prompt(message: string): Promise<string> {
-  process.stdout.write(message);
-  for await (const line of console) {
-    return line.trim();
-  }
-  return "";
+function createPrompt(): (message: string) => Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return (message: string): Promise<string> => {
+    return new Promise((resolve) => {
+      rl.question(message, (answer) => {
+        resolve(answer.trim());
+      });
+    });
+  };
 }
 
 async function main() {
@@ -57,80 +65,56 @@ async function main() {
     }
   }
 
-  // Show packages with numbers
-  console.log("\nPackages:");
-  packages.forEach(({ pkg }, i) => {
+  console.log("\nFor each package, select: [n]othing, [p]atch, [m]inor, [M]ajor\n");
+
+  const prompt = createPrompt();
+  const updates: { dir: string; pkg: PackageJson; newVersion: string }[] = [];
+
+  for (const { dir, pkg } of packages) {
     const status = pkg.private ? " (private)" : "";
-    console.log(`  ${i + 1}) ${pkg.name} @ ${pkg.version}${status}`);
-  });
+    const choice = await prompt(`${pkg.name} @ ${pkg.version}${status} [n/p/m/M]: `);
 
-  // Prompt for which packages to update
-  console.log("\nEnter package numbers to update (comma-separated, or 'all'):");
-  console.log("Example: 1,3,4 or all");
+    let bumpType: "major" | "minor" | "patch" | null = null;
+    switch (choice.toLowerCase()) {
+      case "":
+      case "n":
+        // No change
+        break;
+      case "p":
+        bumpType = "patch";
+        break;
+      case "m":
+        bumpType = choice === "M" ? "major" : "minor";
+        break;
+      default:
+        console.log("  Invalid choice, skipping.");
+    }
 
-  const selection = await prompt("\nPackages: ");
-
-  let selectedIndices: number[];
-  if (selection.toLowerCase() === "all") {
-    selectedIndices = packages.map((_, i) => i);
-  } else {
-    selectedIndices = selection
-      .split(",")
-      .map(s => parseInt(s.trim()) - 1)
-      .filter(i => i >= 0 && i < packages.length);
+    if (bumpType) {
+      const newVersion = bumpVersion(pkg.version, bumpType);
+      updates.push({ dir, pkg, newVersion });
+      console.log(`  → ${newVersion}`);
+    }
   }
 
-  if (selectedIndices.length === 0) {
-    console.log("No packages selected. Exiting.");
+  // Close readline
+  process.stdin.destroy();
+
+  if (updates.length === 0) {
+    console.log("\nNo packages selected for update.");
     process.exit(0);
   }
 
-  console.log("\nSelected packages:");
-  for (const i of selectedIndices) {
-    console.log(`  - ${packages[i].pkg.name}`);
-  }
-
-  // Prompt for version bump type
-  console.log("\nSelect version bump type:");
-  console.log("  1) patch (0.0.x)");
-  console.log("  2) minor (0.x.0)");
-  console.log("  3) major (x.0.0)");
-  console.log("  4) cancel");
-
-  const choice = await prompt("\nChoice [1-4]: ");
-
-  let bumpType: "major" | "minor" | "patch";
-  switch (choice) {
-    case "1":
-      bumpType = "patch";
-      break;
-    case "2":
-      bumpType = "minor";
-      break;
-    case "3":
-      bumpType = "major";
-      break;
-    case "4":
-      console.log("Cancelled.");
-      process.exit(0);
-    default:
-      console.log("Invalid choice.");
-      process.exit(1);
-  }
-
-  // Bump selected versions
-  for (const i of selectedIndices) {
-    const { dir, pkg } = packages[i];
-    const newVersion = bumpVersion(pkg.version, bumpType);
+  // Apply updates
+  for (const { dir, pkg, newVersion } of updates) {
     pkg.version = newVersion;
     await writePackageJson(dir, pkg);
   }
 
-  // Show results
-  console.log("\nUpdated versions:");
-  for (const i of selectedIndices) {
-    const { pkg } = packages[i];
-    console.log(`  ${pkg.name}: ${pkg.version}`);
+  // Show summary
+  console.log("\nUpdated packages:");
+  for (const { pkg, newVersion } of updates) {
+    console.log(`  ${pkg.name}: ${newVersion}`);
   }
 
   console.log("\nDone! Run `bun run publish` to publish packages.");

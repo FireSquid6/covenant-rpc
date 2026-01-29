@@ -27,6 +27,5 @@
   },
   "peerDependencies": {
     "typescript": "^5"
-  },
-  "private": true
+  }
 }

@@ -3,8 +3,23 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
+import * as readline from "node:readline";
 
 const PACKAGES_DIR = "packages";
+
+function prompt(message: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(message, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
 
 interface PackageJson {
   name: string;
@@ -53,6 +68,14 @@ async function main() {
     versionMap[pkg.name] = pkg.version;
   }
 
+  // Prompt for OTP
+  const otp = await prompt("Enter npm OTP: ");
+
+  if (!otp) {
+    console.log("OTP required. Exiting.");
+    process.exit(1);
+  }
+
   console.log("\nChecking which packages need publishing...\n");
 
   for (const { dir, pkg } of packages) {
@@ -85,7 +108,7 @@ async function main() {
 
     // Publish
     try {
-      await $`cd ${dir} && npm publish --access public`.quiet();
+      await $`cd ${dir} && npm publish --access public --otp=${otp}`.quiet();
       console.log(`✅ Published ${pkg.name}@${pkg.version}`);
     } catch (e) {
       console.log(`❌ Failed to publish ${pkg.name}@${pkg.version}`);
