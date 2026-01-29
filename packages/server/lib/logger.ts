@@ -1,5 +1,7 @@
 import type { Logger as ILogger, LoggerLevel, Prefix } from "@covenant/core/logger";
 
+export type { LoggerLevel };
+
 const loggerLevels: Record<LoggerLevel, number> = { "slient": 0, "error": 1, "warn": 2, "info": 3, "debug": 4 };
 
 function levelSatisfies(currentLevel: LoggerLevel, maxLevel: LoggerLevel): boolean {

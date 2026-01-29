@@ -369,7 +369,7 @@ test("HTTP channel message error handling", async () => {
   });
 
   expect(response.status).toBe(400);
-  const errorBody = await response.json();
+  const errorBody = await response.json() as any;
   expect(errorBody.fault).toBe("client");
   expect(errorBody.message).toContain("spam");
 

@@ -26,7 +26,7 @@ export function mockClientToSidekick(sidekick: Sidekick, client: SidekickClient)
       sidekick.handleClientMessage(client, message);
     },
     onMessage(v) {
-
+      return () => {};
     }
   }
 }
