@@ -8,6 +8,9 @@
   },
   "workspaces": [
     "packages/*",
-    "examples/*" 
-  ]
+    "examples/*"
+  ],
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8"
+  }
 }
