@@ -1,7 +1,7 @@
 {
   "name": "@covenant-rpc/server",
   "module": "lib/index.ts",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -14,8 +14,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@covenant/core": "workspace:*",
-    "@covenant/ion": "workspace:*",
-    "@covenant/request-serializer": "workspace:*"
+    "@covenant-rpc/core": "workspace:*",
+    "@covenant-rpc/ion": "workspace:*",
+    "@covenant-rpc/request-serializer": "workspace:*"
   }
 }

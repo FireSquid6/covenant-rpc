@@ -1,7 +1,7 @@
 {
   "name": "@covenant-rpc/core",
   "module": "lib/index.ts",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "type": "module",
   "publishConfig": {
     "access": "public"

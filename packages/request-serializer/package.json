@@ -1,6 +1,6 @@
 {
   "name": "@covenant-rpc/request-serializer",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Serialize and deserialize JavaScript Request objects to/from JSON",
   "main": "index.ts",
   "module": "index.ts",
@@ -16,7 +16,12 @@
     "build": "bun build index.ts --outdir=dist",
     "dev": "bun --watch index.ts"
   },
-  "keywords": ["request", "serialization", "json", "http"],
+  "keywords": [
+    "request",
+    "serialization",
+    "json",
+    "http"
+  ],
   "devDependencies": {
     "@types/bun": "latest"
   },
