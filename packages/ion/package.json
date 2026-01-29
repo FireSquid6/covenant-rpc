@@ -1,7 +1,7 @@
 {
   "name": "@covenant-rpc/ion",
   "module": "index.ts",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "publishConfig": {
     "access": "public"
   },
