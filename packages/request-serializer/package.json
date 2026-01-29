@@ -1,6 +1,6 @@
 {
   "name": "@covenant-rpc/request-serializer",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Serialize and deserialize JavaScript Request objects to/from JSON",
   "main": "index.ts",
   "module": "index.ts",
