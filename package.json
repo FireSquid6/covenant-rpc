@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "update": "bun ./scripts/update.ts",
-    "publish": "./scripts/publish.sh"
+    "publish": "bun ./scripts/publish.ts"
   },
   "peerDependencies": {
     "typescript": "^5"

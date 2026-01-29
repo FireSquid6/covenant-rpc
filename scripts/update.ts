@@ -34,6 +34,14 @@ function bumpVersion(version: string, type: "major" | "minor" | "patch"): string
   }
 }
 
+async function prompt(message: string): Promise<string> {
+  process.stdout.write(message);
+  for await (const line of console) {
+    return line.trim();
+  }
+  return "";
+}
+
 async function main() {
   // Get all packages
   const dirs = await readdir(PACKAGES_DIR);
@@ -49,11 +57,37 @@ async function main() {
     }
   }
 
-  // Show current versions
-  console.log("\nCurrent versions:");
-  for (const { pkg } of packages) {
+  // Show packages with numbers
+  console.log("\nPackages:");
+  packages.forEach(({ pkg }, i) => {
     const status = pkg.private ? " (private)" : "";
-    console.log(`  ${pkg.name}: ${pkg.version}${status}`);
+    console.log(`  ${i + 1}) ${pkg.name} @ ${pkg.version}${status}`);
+  });
+
+  // Prompt for which packages to update
+  console.log("\nEnter package numbers to update (comma-separated, or 'all'):");
+  console.log("Example: 1,3,4 or all");
+
+  const selection = await prompt("\nPackages: ");
+
+  let selectedIndices: number[];
+  if (selection.toLowerCase() === "all") {
+    selectedIndices = packages.map((_, i) => i);
+  } else {
+    selectedIndices = selection
+      .split(",")
+      .map(s => parseInt(s.trim()) - 1)
+      .filter(i => i >= 0 && i < packages.length);
+  }
+
+  if (selectedIndices.length === 0) {
+    console.log("No packages selected. Exiting.");
+    process.exit(0);
+  }
+
+  console.log("\nSelected packages:");
+  for (const i of selectedIndices) {
+    console.log(`  - ${packages[i].pkg.name}`);
   }
 
   // Prompt for version bump type
@@ -63,61 +97,43 @@ async function main() {
   console.log("  3) major (x.0.0)");
   console.log("  4) cancel");
 
-  process.stdout.write("\nChoice [1-4]: ");
+  const choice = await prompt("\nChoice [1-4]: ");
 
-  for await (const line of console) {
-    const choice = line.trim();
-
-    let bumpType: "major" | "minor" | "patch";
-    switch (choice) {
-      case "1":
-        bumpType = "patch";
-        break;
-      case "2":
-        bumpType = "minor";
-        break;
-      case "3":
-        bumpType = "major";
-        break;
-      case "4":
-        console.log("Cancelled.");
-        process.exit(0);
-      default:
-        console.log("Invalid choice.");
-        process.exit(1);
-    }
-
-    // Bump all versions
-    const newVersions: Record<string, string> = {};
-
-    for (const { dir, pkg } of packages) {
-      const newVersion = bumpVersion(pkg.version, bumpType);
-      newVersions[pkg.name] = newVersion;
-      pkg.version = newVersion;
-    }
-
-    // Update workspace dependencies to use new versions
-    for (const { dir, pkg } of packages) {
-      if (pkg.dependencies) {
-        for (const [dep, version] of Object.entries(pkg.dependencies)) {
-          if (version === "workspace:*" && newVersions[dep]) {
-            // Keep workspace:* - it gets replaced at publish time
-          }
-        }
-      }
-      await writePackageJson(dir, pkg);
-    }
-
-    // Show new versions
-    console.log("\nUpdated versions:");
-    for (const { pkg } of packages) {
-      const status = pkg.private ? " (private)" : "";
-      console.log(`  ${pkg.name}: ${pkg.version}${status}`);
-    }
-
-    console.log("\nDone! Run `bun run publish` to publish packages.");
-    break;
+  let bumpType: "major" | "minor" | "patch";
+  switch (choice) {
+    case "1":
+      bumpType = "patch";
+      break;
+    case "2":
+      bumpType = "minor";
+      break;
+    case "3":
+      bumpType = "major";
+      break;
+    case "4":
+      console.log("Cancelled.");
+      process.exit(0);
+    default:
+      console.log("Invalid choice.");
+      process.exit(1);
   }
+
+  // Bump selected versions
+  for (const i of selectedIndices) {
+    const { dir, pkg } = packages[i];
+    const newVersion = bumpVersion(pkg.version, bumpType);
+    pkg.version = newVersion;
+    await writePackageJson(dir, pkg);
+  }
+
+  // Show results
+  console.log("\nUpdated versions:");
+  for (const i of selectedIndices) {
+    const { pkg } = packages[i];
+    console.log(`  ${pkg.name}: ${pkg.version}`);
+  }
+
+  console.log("\nDone! Run `bun run publish` to publish packages.");
 }
 
 main();
