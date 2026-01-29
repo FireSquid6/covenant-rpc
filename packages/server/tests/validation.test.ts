@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { v } from "@covenant/core/validation";
+import { v } from "@covenant-rpc/core/validation";
 
 test("bool validator", () => {
   const validator = v.bool();

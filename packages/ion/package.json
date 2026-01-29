@@ -1,6 +1,10 @@
 {
-  "name": "@covenant/ion",
+  "name": "@covenant-rpc/ion",
   "module": "index.ts",
+  "version": "1.0.4",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "exports": {
     ".": "./index.ts"

@@ -1,4 +1,4 @@
-import type { ClientToServerConnection, ClientToSidekickConnection } from "@covenant/core/interfaces";
+import type { ClientToServerConnection, ClientToSidekickConnection } from "@covenant-rpc/core/interfaces";
 
 export function emptyClientToSidekick(): ClientToSidekickConnection {
   return {

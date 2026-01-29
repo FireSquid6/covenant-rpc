@@ -1,8 +1,11 @@
 {
-  "name": "@covenant/client",
+  "name": "@covenant-rpc/client",
   "module": "lib/index.ts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": "./lib/index.ts",
     "./*": "./lib/*.ts"
@@ -11,7 +14,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@covenant/core": "workspace:*",
-    "@covenant/ion": "workspace:*"
+    "@covenant-rpc/core": "workspace:*",
+    "@covenant-rpc/ion": "workspace:*"
   }
 }

@@ -1,7 +1,11 @@
 {
-  "name": "@covenant/react",
+  "name": "@covenant-rpc/react",
   "module": "index.ts",
   "type": "module",
+  "version": "0.2.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -10,7 +14,7 @@
   },
   "dependencies": {
     "react": "^19.1.1",
-    "@covenant/core": "workspace:*",
-    "@covenant/client": "workspace:*"
+    "@covenant-rpc/core": "workspace:*",
+    "@covenant-rpc/client": "workspace:*"
   }
 }

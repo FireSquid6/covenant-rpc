@@ -1,4 +1,4 @@
-import type { Logger as ILogger, LoggerLevel, Prefix } from "@covenant/core/logger";
+import type { Logger as ILogger, LoggerLevel, Prefix } from "@covenant-rpc/core/logger";
 
 const loggerLevels: Record<LoggerLevel, number> = { "slient": 0, "error": 1, "warn": 2, "info": 3, "debug": 4 };
 

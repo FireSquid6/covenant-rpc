@@ -1,7 +1,7 @@
 import type { PublishFunction, SidekickClient, SidekickState } from ".";
-import type { Logger } from "@covenant/core/logger";
-import type { ListenMessage, SendMessage, SubscribeMessage, UnlistenMessage, UnsubscribeMessage } from "@covenant/core/sidekick/protocol";
-import { getChannelTopicName, getMapId, getResourceTopicName } from "@covenant/core/sidekick/protocol";
+import type { Logger } from "@covenant-rpc/core/logger";
+import type { ListenMessage, SendMessage, SubscribeMessage, UnlistenMessage, UnsubscribeMessage } from "@covenant-rpc/core/sidekick/protocol";
+import { getChannelTopicName, getMapId, getResourceTopicName } from "@covenant-rpc/core/sidekick/protocol";
 
 
 export interface SidekickHandlerContext {
