@@ -1,5 +1,5 @@
 // Logger interface for type safety in core
-// Implementation lives in @covenant/server
+// Implementation lives in @covenant-rpc/server
 
 export type LoggerLevel = "info" | "error" | "warn" | "slient" | "debug";
 export type Prefix = string | (() => string);

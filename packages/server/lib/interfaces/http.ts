@@ -1,6 +1,6 @@
-import type { ServerToSidekickConnection, SidekickToServerConnection } from "@covenant/core/interfaces";
-import type { ChannelConnectionPayload, ServerMessage } from "@covenant/core/channel";
-import ION from "@covenant/ion";
+import type { ServerToSidekickConnection, SidekickToServerConnection } from "@covenant-rpc/core/interfaces";
+import type { ChannelConnectionPayload, ServerMessage } from "@covenant-rpc/core/channel";
+import ION from "@covenant-rpc/ion";
 
 export function httpSidekickToServer(baseUrl: string, key: string): SidekickToServerConnection {
   const getUrl = (type: string) => {

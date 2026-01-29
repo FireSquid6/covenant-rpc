@@ -1,10 +1,10 @@
-import type { ChannelConnectionPayload, ServerMessage } from "@covenant/core/channel";
-import type { SidekickToServerConnection } from "@covenant/core/interfaces";
+import type { ChannelConnectionPayload, ServerMessage } from "@covenant-rpc/core/channel";
+import type { SidekickToServerConnection } from "@covenant-rpc/core/interfaces";
 import { httpSidekickToServer } from "../interfaces/http";
-import type { LoggerLevel } from "@covenant/core/logger";
+import type { LoggerLevel } from "@covenant-rpc/core/logger";
 import { Logger } from "../logger";
 import { handleListenMessage, handleSendMessage, handleSubscribeMessage, handleUnlistenMessage, handleUnsubscribeMessage, type SidekickHandlerContext } from "./handlers";
-import { getChannelTopicName, getResourceTopicName, type SidekickIncomingMessage, type SidekickOutgoingMessage } from "@covenant/core/sidekick/protocol";
+import { getChannelTopicName, getResourceTopicName, type SidekickIncomingMessage, type SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
 
 export interface SidekickClient {
   subscribe(topic: string): void;

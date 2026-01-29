@@ -1,13 +1,13 @@
-import type { ChannelMap, Covenant, ProcedureMap } from "@covenant/core";
-import { procedureRequestBodySchema, type ProcedureDefinition, type ProcedureInputs, type ProcedureRequest, type ProcedureResponse } from "@covenant/core/procedure";
+import type { ChannelMap, Covenant, ProcedureMap } from "@covenant-rpc/core";
+import { procedureRequestBodySchema, type ProcedureDefinition, type ProcedureInputs, type ProcedureRequest, type ProcedureResponse } from "@covenant-rpc/core/procedure";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import { err, issuesToString, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from "@covenant/core/utils";
-import type { ServerToSidekickConnection } from "@covenant/core/interfaces";
-import { channelConnectionRequestSchema, serverMessageWithContext, type ChannelConnectionResponse, type ChannelDefinition } from "@covenant/core/channel";
-import { v } from "@covenant/core/validation";
-import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelError, channelErrorFromUnknown } from "@covenant/core/errors";
+import { err, issuesToString, ok, type ArrayToMap, type AsyncResult, type MaybePromise } from "@covenant-rpc/core/utils";
+import type { ServerToSidekickConnection } from "@covenant-rpc/core/interfaces";
+import { channelConnectionRequestSchema, serverMessageWithContext, type ChannelConnectionResponse, type ChannelDefinition } from "@covenant-rpc/core/channel";
+import { v } from "@covenant-rpc/core/validation";
+import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelError, channelErrorFromUnknown } from "@covenant-rpc/core/errors";
 import { Logger, type LoggerLevel } from "./logger";
-import ION from "@covenant/ion";
+import ION from "@covenant-rpc/ion";
 
 
 export type ProcedureDefinitionMap<T extends ProcedureMap, Context, Derivation> = {

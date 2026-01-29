@@ -1,10 +1,10 @@
-import type { ClientToServerConnection, ServerToSidekickConnection, ClientToSidekickConnection } from "@covenant/core/interfaces";
-import type { ProcedureRequestBody, ProcedureResponse } from "@covenant/core/procedure";
+import type { ClientToServerConnection, ServerToSidekickConnection, ClientToSidekickConnection } from "@covenant-rpc/core/interfaces";
+import type { ProcedureRequestBody, ProcedureResponse } from "@covenant-rpc/core/procedure";
 import type { CovenantServer } from "../server";
-import { v } from "@covenant/core/validation";
-import { procedureResponseSchema } from "@covenant/core/procedure";
-import { channelConnectionRequestSchema, channelConnectionResponseSchema, type ChannelConnectionRequest, type ChannelConnectionResponse } from "@covenant/core/channel";
-import ION from "@covenant/ion";
+import { v } from "@covenant-rpc/core/validation";
+import { procedureResponseSchema } from "@covenant-rpc/core/procedure";
+import { channelConnectionRequestSchema, channelConnectionResponseSchema, type ChannelConnectionRequest, type ChannelConnectionResponse } from "@covenant-rpc/core/channel";
+import ION from "@covenant-rpc/ion";
 
 
 export function directClientToServer(
