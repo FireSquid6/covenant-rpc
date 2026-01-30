@@ -13,16 +13,17 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@covenant/core": "workspace:*",
-    "@covenant/server": "workspace:*",
     "@covenant/client": "workspace:*",
-    "@covenant/react": "workspace:*",
-    "@covenant/sidekick": "workspace:*",
+    "@covenant/core": "workspace:*",
     "@covenant/ion": "workspace:*",
+    "@covenant/react": "workspace:*",
+    "@covenant/server": "workspace:*",
+    "@covenant/sidekick": "workspace:*",
+    "better-sqlite3": "^12.6.2",
+    "drizzle-orm": "^0.36.4",
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "drizzle-orm": "^0.36.4",
     "zod": "^3.22.0"
   },
   "devDependencies": {

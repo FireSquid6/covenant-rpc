@@ -138,7 +138,9 @@ export function httpClientToServer(covenantUrl: string, extraHeaders: Record<str
   }
 
   const getUrl = (type: string) => {
-    const url = new URL(covenantUrl);
+    // Handle relative URLs by using the current location as base
+    const base = typeof window !== 'undefined' ? window.location.href : undefined;
+    const url = new URL(covenantUrl, base);
     url.searchParams.set("type", type);
     return url.toString();
   }

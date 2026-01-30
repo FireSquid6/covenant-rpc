@@ -70,14 +70,14 @@ test.describe('Todo App', () => {
     await expect(todoItem).not.toHaveClass(/completed/);
 
     // Click the checkbox
-    await todoItem.locator('.checkbox').check();
+    await todoItem.locator('.checkbox').click();
     await page.waitForTimeout(500);
 
     // Should now have completed class (automatic refetch!)
     await expect(todoItem).toHaveClass(/completed/);
 
     // Uncheck it
-    await todoItem.locator('.checkbox').uncheck();
+    await todoItem.locator('.checkbox').click();
     await page.waitForTimeout(500);
 
     // Should no longer have completed class
@@ -132,21 +132,23 @@ test.describe('Todo App', () => {
 
     // Complete one of them
     const completedItem = page.locator('.todo-item', { hasText: completedTodo });
-    await completedItem.locator('.checkbox').check();
+    await completedItem.locator('.checkbox').click();
     await page.waitForTimeout(500);
 
     // Test "All" filter (default)
-    await page.click('.filter-button', { hasText: 'All' });
+    await page.locator('.filter-button').filter({ hasText: 'All' }).click();
     await expect(page.locator('.todo-item', { hasText: activeTodo })).toBeVisible();
     await expect(page.locator('.todo-item', { hasText: completedTodo })).toBeVisible();
 
     // Test "Active" filter
-    await page.click('.filter-button', { hasText: 'Active' });
+    await page.locator('.filter-button').filter({ hasText: 'Active' }).click();
+    await page.waitForTimeout(200);
     await expect(page.locator('.todo-item', { hasText: activeTodo })).toBeVisible();
     await expect(page.locator('.todo-item', { hasText: completedTodo })).not.toBeVisible();
 
     // Test "Completed" filter
-    await page.click('.filter-button', { hasText: 'Completed' });
+    await page.locator('.filter-button').filter({ hasText: 'Completed' }).click();
+    await page.waitForTimeout(200);
     await expect(page.locator('.todo-item', { hasText: activeTodo })).not.toBeVisible();
     await expect(page.locator('.todo-item', { hasText: completedTodo })).toBeVisible();
   });
@@ -175,11 +177,13 @@ test.describe('Todo App', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/');
 
-    // If there are any todos, delete them all
-    const deleteButtons = await page.locator('.delete-button').all();
-    for (const button of deleteButtons) {
-      await button.click();
-      await page.waitForTimeout(300);
+    // Wait for the page to load
+    await page.waitForTimeout(1000);
+
+    // Delete all todos one by one (repeatedly query to avoid stale locators)
+    while (await page.locator('.delete-button').count() > 0) {
+      await page.locator('.delete-button').first().click();
+      await page.waitForTimeout(800);
     }
 
     // Should see empty state message

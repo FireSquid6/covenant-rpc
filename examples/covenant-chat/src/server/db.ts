@@ -1,12 +1,12 @@
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { Database } from 'bun:sqlite';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
 import * as schema from '../../drizzle/schema';
 import { randomBytes } from 'crypto';
 
 /**
- * Database connection using Bun's SQLite driver
+ * Database connection using better-sqlite3 driver
  */
-const sqlite = new Database('./data.db', { create: true });
+const sqlite = new Database('./data.db');
 export const db = drizzle(sqlite, { schema });
 
 /**
@@ -14,7 +14,7 @@ export const db = drizzle(sqlite, { schema });
  */
 export function initializeDatabase() {
   // Create users table
-  sqlite.run(`
+  sqlite.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
@@ -24,7 +24,7 @@ export function initializeDatabase() {
   `);
 
   // Create sessions table
-  sqlite.run(`
+  sqlite.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -36,7 +36,7 @@ export function initializeDatabase() {
   `);
 
   // Create servers table
-  sqlite.run(`
+  sqlite.exec(`
     CREATE TABLE IF NOT EXISTS servers (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -47,7 +47,7 @@ export function initializeDatabase() {
   `);
 
   // Create server_members table
-  sqlite.run(`
+  sqlite.exec(`
     CREATE TABLE IF NOT EXISTS server_members (
       id TEXT PRIMARY KEY,
       server_id TEXT NOT NULL,
@@ -59,7 +59,7 @@ export function initializeDatabase() {
   `);
 
   // Create channels table
-  sqlite.run(`
+  sqlite.exec(`
     CREATE TABLE IF NOT EXISTS channels (
       id TEXT PRIMARY KEY,
       server_id TEXT NOT NULL,
@@ -70,7 +70,7 @@ export function initializeDatabase() {
   `);
 
   // Create messages table
-  sqlite.run(`
+  sqlite.exec(`
     CREATE TABLE IF NOT EXISTS messages (
       id TEXT PRIMARY KEY,
       channel_id TEXT NOT NULL,

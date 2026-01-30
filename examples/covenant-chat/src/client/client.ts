@@ -6,72 +6,67 @@ import { httpClientToSidekick } from '@covenant/client/interfaces/http';
 import { appCovenant } from '../covenant';
 
 /**
- * Authentication token storage
+ * Get the authentication token from localStorage
  */
-let authToken: string | null = null;
-
-// Initialize token from localStorage (browser only)
-if (typeof window !== 'undefined') {
-  authToken = localStorage.getItem('authToken');
-}
-
-/**
- * Set the authentication token
- */
-export function setAuthToken(token: string) {
-  authToken = token;
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('authToken', token);
+function getAuthToken(): string {
+  if (typeof window === 'undefined') {
+    return '';
   }
+  return localStorage.getItem('authToken') || '';
 }
 
 /**
- * Clear the authentication token
+ * Create the server connection with current auth headers
  */
-export function clearAuthToken() {
-  authToken = null;
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('authToken');
-  }
-}
-
-/**
- * Get the current authentication token
- */
-export function getAuthToken(): string | null {
-  return authToken;
+function createServerConnection() {
+  return httpClientToServer(
+    '/api/covenant',
+    {
+      Authorization: getAuthToken() ? `Bearer ${getAuthToken()}` : '',
+    }
+  );
 }
 
 /**
  * Create the Covenant React client with HTTP and WebSocket connections
- *
- * For the chat example, we need full WebSocket support via Sidekick.
- * In a production setup, the sidekick would be a separate service.
- * For this example, we're using InternalSidekick which is co-located with the server.
- *
- * Note: The WebSocket connection needs to be to a proper WebSocket endpoint.
- * In production, you'd have a separate sidekick service at ws://sidekick.example.com
- * For development with InternalSidekick, this would need special handling.
  */
 export const client = new CovenantReactClient(appCovenant, {
-  serverConnection: httpClientToServer(
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/api/covenant`
-      : 'http://localhost:3000/api/covenant',
-    {
-      headers: () => ({
-        Authorization: authToken ? `Bearer ${authToken}` : '',
-      }),
-    }
-  ),
-  // WebSocket connection for realtime channels
-  // NOTE: In this example, we'll need to set up a WebSocket endpoint
-  // For InternalSidekick to work in production, you'd typically:
-  // 1. Use a separate sidekick service with httpClientToSidekick
-  // 2. Or expose the InternalSidekick via a WebSocket endpoint
+  serverConnection: createServerConnection(),
   sidekickConnection: httpClientToSidekick(
     typeof window !== 'undefined'
       ? `ws://${window.location.host}/api/ws`
       : 'ws://localhost:3000/api/ws'
   ),
 });
+
+/**
+ * Set the authentication token and update client connection
+ */
+export function setAuthToken(token: string) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  localStorage.setItem('authToken', token);
+
+  // Recreate the server connection with new token
+  // @ts-expect-error - accessing private property to update connection
+  client['serverConnection'] = createServerConnection();
+}
+
+/**
+ * Clear the authentication token and update client connection
+ */
+export function clearAuthToken() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  localStorage.removeItem('authToken');
+
+  // Recreate the server connection without token
+  // @ts-expect-error - accessing private property to update connection
+  client['serverConnection'] = createServerConnection();
+}
+
+export { getAuthToken };
