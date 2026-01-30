@@ -28,11 +28,11 @@ function bumpVersion(version: string, type: "major" | "minor" | "patch"): string
   const [major, minor, patch] = version.split(".").map(Number);
   switch (type) {
     case "major":
-      return `${major + 1}.0.0`;
+      return `${major! + 1}.0.0`;
     case "minor":
-      return `${major}.${minor + 1}.0`;
+      return `${major}.${minor! + 1}.0`;
     case "patch":
-      return `${major}.${minor}.${patch + 1}`;
+      return `${major}.${minor}.${patch! + 1}`;
   }
 }
 

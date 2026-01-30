@@ -4,7 +4,7 @@ import { declareCovenant, channel } from "@covenant-rpc/core";
 import { CovenantServer } from "../lib/server";
 import { CovenantClient } from "@covenant-rpc/client";
 import { directClientToServer } from "../lib/interfaces/direct";
-import { InternalSidekick } from "../../sidekick/internal";
+import { InternalSidekick } from "@covenant-rpc/sidekick/internal";
 
 test("basic channel connection", async () => {
   const sidekick = new InternalSidekick();

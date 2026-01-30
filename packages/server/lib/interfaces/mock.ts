@@ -1,6 +1,6 @@
 import type { ClientToSidekickConnection, ServerToSidekickConnection } from "@covenant-rpc/core/interfaces";
 import type { Sidekick, SidekickClient } from "../sidekick";
-import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
+import type { SidekickIncomingMessage } from "@covenant-rpc/core/sidekick/protocol";
 
 
 export function mockServerToSidekick(sidekick: Sidekick): ServerToSidekickConnection {
@@ -20,13 +20,14 @@ export function mockServerToSidekick(sidekick: Sidekick): ServerToSidekickConnec
   }
 }
 
-export function mockClientToSidekick(sidekick: Sidekick, client: SidekickClient): ClientToSidekickConnection {
-  return {
-    sendMessage(message: SidekickIncomingMessage) {
-      sidekick.handleClientMessage(client, message);
-    },
-    onMessage(v) {
-
-    }
-  }
-}
+// TODO - I never finished this
+// export function mockClientToSidekick(sidekick: Sidekick, client: SidekickClient): ClientToSidekickConnection {
+//   return {
+//     sendMessage(message: SidekickIncomingMessage) {
+//       sidekick.handleClientMessage(client, message);
+//     },
+//     onMessage(v) {
+//
+//     }
+//   }
+// }

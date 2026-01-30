@@ -1,6 +1,6 @@
 import { Sidekick } from "../lib/sidekick";
 import { test, expect, mock } from "bun:test";
-import type { SidekickOutgoingMessage } from "../lib/sidekick/protocol";
+import type { SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
 
 
 test("resource updating", () => {

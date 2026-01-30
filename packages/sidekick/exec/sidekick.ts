@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { createCommand } from "@commander-js/extra-typings";
-import { getSidekickApi } from "..";
+import { getSidekickApi } from "../lib/web";
 
 
 function prettyFatal(message: string): never {

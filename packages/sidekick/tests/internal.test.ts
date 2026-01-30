@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { InternalSidekick } from "../internal";
+import { InternalSidekick } from "../lib/internal";
 import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
 import type { ChannelConnectionPayload, ServerMessage } from "@covenant-rpc/core/channel";
 
@@ -197,14 +197,14 @@ test("InternalSidekick - multiple clients with different subscriptions", async (
   expect(client1MessageTypes.length).toBe(1);
   expect(client2MessageTypes.length).toBe(1);
 
-  if (client1MessageTypes[0].type === "message") {
-    expect(client1MessageTypes[0].channel).toBe("channel1");
-    expect(client1MessageTypes[0].data).toBe("message for channel1");
+  if (client1MessageTypes[0]!.type === "message") {
+    expect(client1MessageTypes[0]!.channel).toBe("channel1");
+    expect(client1MessageTypes[0]!.data).toBe("message for channel1");
   }
 
-  if (client2MessageTypes[0].type === "message") {
-    expect(client2MessageTypes[0].channel).toBe("channel2");
-    expect(client2MessageTypes[0].data).toBe("message for channel2");
+  if (client2MessageTypes[0]!.type === "message") {
+    expect(client2MessageTypes[0]!.channel).toBe("channel2");
+    expect(client2MessageTypes[0]!.data).toBe("message for channel2");
   }
 
   unsub1();
@@ -254,8 +254,8 @@ test("InternalSidekick - unsubscribe functionality", async () => {
   const messageEvents = messages.filter(m => m.type === "message");
   expect(messageEvents.length).toBe(1);
 
-  if (messageEvents[0].type === "message") {
-    expect(messageEvents[0].data).toBe("first message");
+  if (messageEvents[0]!.type === "message") {
+    expect(messageEvents[0]!.data).toBe("first message");
   }
 
   unsub();

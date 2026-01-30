@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "update": "bun ./scripts/update.ts",
-    "publish": "bun ./scripts/publish.ts"
+    "publish": "bun ./scripts/publish.ts",
+    "test:all": "bun --filter '*' test"
   },
   "peerDependencies": {
     "typescript": "^5"
