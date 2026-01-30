@@ -6,8 +6,9 @@ import type { ServerToSidekickConnection } from "@covenant-rpc/core/interfaces";
 import { channelConnectionRequestSchema, serverMessageWithContext, type ChannelConnectionResponse, type ChannelDefinition } from "@covenant-rpc/core/channel";
 import { v } from "@covenant-rpc/core/validation";
 import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelError, channelErrorFromUnknown } from "@covenant-rpc/core/errors";
-import { Logger, type LoggerLevel } from "./logger";
+import { Logger } from "./logger";
 import ION from "@covenant-rpc/ion";
+import type { LoggerLevel } from "@covenant-rpc/core/logger";
 
 
 export type ProcedureDefinitionMap<T extends ProcedureMap, Context, Derivation> = {
