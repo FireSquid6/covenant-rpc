@@ -370,7 +370,9 @@ test("HTTP channel message error handling", async () => {
 
   expect(response.status).toBe(400);
   const errorBody = await response.json();
+  //@ts-expect-error we are doing the validation
   expect(errorBody.fault).toBe("client");
+  //@ts-expect-error we are doing the validation
   expect(errorBody.message).toContain("spam");
 
   mock.cleanup();

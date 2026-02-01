@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { InternalSidekick } from "../lib/internal";
+import { InternalSidekick } from "../internal";
 import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
 import type { ChannelConnectionPayload, ServerMessage } from "@covenant-rpc/core/channel";
 
@@ -165,8 +165,8 @@ test("InternalSidekick - multiple clients with different subscriptions", async (
   const client1Messages: SidekickOutgoingMessage[] = [];
   const client2Messages: SidekickOutgoingMessage[] = [];
 
-  const unsub1 = client1.onMessage((msg) => client1Messages.push(msg));
-  const unsub2 = client2.onMessage((msg) => client2Messages.push(msg));
+  const unsub1 = client1.onMessage(async (msg) => { client1Messages.push(msg) });
+  const unsub2 = client2.onMessage(async (msg) => { client2Messages.push(msg) });
 
   // Subscribe clients to different channels
   client1.sendMessage({ type: "subscribe", token: "token1" });
@@ -224,7 +224,7 @@ test("InternalSidekick - unsubscribe functionality", async () => {
   });
 
   const messages: SidekickOutgoingMessage[] = [];
-  const unsub = client.onMessage((msg) => messages.push(msg));
+  const unsub = client.onMessage(async (msg) => { messages.push(msg) });
 
   // Subscribe
   client.sendMessage({ type: "subscribe", token: "test-token" });
