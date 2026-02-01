@@ -6,9 +6,6 @@
     "access": "public"
   },
   "type": "module",
-  "exports": {
-    ".": "./index.ts"
-  },
   "devDependencies": {
     "@types/bun": "latest"
   },

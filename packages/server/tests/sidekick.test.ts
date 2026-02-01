@@ -1,4 +1,4 @@
-import { Sidekick } from "../lib/sidekick";
+import { Sidekick } from "../sidekick";
 import { test, expect, mock } from "bun:test";
 import type { SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
 

@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { test, expect } from "bun:test";
 import { declareCovenant, channel } from "@covenant-rpc/core";
-import { CovenantServer } from "../lib/server";
+import { CovenantServer } from "../server";
 import { CovenantClient } from "@covenant-rpc/client";
-import { directClientToServer } from "../lib/interfaces/direct";
+import { directClientToServer } from "../interfaces/direct";
 import { InternalSidekick } from "@covenant-rpc/sidekick/internal";
 
 test("basic channel connection", async () => {

@@ -6,10 +6,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "exports": {
-    ".": "./lib/index.ts",
-    "./*": "./lib/*.ts"
-  },
   "peerDependencies": {
     "typescript": "^5"
   },

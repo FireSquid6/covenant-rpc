@@ -1,14 +1,10 @@
 {
   "name": "@covenant-rpc/core",
-  "module": "lib/index.ts",
+  "module": "./index.ts",
   "version": "0.2.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
-  },
-  "exports": {
-    ".": "./lib/index.ts",
-    "./*": "./lib/*.ts"
   },
   "peerDependencies": {
     "typescript": "^5"

@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { test, expect } from "bun:test";
 import { declareCovenant, channel } from "@covenant-rpc/core";
-import { CovenantServer } from "../lib/server";
+import { CovenantServer } from "../server";
 import { CovenantClient } from "@covenant-rpc/client";
 import { httpClientToServer } from "@covenant-rpc/client/interfaces/http";
-import { httpServerToSidekick } from "../lib/interfaces/http";
+import { httpServerToSidekick } from "../interfaces/http";
 import { InternalSidekick } from "@covenant-rpc/sidekick/internal";
 
 // Helper to create a mock HTTP server
