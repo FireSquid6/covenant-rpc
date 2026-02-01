@@ -154,7 +154,39 @@ async function main() {
     const indexPath = pkg.module || pkg.main || "./dist/index.js";
     pkg.types = indexPath.replace(/\.js$/, ".d.ts");
 
-    // 4. Only include dist/ folder in published package
+    // 4. Rewrite exports field to point to dist/
+    if (pkg.exports && typeof pkg.exports === "object") {
+      const newExports: any = {};
+      for (const [key, value] of Object.entries(pkg.exports)) {
+        if (typeof value === "object" && value !== null) {
+          newExports[key] = {};
+          for (const [condition, path] of Object.entries(value as Record<string, any>)) {
+            if (typeof path === "string") {
+              // Rewrite .ts to .js and ensure it's in dist/
+              let newPath = path.replace(/\.ts$/, ".js");
+              if (newPath.includes("*")) {
+                // Handle wildcards: "./*.ts" -> "./dist/*.js"
+                newPath = newPath.replace(/^\.\//, "./dist/");
+              } else if (!newPath.startsWith("./dist/")) {
+                newPath = newPath.replace(/^\.\//, "./dist/");
+              }
+              // For types, change .js to .d.ts
+              if (condition === "types") {
+                newPath = newPath.replace(/\.js$/, ".d.ts");
+              }
+              newExports[key][condition] = newPath;
+            } else {
+              newExports[key][condition] = path;
+            }
+          }
+        } else {
+          newExports[key] = value;
+        }
+      }
+      pkg.exports = newExports;
+    }
+
+    // 5. Only include dist/ folder in published package
     pkg.files = ["dist"];
 
     await writePackageJson(dir, pkg);

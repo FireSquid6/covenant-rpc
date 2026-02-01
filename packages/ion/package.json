@@ -3,6 +3,12 @@
   "module": "index.ts",
   "version": "1.2.0",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
   "scripts": {
     "build": "bun ../../scripts/build-package.ts ."
   },

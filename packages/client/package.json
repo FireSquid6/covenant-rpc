@@ -3,6 +3,16 @@
   "module": "./index.ts",
   "version": "0.4.0",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    },
+    "./*": {
+      "types": "./*.ts",
+      "import": "./*.ts"
+    }
+  },
   "scripts": {
     "build": "bun ../../scripts/build-package.ts ."
   },

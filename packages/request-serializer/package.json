@@ -4,10 +4,16 @@
   "description": "Serialize and deserialize JavaScript Request objects to/from JSON",
   "main": "index.ts",
   "module": "index.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
   "publishConfig": {
     "access": "public"
   },
-  "type": "module",
   "scripts": {
     "test": "bun test",
     "build": "bun ../../scripts/build-package.ts .",
