@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { CovenantClient, type QueryKey, type MutationKey } from "@covenant-rpc/client";
-import type { Covenant } from "@covenant-rpc/core";
+import type { ChannelMap, Covenant, ProcedureMap } from "@covenant-rpc/core";
 import type {
 	InferProcedureInputs,
 	InferProcedureOutputs,
@@ -68,8 +68,8 @@ interface CacheEntry<T> {
  * React client extending CovenantClient with React hooks
  */
 export class CovenantReactClient<
-	P extends Record<string, any>,
-	C extends Record<string, any>,
+	P extends ProcedureMap,
+	C extends ChannelMap,
 > extends CovenantClient<P, C> {
 	private cache = new Map<string, CacheEntry<any>>();
 
