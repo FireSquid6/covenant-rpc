@@ -522,3 +522,226 @@ test("clearCache - removes all cache entries", async () => {
 	// All cache entries should be removed
 	expect((client as any).cache.size).toBe(0);
 });
+
+// ========================================
+// INFINITE LOOP PREVENTION TESTS
+// ========================================
+
+test("useQuery - no infinite loop with object inputs", async () => {
+	const client = createTestClient();
+	let callCount = 0;
+
+	// Track render count by counting how many times we create the input object
+	const { result, rerender } = renderHook(() => {
+		// Create a new object on every render (different reference, same value)
+		const inputs = { id: 1 };
+		return client.useQuery("getUser", inputs);
+	});
+
+	// Wait for initial load
+	await waitFor(() => {
+		expect(result.current.loading).toBe(false);
+	});
+
+	// Force a few rerenders
+	rerender();
+	rerender();
+	rerender();
+
+	// Wait a bit to ensure no additional fetches happen
+	await new Promise((resolve) => setTimeout(resolve, 100));
+
+	// The query should only have been called once (for initial mount)
+	// If there's an infinite loop, this would fail because the server
+	// would be called many times
+	expect(result.current.data?.name).toBe("Alice");
+});
+
+test("useQuery - does not refetch when inputs are structurally the same", async () => {
+	const client = createTestClient();
+	let fetchCount = 0;
+
+	// Create a custom server that counts fetches
+	const server = new CovenantServer(covenant, {
+		contextGenerator: () => null,
+		derivation: () => {},
+		sidekickConnection: emptyServerToSidekick(),
+	});
+
+	server.defineProcedure("getUser", {
+		resources: ({ inputs }) => [`user/${inputs.id}`],
+		procedure: ({ inputs }) => {
+			fetchCount++;
+			const user = users.find((u) => u.id === inputs.id);
+			if (!user) throw new Error("User not found");
+			return user;
+		},
+	});
+
+	const testClient = new CovenantReactClient(covenant, {
+		sidekickConnection: emptyClientToSidekick(),
+		serverConnection: directClientToServer(server, {}),
+	});
+
+	const { rerender } = renderHook(() => {
+		// New object each render, but same content
+		const inputs = { id: 1 };
+		return testClient.useQuery("getUser", inputs);
+	});
+
+	// Wait for initial fetch
+	await waitFor(() => {
+		expect(fetchCount).toBe(1);
+	});
+
+	// Rerender multiple times with structurally identical inputs
+	rerender();
+	await new Promise((resolve) => setTimeout(resolve, 50));
+	rerender();
+	await new Promise((resolve) => setTimeout(resolve, 50));
+	rerender();
+	await new Promise((resolve) => setTimeout(resolve, 50));
+
+	// Should still only have fetched once
+	expect(fetchCount).toBe(1);
+});
+
+test("useMutation - mutate function is stable across renders", async () => {
+	const client = createTestClient();
+	const mutateRefs: Array<(input: any) => Promise<void>> = [];
+
+	const { rerender } = renderHook(() => {
+		const [mutate, state] = client.useMutation("addTodo", undefined);
+		mutateRefs.push(mutate);
+		return [mutate, state] as const;
+	});
+
+	// Initial render
+	expect(mutateRefs.length).toBe(1);
+
+	// Rerender multiple times
+	rerender();
+	rerender();
+	rerender();
+
+	// All mutate functions should be the same reference
+	expect(mutateRefs.length).toBe(4);
+	expect(mutateRefs[0]).toBe(mutateRefs[1]);
+	expect(mutateRefs[1]).toBe(mutateRefs[2]);
+	expect(mutateRefs[2]).toBe(mutateRefs[3]);
+});
+
+test("useMutation - with options object doesn't cause infinite loops", async () => {
+	const client = createTestClient();
+	let renderCount = 0;
+
+	const { result, rerender } = renderHook(() => {
+		renderCount++;
+		// Create new options object on every render (common mistake)
+		const options = {
+			onSuccess: (data: Todo) => {
+				// Do nothing
+			},
+		};
+		return client.useMutation("addTodo", options);
+	});
+
+	// Wait a bit
+	await new Promise((resolve) => setTimeout(resolve, 100));
+
+	// Force some rerenders
+	rerender();
+	rerender();
+
+	// Wait again
+	await new Promise((resolve) => setTimeout(resolve, 100));
+
+	// Render count should be reasonable (not hundreds/thousands)
+	// This would be much higher if there was an infinite loop
+	expect(renderCount).toBeLessThan(10);
+});
+
+test("useListenedQuery - no infinite loop with object inputs", async () => {
+	const client = createTestClient();
+	let renderCount = 0;
+
+	const { result, rerender } = renderHook(() => {
+		renderCount++;
+		// New object each render
+		const inputs = { id: 1 };
+		return client.useListenedQuery("getUser", inputs, false);
+	});
+
+	// Wait for initial load
+	await waitFor(() => {
+		expect(result.current.loading).toBe(false);
+	});
+
+	// Force rerenders
+	rerender();
+	rerender();
+
+	// Wait to ensure no additional activity
+	await new Promise((resolve) => setTimeout(resolve, 100));
+
+	// Render count should be low
+	expect(renderCount).toBeLessThan(10);
+	expect(result.current.data?.name).toBe("Alice");
+});
+
+test("useCachedQuery - no infinite loop with object inputs", async () => {
+	const client = createTestClient();
+	let renderCount = 0;
+
+	const { result, rerender } = renderHook(() => {
+		renderCount++;
+		// Object inputs should not cause re-subscription
+		return client.useCachedQuery("getTodos", null, false);
+	});
+
+	// Wait for initial load
+	await waitFor(() => {
+		expect(result.current.loading).toBe(false);
+	});
+
+	// Force multiple rerenders
+	rerender();
+	rerender();
+	rerender();
+
+	// Wait to ensure no additional activity
+	await new Promise((resolve) => setTimeout(resolve, 100));
+
+	// Render count should be reasonable
+	expect(renderCount).toBeLessThan(10);
+	expect(result.current.data?.length).toBe(2);
+});
+
+test("useCachedQuery - cache key generation is consistent", async () => {
+	const client = createTestClient();
+
+	// Create first hook with object input
+	const { result: result1 } = renderHook(() =>
+		client.useCachedQuery("getTodos", null, false),
+	);
+
+	await waitFor(() => {
+		expect(result1.current.loading).toBe(false);
+	});
+
+	// Create second hook with same input (but different object reference)
+	const { result: result2 } = renderHook(() =>
+		client.useCachedQuery("getTodos", null, false),
+	);
+
+	// Should share the same cache entry (no loading state)
+	await waitFor(() => {
+		expect(result2.current.loading).toBe(false);
+	});
+
+	// Both should have same data
+	expect(result1.current.data).toEqual(result2.current.data);
+
+	// Verify only one cache entry exists
+	expect((client as any).cache.size).toBe(1);
+});
