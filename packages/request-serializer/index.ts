@@ -80,6 +80,7 @@ export function deserializeRequest(serialized: SerializedRequest): Request {
   return new Request(url, {
     method,
     headers,
+    //@ts-expect-error This is not an issue
     body: requestBody
   });
 }

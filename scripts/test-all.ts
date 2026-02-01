@@ -18,6 +18,15 @@ async function readPackageJson(dir: string): Promise<PackageJson> {
 
 async function main() {
   console.log("🧪 Testing all packages...\n");
+  console.log("  🔍 Typechecking...");
+  try {
+    await $`tsc --noEmit`;
+    console.log("  ✅ Typecheck passed");
+  } catch (error) {
+    console.error("  ❌ Typecheck failed");
+    process.exit(1);
+  }
+
 
   // Get all packages
   const dirs = await readdir(PACKAGES_DIR);

@@ -22,5 +22,12 @@
     "react": "^19.1.1",
     "@covenant-rpc/core": "workspace:*",
     "@covenant-rpc/client": "workspace:*"
+  },
+  "devDependencies": {
+    "@covenant-rpc/server": "workspace:*",
+    "@testing-library/react": "^14.2.1",
+    "@types/jsdom": "^27.0.0",
+    "jsdom": "^27.4.0",
+    "zod": "^3.22.4"
   }
 }
