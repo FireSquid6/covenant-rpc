@@ -6,7 +6,8 @@
   "scripts": {
     "update": "bun ./scripts/update.ts",
     "publish": "bun ./scripts/publish.ts",
-    "test:all": "bun --filter '*' test"
+    "build:all": "bun ./scripts/build-all.ts",
+    "test:all": "bun ./scripts/test-all.ts"
   },
   "peerDependencies": {
     "typescript": "^5"

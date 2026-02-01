@@ -10,7 +10,7 @@
   "type": "module",
   "scripts": {
     "test": "bun test",
-    "build": "bun build index.ts --outdir=dist",
+    "build": "bun ../../scripts/build-package.ts .",
     "dev": "bun --watch index.ts"
   },
   "keywords": [

@@ -3,6 +3,9 @@
   "module": "./index.ts",
   "version": "0.3.0",
   "type": "module",
+  "scripts": {
+    "build": "bun ../../scripts/build-package.ts ."
+  },
   "publishConfig": {
     "access": "public"
   },

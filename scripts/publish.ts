@@ -25,7 +25,13 @@ interface PackageJson {
   name: string;
   version: string;
   private?: boolean;
+  main?: string;
+  module?: string;
+  types?: string;
+  exports?: unknown;
+  files?: string[];
   dependencies?: Record<string, string>;
+  [key: string]: unknown;
 }
 
 async function readPackageJson(dir: string): Promise<PackageJson> {
@@ -104,19 +110,54 @@ async function main() {
       continue;
     }
 
-    console.log(`📦 Publishing ${pkg.name}@${pkg.version}...`);
+    console.log(`📦 Building and publishing ${pkg.name}@${pkg.version}...`);
 
-    // Replace workspace:* with actual versions
-    const originalDeps = pkg.dependencies ? { ...pkg.dependencies } : undefined;
+    // Clean and build the package
+    try {
+      console.log(`  🔨 Building...`);
+      await $`rm -rf ${join(dir, "dist")}`.quiet();
+      await $`cd ${dir} && bun run build`.quiet();
+    } catch (e) {
+      console.log(`❌ Failed to build ${pkg.name}@${pkg.version}`);
+      console.error(e);
+      continue;
+    }
 
+    // Save original package.json (entire object)
+    const originalPkg = JSON.parse(JSON.stringify(pkg));
+
+    // Rewrite package.json for publishing
+    // 1. Replace workspace:* with actual versions
     if (pkg.dependencies) {
       for (const [dep, version] of Object.entries(pkg.dependencies)) {
         if (version === "workspace:*" && versionMap[dep]) {
           pkg.dependencies[dep] = `^${versionMap[dep]}`;
         }
       }
-      await writePackageJson(dir, pkg);
     }
+
+    // 2. Point to dist/ instead of source .ts files
+    if (pkg.module && pkg.module.endsWith(".ts")) {
+      pkg.module = pkg.module.replace(/\.ts$/, ".js").replace(/^\.\//, "./dist/");
+      if (!pkg.module.startsWith("./dist/")) {
+        pkg.module = `./dist/${pkg.module}`;
+      }
+    }
+    if (pkg.main && pkg.main.endsWith(".ts")) {
+      pkg.main = pkg.main.replace(/\.ts$/, ".js").replace(/^\.\//, "./dist/");
+      if (!pkg.main.startsWith("./dist/")) {
+        pkg.main = `./dist/${pkg.main}`;
+      }
+    }
+
+    // 3. Set types field
+    const indexPath = pkg.module || pkg.main || "./dist/index.js";
+    pkg.types = indexPath.replace(/\.js$/, ".d.ts");
+
+    // 4. Only include dist/ folder in published package
+    pkg.files = ["dist"];
+
+    await writePackageJson(dir, pkg);
 
     // Publish
     try {
@@ -127,11 +168,8 @@ async function main() {
       console.error(e);
     }
 
-    // Restore original dependencies
-    if (originalDeps) {
-      pkg.dependencies = originalDeps;
-      await writePackageJson(dir, pkg);
-    }
+    // Restore original package.json
+    await writePackageJson(dir, originalPkg);
   }
 
   console.log("\nDone!");
