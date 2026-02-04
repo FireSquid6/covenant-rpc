@@ -383,4 +383,60 @@ describe('ION', () => {
       expect(ION.stringify(set)).toBe('set {  }');
     });
   });
+
+  describe('Security: Prototype pollution prevention', () => {
+    test('rejects __proto__ key in objects', () => {
+      const malicious = '{ "__proto__": { "isAdmin": true } }';
+      expect(() => ION.parse(malicious)).toThrow('Forbidden property name "__proto__"');
+    });
+
+    test('rejects constructor key in objects', () => {
+      const malicious = '{ "constructor": { "prototype": { "isAdmin": true } } }';
+      expect(() => ION.parse(malicious)).toThrow('Forbidden property name "constructor"');
+    });
+
+    test('rejects prototype key in objects', () => {
+      const malicious = '{ "prototype": { "isAdmin": true } }';
+      expect(() => ION.parse(malicious)).toThrow('Forbidden property name "prototype"');
+    });
+
+    test('rejects __proto__ in nested objects', () => {
+      const malicious = '{ "user": { "name": "Alice", "__proto__": { "role": "admin" } } }';
+      expect(() => ION.parse(malicious)).toThrow('Forbidden property name "__proto__"');
+    });
+
+    test('does not pollute Object.prototype with __proto__ attack', () => {
+      const malicious = '{ "__proto__": { "polluted": true } }';
+
+      // Ensure the attack is blocked
+      expect(() => ION.parse(malicious)).toThrow('Forbidden property name "__proto__"');
+
+      // Verify Object.prototype was not polluted
+      const testObj = {};
+      expect((testObj as any).polluted).toBeUndefined();
+    });
+
+    test('does not pollute Object.prototype with constructor attack', () => {
+      const malicious = '{ "constructor": { "prototype": { "polluted": true } } }';
+
+      // Ensure the attack is blocked
+      expect(() => ION.parse(malicious)).toThrow('Forbidden property name "constructor"');
+
+      // Verify Object.prototype was not polluted
+      const testObj = {};
+      expect((testObj as any).polluted).toBeUndefined();
+    });
+
+    test('allows safe keys that contain dangerous strings as substrings', () => {
+      // These should be allowed as they don't match exactly
+      const safe1 = ION.parse('{ "my__proto__": 1 }');
+      expect(safe1).toEqual({ 'my__proto__': 1 });
+
+      const safe2 = ION.parse('{ "constructorName": "test" }');
+      expect(safe2).toEqual({ constructorName: 'test' });
+
+      const safe3 = ION.parse('{ "prototypeChain": [] }');
+      expect(safe3).toEqual({ prototypeChain: [] });
+    });
+  });
 });

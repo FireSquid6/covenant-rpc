@@ -299,6 +299,11 @@ const ION = {
         this.currentToken = this.tokenizer.nextToken();
       }
 
+      private isDangerousKey(key: string): boolean {
+        // Prevent prototype pollution by blocking dangerous property names
+        return key === '__proto__' || key === 'constructor' || key === 'prototype';
+      }
+
       private advance(): void {
         this.currentToken = this.tokenizer.nextToken();
       }
@@ -410,6 +415,13 @@ const ION = {
               }
               this.advance();
               const key = keyToken.value as string;
+
+              // Prevent prototype pollution
+              if (this.isDangerousKey(key)) {
+                throw new Error(
+                  `Forbidden property name "${key}" at position ${keyToken.position}`
+                );
+              }
 
               this.expect('COLON');
 
