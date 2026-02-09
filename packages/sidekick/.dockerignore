@@ -1,0 +1,10 @@
+node_modules
+*.test.ts
+tests/
+.git
+.gitignore
+docs/
+examples/
+packages/client/
+packages/react/
+packages/website/
