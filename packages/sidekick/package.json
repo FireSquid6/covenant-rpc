@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "elysia": "^1.3.21",
-    "@covenant-rpc/core": "^0.2.0",
+    "@covenant-rpc/core": "^0.6.0",
     "@covenant-rpc/ion": "^1.0.4",
     "@covenant-rpc/server": "^0.2.0"
   }

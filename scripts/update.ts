@@ -130,6 +130,37 @@ async function main() {
     await writePackageJson(dir, pkg);
   }
 
+  // Update internal dependencies
+  console.log("\nUpdating internal dependencies...");
+  const versionMap = new Map<string, string>();
+  for (const { pkg, newVersion } of updates) {
+    versionMap.set(pkg.name, newVersion);
+  }
+
+  const packagesWithUpdatedDeps: string[] = [];
+  for (const { dir, pkg } of packages) {
+    let hasUpdates = false;
+    if (pkg.dependencies) {
+      for (const [depName, depVersion] of Object.entries(pkg.dependencies)) {
+        const newVersion = versionMap.get(depName);
+        if (newVersion) {
+          // Preserve the semver prefix (^, ~, etc.) if present
+          const prefix = depVersion.match(/^[\^~]/)?.[0] || "^";
+          const newDepVersion = `${prefix}${newVersion}`;
+          if (pkg.dependencies[depName] !== newDepVersion) {
+            pkg.dependencies[depName] = newDepVersion;
+            hasUpdates = true;
+            console.log(`  ${pkg.name}: ${depName} → ${newDepVersion}`);
+          }
+        }
+      }
+    }
+    if (hasUpdates) {
+      await writePackageJson(dir, pkg);
+      packagesWithUpdatedDeps.push(dir);
+    }
+  }
+
   // Show summary
   console.log("\nUpdated packages:");
   for (const { pkg, newVersion } of updates) {
@@ -139,6 +170,9 @@ async function main() {
   // Git: stage changes
   console.log("\nStaging changes...");
   for (const { dir } of updates) {
+    await $`git add ${join(dir, "package.json")}`.quiet();
+  }
+  for (const dir of packagesWithUpdatedDeps) {
     await $`git add ${join(dir, "package.json")}`.quiet();
   }
 
