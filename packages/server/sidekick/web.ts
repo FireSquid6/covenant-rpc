@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { Sidekick, type SidekickClient } from "@covenant-rpc/server";
+import { Sidekick, type SidekickClient } from "../";
 import { v } from "@covenant-rpc/core/validation";
 import { channelConnectionPayload, serverMessageSchema } from "@covenant-rpc/core/channel";
 import { sidekickIncomingMessageSchema, type SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
