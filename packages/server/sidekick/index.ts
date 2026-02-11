@@ -33,6 +33,7 @@ export class Sidekick {
     contextMap: new Map(),
     tokenMap: new Map(),
     usedTokenMap: new Map(),
+    // TODO - why did I have this blank?
     serverConnection: httpSidekickToServer("", ""),
   };
   private logger: Logger;
@@ -42,6 +43,12 @@ export class Sidekick {
     this.logger = new Logger(logLevel ?? "info", [
       () => new Date().toUTCString(),
     ]);
+    this.state = {
+      contextMap: new Map(),
+      tokenMap: new Map(),
+      usedTokenMap: new Map(),
+      serverConnection: httpSidekickToServer("", ""),
+    };
   }
 
   async updateResources(resources: string[]) {
@@ -77,14 +84,14 @@ export class Sidekick {
     const logger = this.logger.clone()
       .pushPrefix(`Client: ${client.getId()}`)
       .pushPrefix(`Type: ${message.type}`)
-    
+
     const ctx: SidekickHandlerContext = {
       client,
       logger,
       state: this.state,
       publish: this.publish,
     }
-  
+
     switch (message.type) {
       case "unsubscribe":
         await handleUnsubscribeMessage(message, ctx);
