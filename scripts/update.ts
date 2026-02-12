@@ -70,6 +70,16 @@ async function main() {
     process.exit(1);
   }
 
+  // Run tests before making any changes
+  console.log("Running tests...");
+  const testResult = await $`bun test`.quiet().nothrow();
+  if (testResult.exitCode !== 0) {
+    console.error("Error: Tests are failing. Please fix tests before releasing.");
+    console.error(testResult.text());
+    process.exit(1);
+  }
+  console.log("All tests passed.\n");
+
   // Get all packages
   const dirs = await readdir(PACKAGES_DIR);
   const packages: { dir: string; pkg: PackageJson }[] = [];
