@@ -79,16 +79,6 @@
         "typescript": "^5",
       },
     },
-    "packages/sidekick": {
-      "name": "@covenant-rpc/sidekick",
-      "version": "1.0.0",
-      "bin": {
-        "covenant-sidekick": "./index.ts",
-      },
-      "dependencies": {
-        "@covenant-rpc/server": "^1.0.0",
-      },
-    },
   },
   "packages": {
     "@acemir/cssom": ["@acemir/cssom@0.9.31", "", {}, "sha512-ZnR3GSaH+/vJ0YlHau21FjfLYjMpYVIzTD8M8vIEQvIGxeOXyXdzCI140rrCY862p/C/BbzWsjc1dgnM9mkoTA=="],
@@ -116,8 +106,6 @@
     "@covenant-rpc/request-serializer": ["@covenant-rpc/request-serializer@workspace:packages/request-serializer"],
 
     "@covenant-rpc/server": ["@covenant-rpc/server@workspace:packages/server"],
-
-    "@covenant-rpc/sidekick": ["@covenant-rpc/sidekick@workspace:packages/sidekick"],
 
     "@csstools/color-helpers": ["@csstools/color-helpers@5.1.0", "", {}, "sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA=="],
 
