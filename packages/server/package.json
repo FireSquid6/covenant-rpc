@@ -32,5 +32,8 @@
     "@covenant-rpc/request-serializer": "^2.0.0",
     "commander": "^12.1.0",
     "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1"
   }
 }
