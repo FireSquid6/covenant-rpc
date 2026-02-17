@@ -27,6 +27,10 @@ export const covenant = declareCovenant({
       input: z.boolean(),
       output: z.string(),
     }),
+    updateAllData: query({
+      input: z.null(),
+      output: z.string(),
+    })
   },
   channels: {},
 });

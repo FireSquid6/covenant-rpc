@@ -53,6 +53,13 @@ covenantServer.defineProcedure("failingQuery", {
   resources: () => [],
 });
 
+covenantServer.defineProcedure("updateAllData", {
+  procedure: () => {
+    return "All data was updated";
+  },
+  resources: () => ["/data/*"],
+});
+
 covenantServer.assertAllDefined();
 
 

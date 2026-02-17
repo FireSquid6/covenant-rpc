@@ -82,6 +82,92 @@ describe("covenant rpc e2e test", () => {
     expect(errorRes.error).toEqual({ message: "Intentional failure", code: 400 });
   });
 
+  test("Query result includes correct resources", async () => {
+    const client = getNewClient();
+
+    const res = await client.query("getData", "my-key");
+
+    expect(res.success).toBe(true);
+    expect(res.resources).toEqual(["/data/my-key"]);
+  });
+
+  test("Input validation failure returns a structured error", async () => {
+    const client = getNewClient();
+
+    // Cast to any to bypass TypeScript and send invalid input to the server
+    const res = await client.query("getData", 12345 as any);
+
+    expect(res.success).toBe(false);
+    expect(res.data).toBe(null);
+    expect(res.resources).toBe(null);
+    expect(res.error?.code).toBe(404);
+    expect(res.error?.message).toMatch(/Error parsing procedure inputs/);
+  });
+
+  test("Multiple listeners on the same resource all receive the update", async () => {
+    const aClient = getNewClient();
+    const bClient = getNewClient();
+    const cClient = getNewClient();
+
+    let aCount = 0;
+    let bCount = 0;
+    let resolveA: () => void;
+    let resolveB: () => void;
+    const aUpdated = new Promise<void>((resolve) => { resolveA = resolve; });
+    const bUpdated = new Promise<void>((resolve) => { resolveB = resolve; });
+
+    const unlistenA = aClient.listen("getData", "shared-key", () => {
+      aCount++;
+      if (aCount >= 2) resolveA();
+    }, true);
+
+    const unlistenB = bClient.listen("getData", "shared-key", () => {
+      bCount++;
+      if (bCount >= 2) resolveB();
+    }, true);
+
+    // Wait for both initial fetches and Sidekick connections to establish
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    await cClient.mutate("updateData", "shared-key");
+
+    await Promise.race([
+      Promise.all([aUpdated, bUpdated]),
+      new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout: not all listeners received the update")), 3000),
+      ),
+    ]);
+
+    expect(aCount).toBeGreaterThanOrEqual(2);
+    expect(bCount).toBeGreaterThanOrEqual(2);
+    unlistenA();
+    unlistenB();
+  });
+
+  test("Unlisten stops further updates from being received", async () => {
+    const aClient = getNewClient();
+    const bClient = getNewClient();
+
+    let callCount = 0;
+
+    const unlisten = aClient.listen("getData", "unlisten-key", () => {
+      callCount++;
+    }, true);
+
+    // Wait for initial fetch and Sidekick connection
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(callCount).toBe(1);
+
+    unlisten();
+
+    await bClient.mutate("updateData", "unlisten-key");
+
+    // Wait to confirm no update arrives after unlisten
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(callCount).toBe(1);
+  });
+
   test("Listening client does not receive update when a different resource is mutated", async () => {
     const aClient = getNewClient();
     const bClient = getNewClient();
