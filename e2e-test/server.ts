@@ -11,6 +11,40 @@ export const covenantServer = new CovenantServer(covenant, {
 });
 
 
+covenantServer.defineProcedure("getData", {
+  procedure: ({ inputs }) => {
+    return {
+      str: `got data: ${inputs}`,
+      n: 42,
+    }
+  },
+  resources: ({ inputs }) => {
+    return [`/data/${inputs}`];
+  },
+});
+
+
+covenantServer.defineProcedure("updateData", {
+  procedure: () => {
+    return null;
+  },
+  resources: ({ inputs }) => {
+    return [`/data/${inputs}`];
+  },
+});
+
+
+covenantServer.defineProcedure("helloWorld", {
+  procedure({ inputs }) {
+      return `Hello, ${inputs}`;
+  },
+  resources: () => {
+    return [];
+  },
+});
+
+covenantServer.assertAllDefined();
+
 
 
 export function startCovenant() {

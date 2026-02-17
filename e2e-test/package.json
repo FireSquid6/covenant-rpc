@@ -4,7 +4,10 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@covenant-rpc/server": "workspace:*",
+    "@covenant-rpc/client": "workspace:*",
+    "@covenant-rpc/core": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"

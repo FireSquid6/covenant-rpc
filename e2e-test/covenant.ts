@@ -12,11 +12,11 @@ export type Data = z.infer<typeof dataSchema>;
 export const covenant = declareCovenant({
   procedures: {
     updateData: mutation({
-      input: dataSchema,
+      input: z.string(),
       output: z.null(),
     }),
     getData: query({
-      input: z.null(),
+      input: z.string(),
       output: dataSchema,
     }),
     helloWorld: query({
