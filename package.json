@@ -7,7 +7,8 @@
     "update": "bun ./scripts/update.ts",
     "publish": "bun ./scripts/publish.ts",
     "build:all": "bun ./scripts/build-all.ts",
-    "test:all": "bun ./scripts/test-all.ts"
+    "test:all": "bun ./scripts/test-all.ts",
+    "test:e2e": "cd e2e-test && bun test"
   },
   "peerDependencies": {
     "typescript": "^5"

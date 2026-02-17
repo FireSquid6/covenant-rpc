@@ -60,6 +60,25 @@ covenantServer.defineProcedure("updateAllData", {
   resources: () => ["/data/*"],
 });
 
+covenantServer.defineChannel("chatroom", {
+  onConnect({ inputs, reject }) {
+    if (inputs.connectionId === 42) {
+      reject(`42 is not a valid connection id`, "client");
+    }
+
+    return {
+      connectionId: inputs.connectionId,
+    }
+  },
+  onMessage({ inputs, context, params }) {
+    covenantServer.sendMessage("chatroom", params, {
+      senderId: context.connectionId,
+      message: inputs.message,
+    });
+  },
+  
+})
+
 covenantServer.assertAllDefined();
 
 

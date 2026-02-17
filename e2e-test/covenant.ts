@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { declareCovenant, mutation, query } from "@covenant-rpc/core";
+import { channel, declareCovenant, mutation, query } from "@covenant-rpc/core";
 
 
 export const dataSchema = z.object({
@@ -27,10 +27,27 @@ export const covenant = declareCovenant({
       input: z.boolean(),
       output: z.string(),
     }),
-    updateAllData: query({
+    updateAllData: mutation({
       input: z.null(),
       output: z.string(),
-    })
+    }),
   },
-  channels: {},
+  channels: {
+    chatroom: channel({
+      clientMessage: z.object({
+        message: z.string(),
+      }),
+      serverMessage: z.object({
+        senderId: z.number(),
+        message: z.string(),
+      }),
+      connectionContext: z.object({
+        connectionId: z.number(),
+      }),
+      connectionRequest: z.object({
+        connectionId: z.number(),
+      }),
+      params: ["chatChannel"],
+    }),
+  },
 });
