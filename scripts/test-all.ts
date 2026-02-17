@@ -89,6 +89,32 @@ async function main() {
     }
   }
 
+  // Run e2e tests
+  const E2E_DIR = "e2e-test";
+  console.log(`\n🌐 e2e-test`);
+  console.log("─".repeat(50));
+
+  console.log("  🔍 Typechecking...");
+  try {
+    await $`cd ${E2E_DIR} && tsc --noEmit`.quiet();
+    console.log("  ✅ Typecheck passed");
+  } catch {
+    console.error("  ❌ Typecheck failed");
+    failed = true;
+  }
+
+  if (!failed) {
+    console.log("  🧪 Running e2e tests...");
+    try {
+      await $`cd ${E2E_DIR} && bun test`.quiet();
+      console.log("  ✅ E2e tests passed");
+    } catch (error: any) {
+      console.error("  ❌ E2e tests failed");
+      console.error((error.stderr?.toString() || "") + (error.stdout?.toString() || ""));
+      failed = true;
+    }
+  }
+
   console.log("\n" + "=".repeat(50));
   if (failed) {
     console.error("❌ Some packages failed testing");
