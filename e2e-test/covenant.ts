@@ -9,7 +9,7 @@ export const dataSchema = z.object({
 export type Data = z.infer<typeof dataSchema>;
 
 
-const covenant = declareCovenant({
+export const covenant = declareCovenant({
   procedures: {
     updateData: mutation({
       input: dataSchema,
@@ -18,6 +18,10 @@ const covenant = declareCovenant({
     getData: query({
       input: z.null(),
       output: dataSchema,
+    }),
+    helloWorld: query({
+      input: z.string(),
+      output: z.string(),
     })
   },
   channels: {},
