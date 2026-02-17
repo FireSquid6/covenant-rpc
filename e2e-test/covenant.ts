@@ -22,7 +22,11 @@ export const covenant = declareCovenant({
     helloWorld: query({
       input: z.string(),
       output: z.string(),
-    })
+    }),
+    failingQuery: query({
+      input: z.boolean(),
+      output: z.string(),
+    }),
   },
   channels: {},
 });

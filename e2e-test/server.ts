@@ -43,6 +43,16 @@ covenantServer.defineProcedure("helloWorld", {
   },
 });
 
+covenantServer.defineProcedure("failingQuery", {
+  procedure: ({ inputs, error }) => {
+    if (inputs) {
+      error("Intentional failure", 400);
+    }
+    return "success";
+  },
+  resources: () => [],
+});
+
 covenantServer.assertAllDefined();
 
 
