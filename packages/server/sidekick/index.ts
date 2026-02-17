@@ -1,6 +1,5 @@
 import type { ChannelConnectionPayload, ServerMessage } from "@covenant-rpc/core/channel";
 import type { SidekickToServerConnection } from "@covenant-rpc/core/interfaces";
-import { httpSidekickToServer } from "../interfaces/http";
 import type { LoggerLevel } from "@covenant-rpc/core/logger";
 import { Logger } from "../logger";
 import { handleListenMessage, handleSendMessage, handleSubscribeMessage, handleUnlistenMessage, handleUnsubscribeMessage, type SidekickHandlerContext } from "./handlers";
@@ -29,16 +28,10 @@ export type PublishFunction = (topic: string, message: SidekickOutgoingMessage) 
 
 export class Sidekick {
   private publish: PublishFunction;
-  private state: SidekickState = {
-    contextMap: new Map(),
-    tokenMap: new Map(),
-    usedTokenMap: new Map(),
-    // TODO - why did I have this blank?
-    serverConnection: httpSidekickToServer("", ""),
-  };
+  private state: SidekickState;
   private logger: Logger;
 
-  constructor(publishFunction: PublishFunction, logLevel?: LoggerLevel) {
+  constructor(publishFunction: PublishFunction, serverConnection: SidekickToServerConnection, logLevel?: LoggerLevel) {
     this.publish = publishFunction
     this.logger = new Logger(logLevel ?? "info", [
       () => new Date().toUTCString(),
@@ -47,7 +40,7 @@ export class Sidekick {
       contextMap: new Map(),
       tokenMap: new Map(),
       usedTokenMap: new Map(),
-      serverConnection: httpSidekickToServer("", ""),
+      serverConnection,
     };
   }
 

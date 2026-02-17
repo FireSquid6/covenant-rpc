@@ -19,7 +19,8 @@ async function startTestServer(secret: string): Promise<TestServer> {
   const server = startSidekickServer({
     port,
     secret,
-    authFailureDelayMs: 0 // No delay for tests
+    authFailureDelayMs: 0, // No delay for tests
+    serverConnection: { sendMessage: async () => null },
   });
 
   // Wait for server to be ready

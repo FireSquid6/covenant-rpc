@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { Sidekick, type SidekickClient } from "../";
+import type { SidekickToServerConnection } from "@covenant-rpc/core/interfaces";
 import { v } from "@covenant-rpc/core/validation";
 import { channelConnectionPayload, serverMessageSchema } from "@covenant-rpc/core/channel";
 import { sidekickIncomingMessageSchema, type SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
@@ -15,6 +16,7 @@ interface TrackedWebSocket {
 export interface SidekickWebserverOptions {
   secret: string;
   port: number;
+  serverConnection: SidekickToServerConnection;
   /** Delay in milliseconds before responding to failed auth attempts (default: 3000) */
   authFailureDelayMs?: number;
 }
@@ -148,7 +150,7 @@ async function handleWebSocketMessage(ws: WebSocket, raw: WebSocket.RawData, tra
   await sidekick.handleClientMessage(client, message);
 }
 
-export function startSidekickServer({ port, secret, authFailureDelayMs = 3000 }: SidekickWebserverOptions): Server {
+export function startSidekickServer({ port, secret, serverConnection, authFailureDelayMs = 3000 }: SidekickWebserverOptions): Server {
   const connections = new Set<TrackedWebSocket>();
 
   const sidekick = new Sidekick(async (topic, message) => {
@@ -158,7 +160,7 @@ export function startSidekickServer({ port, secret, authFailureDelayMs = 3000 }:
         conn.ws.send(data);
       }
     }
-  });
+  }, serverConnection);
 
   async function validateKey(req: IncomingMessage): Promise<boolean> {
     const authorization = req.headers["authorization"];

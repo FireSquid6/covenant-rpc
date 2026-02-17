@@ -1,4 +1,4 @@
-import type { ClientToSidekickConnection, ServerToSidekickConnection } from "@covenant-rpc/core/interfaces";
+import type { ClientToSidekickConnection, ServerToSidekickConnection, SidekickToServerConnection } from "@covenant-rpc/core/interfaces";
 import { Sidekick, type SidekickClient } from "../";
 import type { SidekickIncomingMessage, SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
 import type { MaybePromise } from "@covenant-rpc/core/utils";
@@ -16,16 +16,7 @@ export class InternalSidekick {
     const clients = this.clients;
     const getServerCallback = () => this.serverCallback;
 
-    this.sidekick = new Sidekick(async (topic, message) => {
-      const subscribed = clients.filter(c => c.isSubscribed(topic));
-      for (const s of subscribed) {
-        s.directMessage(message)
-      }
-    })
-
-    // Override the sidekick's server connection
-    // @ts-expect-error - accessing private field
-    this.sidekick.state.serverConnection = {
+    const serverConnection: SidekickToServerConnection = {
       async sendMessage(message) {
         const callback = getServerCallback();
         if (!callback) {
@@ -48,6 +39,13 @@ export class InternalSidekick {
         return null;
       },
     };
+
+    this.sidekick = new Sidekick(async (topic, message) => {
+      const subscribed = clients.filter(c => c.isSubscribed(topic));
+      for (const s of subscribed) {
+        s.directMessage(message)
+      }
+    }, serverConnection);
   }
 
   setServerCallback(callback: (channelName: string, params: Record<string, string>, data: any, context: any) => Promise<{ fault: "client" | "server"; message: string } | null>) {
