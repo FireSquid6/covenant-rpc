@@ -2,7 +2,7 @@
   "name": "@covenant-rpc/react",
   "module": "index.ts",
   "type": "module",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "exports": {
     ".": {
       "types": "./index.ts",
@@ -20,8 +20,8 @@
   },
   "dependencies": {
     "react": "^19.1.1",
-    "@covenant-rpc/core": "^1.0.0",
-    "@covenant-rpc/client": "^1.0.0"
+    "@covenant-rpc/core": "^2.0.0",
+    "@covenant-rpc/client": "^2.0.0"
   },
   "devDependencies": {
     "@covenant-rpc/server": "workspace:*",
