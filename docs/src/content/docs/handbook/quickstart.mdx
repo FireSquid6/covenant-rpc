@@ -1,0 +1,25 @@
+---
+title: Quickstart
+description: Get started with the basics of covenant
+---
+
+First, create a new empty project:
+
+```bash
+bun init
+```
+
+Then install the base packages for covenant
+
+```bash
+# bun is recommended, but you can use whatever you want
+bun add @covenant-rpc/core @covenant-rpc/client @covenant-rpc/server
+
+# pick your favorite schema validator--any will do
+bun add zod
+```
+
+
+Now create three files: `covenant.ts`, `server.ts`, and `client.ts`.
+
+CLAUDE TODO: show a simple "todo list" prodcedure system in three files. The simplest version to get started with
