@@ -1,0 +1,186 @@
+---
+title: Connections
+description: Configure how clients, servers, and Sidekick talk to each other
+---
+
+Covenant has four pluggable connection interfaces that wire together the client, server, and Sidekick. Each interface has a real HTTP implementation for production and a stub for testing.
+
+| Interface | Production | Testing |
+|---|---|---|
+| `ClientToServerConnection` | `httpClientToServer()` | `directClientToServer()` |
+| `ClientToSidekickConnection` | `httpClientToSidekick()` | `emptyClientToSidekick()` |
+| `ServerToSidekickConnection` | `httpServerToSidekick()` | `emptyServerToSidekick()` |
+| `SidekickToServerConnection` | `httpSidekickToServer()` | — |
+
+## Client → Server
+
+The client uses this connection to call procedures and connect to channels.
+
+### Production: `httpClientToServer`
+
+```ts
+import { CovenantClient } from "@covenant-rpc/client";
+import { httpClientToServer } from "@covenant-rpc/client/interfaces/http";
+
+const client = new CovenantClient(covenant, {
+  serverConnection: httpClientToServer(
+    "https://example.com/api/covenant",
+    {} // extra headers — use for auth tokens, etc.
+  ),
+  sidekickConnection: ...,
+});
+```
+
+The second argument is a `Record<string, string>` of headers sent with every request. Pass auth tokens here:
+
+```ts
+httpClientToServer("/api/covenant", {
+  Authorization: `Bearer ${token}`,
+})
+```
+
+### Testing: `directClientToServer`
+
+Bypasses HTTP entirely — calls `server.handle()` in-memory. Use this in all unit and integration tests:
+
+```ts
+import { directClientToServer } from "@covenant-rpc/server/interfaces/direct";
+
+const client = new CovenantClient(covenant, {
+  serverConnection: directClientToServer(server, {}),
+  sidekickConnection: emptyClientToSidekick(),
+});
+```
+
+The second argument is the same extra-headers map.
+
+## Client → Sidekick
+
+The client uses this connection to receive resource invalidation events and subscribe to channel messages via WebSocket.
+
+### Production: `httpClientToSidekick`
+
+```ts
+import { httpClientToSidekick } from "@covenant-rpc/client/interfaces/http";
+
+const client = new CovenantClient(covenant, {
+  serverConnection: ...,
+  sidekickConnection: httpClientToSidekick("https://sidekick.example.com"),
+});
+```
+
+The client automatically connects via WebSocket. If the URL uses `https://`, it upgrades to `wss://` automatically. The connection queues messages while the socket is establishing and reconnects on close.
+
+### Skip it: `emptyClientToSidekick`
+
+When you don't need realtime features or cross-client cache invalidation:
+
+```ts
+import { emptyClientToSidekick } from "@covenant-rpc/client/interfaces/empty";
+
+const client = new CovenantClient(covenant, {
+  serverConnection: ...,
+  sidekickConnection: emptyClientToSidekick(),
+});
+```
+
+Cache invalidation still works locally — mutations refetch listeners within the same client session. Only cross-client broadcasting is disabled.
+
+## Server → Sidekick
+
+The server uses this connection to notify Sidekick of resource updates and deliver channel messages to clients.
+
+### Production: `httpServerToSidekick`
+
+```ts
+import { CovenantServer } from "@covenant-rpc/server";
+import { httpServerToSidekick } from "@covenant-rpc/server/interfaces/http";
+
+const server = new CovenantServer(covenant, {
+  contextGenerator: ...,
+  derivation: ...,
+  sidekickConnection: httpServerToSidekick(
+    "http://localhost:3001",  // Sidekick base URL
+    "your-shared-secret"      // must match SIDEKICK_SECRET
+  ),
+});
+```
+
+### Skip it: `emptyServerToSidekick`
+
+When you don't need Sidekick:
+
+```ts
+import { emptyServerToSidekick } from "@covenant-rpc/server/interfaces/empty";
+
+const server = new CovenantServer(covenant, {
+  contextGenerator: ...,
+  derivation: ...,
+  sidekickConnection: emptyServerToSidekick(),
+});
+```
+
+## Sidekick → Server
+
+Sidekick uses this connection to forward incoming channel messages to the server for processing. This is configured when starting the Sidekick service, not in your application code.
+
+### CLI / environment variables
+
+```bash
+bunx @covenant-rpc/server covenant-sidekick \
+  --server-url http://localhost:3000/api/covenant \
+  --server-secret your-server-secret
+```
+
+Or via environment variables:
+
+```bash
+SIDEKICK_SERVER_URL=http://localhost:3000/api/covenant
+SIDEKICK_SERVER_SECRET=your-server-secret
+```
+
+### Programmatic: `httpSidekickToServer`
+
+If you're embedding Sidekick programmatically (rare), configure it directly:
+
+```ts
+import { Sidekick } from "@covenant-rpc/server/sidekick";
+import { httpSidekickToServer } from "@covenant-rpc/server/interfaces/http";
+
+const sidekick = new Sidekick({
+  serverConnection: httpSidekickToServer(
+    "http://localhost:3000/api/covenant",
+    "your-server-secret"
+  ),
+});
+```
+
+## Testing with InternalSidekick
+
+For tests that need full channel behavior without any HTTP, use `InternalSidekick`. It wires server and client together in memory:
+
+```ts
+import { InternalSidekick } from "@covenant-rpc/server/sidekick/internal";
+import { directClientToServer } from "@covenant-rpc/server/interfaces/direct";
+import { CovenantServer } from "@covenant-rpc/server";
+import { CovenantClient } from "@covenant-rpc/client";
+
+const sidekick = new InternalSidekick();
+
+const server = new CovenantServer(covenant, {
+  contextGenerator: () => ({}),
+  derivation: () => ({}),
+  sidekickConnection: sidekick.getConnectionFromServer(),
+});
+
+sidekick.setServerCallback((channel, params, data, context) =>
+  server.processChannelMessage(channel, params, data, context)
+);
+
+const client = new CovenantClient(covenant, {
+  serverConnection: directClientToServer(server, {}),
+  sidekickConnection: sidekick.getConnectionFromClient(),
+});
+```
+
+`InternalSidekick` gives you the same channel and resource-invalidation behavior as the real Sidekick with no network overhead.
