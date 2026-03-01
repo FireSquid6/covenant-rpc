@@ -3,30 +3,43 @@ title: Covenant RPC
 description: Typed RPC for full-stack TypeScript with automatic cache invalidation and realtime channels
 template: splash
 hero:
-  tagline: Define once. Type everywhere. Invalidate automatically.
+  tagline: Full-stack TypeScript RPC with automatic cache invalidation and realtime channels.
   actions:
-    - text: Quickstart
+    - text: Get started
       link: /handbook/quickstart/
       icon: right-arrow
-    - text: Overview
+    - text: Read the overview
       link: /handbook/overview/
       icon: open-book
       variant: minimal
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
+import TodoDemo from '../../components/TodoDemo.astro';
+
+<TodoDemo />
+
+## Why Covenant
 
 <CardGrid stagger>
   <Card title="Type-safe by default" icon="approve-check">
-    Full TypeScript inference from your schema validators to every call site — no `any`, no hand-written types.
+    Full TypeScript inference from your schema validators to every call site. No `any`, no hand-written API types, no drift between frontend and backend.
   </Card>
   <Card title="Automatic cache invalidation" icon="rocket">
-    Declare which resources a procedure touches. Mutations automatically trigger refetches in matching listeners.
+    Declare which resources a procedure touches. Mutations automatically trigger refetches in every matching listener — no manual cache management.
   </Card>
   <Card title="Realtime channels" icon="random">
-    Bidirectional WebSocket channels with typed messages, params-based routing, and connection context.
+    Bidirectional WebSocket channels with typed messages, params-based routing, and per-connection context. Powered by Sidekick.
   </Card>
   <Card title="AI-agent friendly" icon="document">
-    The covenant file is all any agent needs to work on either side of the stack.
+    The covenant file is the only context an agent needs to work on either side of the stack. Both frontend and backend derive their types from the same source.
   </Card>
 </CardGrid>
+
+## Install
+
+```bash
+bun add @covenant-rpc/core @covenant-rpc/server @covenant-rpc/client @covenant-rpc/react zod
+```
+
+Works with any [Standard Schema](https://github.com/standard-schema/standard-schema) compatible validator (Zod, Valibot, ArkType, etc.).
