@@ -1,6 +1,101 @@
 ---
 title: Channels
-descrption: creating channels in covenant
+description: Creating channels in Covenant
 ---
 
-CLAUDE TODO: Explain how to create channels in Covenant. Explain the params system and listening on the client. Also show how to send messages on channels from a procedure route
+Channels enable bidirectional realtime communication. Unlike procedures, channels maintain a persistent WebSocket connection through [Sidekick](/handbook/sidekick).
+
+## Declaring a channel
+
+```ts
+import { channel, declareCovenant } from "@covenant-rpc/core";
+import { z } from "zod";
+
+const covenant = declareCovenant({
+  procedures: {},
+  channels: {
+    chat: channel({
+      // Messages the client sends to the server
+      clientMessage: z.object({ text: z.string() }),
+      // Messages the server sends to the client
+      serverMessage: z.object({ senderId: z.string(), text: z.string() }),
+      // Data the client sends when connecting
+      connectionRequest: z.object({ token: z.string() }),
+      // Data stored server-side per connection (returned from onConnect)
+      connectionContext: z.object({ userId: z.string() }),
+      // URL params that scope the channel (like a room ID)
+      params: ["roomId"],
+    }),
+  },
+});
+```
+
+`params` are dynamic identifiers — think of them as routing parameters. A client connects to `chat` with `{ roomId: "room1" }`, and the server routes messages to all clients in that room.
+
+## Implementing the channel
+
+```ts
+server.defineChannel("chat", {
+  onConnect: async ({ inputs, params, reject }) => {
+    const user = await verifyToken(inputs.token);
+    if (!user) reject("Invalid token", "client");
+
+    return { userId: user.id }; // becomes the connection context
+  },
+
+  onMessage: async ({ inputs, params, context, error }) => {
+    // context is what onConnect returned
+    await broadcastToRoom(params.roomId, {
+      senderId: context.userId,
+      text: inputs.text,
+    });
+  },
+});
+```
+
+- `onConnect` runs once when a client connects. Return the connection context — data you want accessible when handling messages.
+- `onMessage` runs each time the client sends a message.
+- Use `reject()` in `onConnect` or `error()` in `onMessage` to terminate with a typed error.
+
+## Connecting from the client
+
+```ts
+// 1. Connect (sends connectionRequest to onConnect)
+const result = await client.connect("chat", { roomId: "room1" }, { token: authToken });
+if (!result.success) throw new Error(result.error.message);
+const { token } = result; // connection token for subsequent calls
+
+// 2. Subscribe to server messages
+const unsubscribe = await client.subscribe("chat", { roomId: "room1" }, token, (msg) => {
+  console.log(msg.senderId, msg.text); // typed
+});
+
+// 3. Send messages
+await client.send("chat", { roomId: "room1" }, token, { text: "Hello!" });
+
+// 4. Cleanup
+unsubscribe();
+```
+
+## Sending messages from the server
+
+You can push messages to a channel from anywhere on the server — including from within a procedure:
+
+```ts
+server.defineProcedure("announce", {
+  resources: () => [],
+  procedure: async ({ inputs }) => {
+    await server.sendMessage("chat", { roomId: inputs.roomId }, {
+      senderId: "system",
+      text: inputs.message,
+    });
+    return null;
+  },
+});
+```
+
+`sendMessage` goes through Sidekick and reaches all connected clients in that channel+params combination.
+
+## Channels require Sidekick
+
+Channels need Sidekick running. See [Sidekick](/handbook/sidekick) for setup. For testing without an HTTP connection, use `InternalSidekick` from `@covenant-rpc/server/sidekick/internal`.

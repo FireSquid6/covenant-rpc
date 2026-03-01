@@ -1,40 +1,32 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: Covenant RPC
+description: Typed RPC for full-stack TypeScript with automatic cache invalidation and realtime channels
+template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
-  image:
-    file: ../../assets/houston.webp
+  tagline: Define once. Type everywhere. Invalidate automatically.
   actions:
     - text: Quickstart
       link: /handbook/quickstart/
       icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
-      icon: external
+    - text: Overview
+      link: /handbook/overview/
+      icon: open-book
       variant: minimal
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Next steps
-
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
-	</Card>
-	<Card title="Change page layout" icon="document">
-		Delete `template: splash` in `src/content/docs/index.mdx` to display a
-		sidebar on this page.
-	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
-	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
-	</Card>
+  <Card title="Type-safe by default" icon="approve-check">
+    Full TypeScript inference from your schema validators to every call site — no `any`, no hand-written types.
+  </Card>
+  <Card title="Automatic cache invalidation" icon="rocket">
+    Declare which resources a procedure touches. Mutations automatically trigger refetches in matching listeners.
+  </Card>
+  <Card title="Realtime channels" icon="random">
+    Bidirectional WebSocket channels with typed messages, params-based routing, and connection context.
+  </Card>
+  <Card title="AI-agent friendly" icon="document">
+    The covenant file is all any agent needs to work on either side of the stack.
+  </Card>
 </CardGrid>

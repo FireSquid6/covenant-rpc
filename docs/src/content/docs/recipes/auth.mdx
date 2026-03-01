@@ -1,0 +1,89 @@
+---
+title: Authentication
+description: Setting up authentication in Covenant with NextAuth
+---
+
+Authentication in Covenant happens in the `contextGenerator` — a function that runs on every request and returns per-request context available to all procedures.
+
+## NextAuth example
+
+With NextAuth v5:
+
+```ts
+import { auth } from "@/auth"; // your NextAuth config
+import { CovenantServer } from "@covenant-rpc/server";
+import { emptyServerToSidekick } from "@covenant-rpc/server/interfaces/empty";
+import { covenant } from "./covenant";
+
+export const server = new CovenantServer(covenant, {
+  contextGenerator: async ({ request }) => {
+    const session = await auth.api.getSession({ headers: request.headers });
+    return { user: session?.user ?? null };
+  },
+  derivation: ({ ctx, error }) => ({
+    requireUser: () => {
+      if (!ctx.user) error("Unauthorized", 401);
+      return ctx.user!;
+    },
+  }),
+  sidekickConnection: emptyServerToSidekick(),
+});
+```
+
+## Using auth in procedures
+
+```ts
+server.defineProcedure("getMyProfile", {
+  resources: ({ ctx }) => ctx.user ? [`user/${ctx.user.id}`] : [],
+  procedure: ({ derived }) => {
+    const user = derived.requireUser(); // throws 401 if not logged in
+    return db.getUserProfile(user.id);
+  },
+});
+```
+
+`requireUser()` uses the `error()` function, which throws immediately and never returns — TypeScript correctly narrows the type after the call.
+
+## Bearer token auth
+
+For API clients using bearer tokens:
+
+```ts
+contextGenerator: async ({ request }) => {
+  const authorization = request.headers.get("Authorization");
+  const token = authorization?.replace("Bearer ", "");
+  if (!token) return { userId: null };
+
+  const userId = await verifyJwt(token);
+  return { userId };
+},
+```
+
+Pass the token from the client:
+
+```ts
+export const client = new CovenantClient(covenant, {
+  serverConnection: httpClientToServer("/api/covenant", {
+    Authorization: `Bearer ${token}`,
+  }),
+  sidekickConnection: emptyClientToSidekick(),
+});
+```
+
+## Role-based access
+
+Extend the derivation pattern for roles:
+
+```ts
+derivation: ({ ctx, error }) => ({
+  requireUser: () => {
+    if (!ctx.user) error("Unauthorized", 401);
+    return ctx.user!;
+  },
+  requireAdmin: () => {
+    if (!ctx.user) error("Unauthorized", 401);
+    if (ctx.user.role !== "admin") error("Forbidden", 403);
+    return ctx.user!;
+  },
+}),
+```

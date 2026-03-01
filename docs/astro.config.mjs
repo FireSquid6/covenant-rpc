@@ -14,7 +14,7 @@ export default defineConfig({
           autogenerate: { directory: 'handbook' },
 				},
 				{
-					label: 'Recpies',
+					label: 'Recipes',
 					autogenerate: { directory: 'recipes' },
 				},
 			],

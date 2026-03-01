@@ -1,189 +1,158 @@
-**🚧 Covenant is currently under construction and not production ready. Expect bugs and breaking changes. 🚧**
+# Covenant RPC
 
-# Covenant
+Covenant RPC solves querying your backend from your frontend. Define a typed contract once, implement it on the server, call it from the client — with full TypeScript inference throughout, automatic cache invalidation, and optional realtime channels.
 
-Covenant RPC is the final solution for querying your backend from your frontend. It provides simple ways to query and mutate data. It's optimized to be vibe coding ready with design intended to minimize AI (and human!) context overload by aggressively separating frontend and backend concerns. You could have separate agents working on the frontend and backend working in perfect harmony without having to waste context on reading any specific implementation details other than the covenant itself.
-
-Covenant also provides an incredibly simple way to do realtime subscriptions and bidirectional communication without leaving the edge by using `Sidekick`. More information on `sidekick` will be published as it is closer to being done.
-
-# Quick Start
+Built to be AI-agent-friendly: the covenant file is the only context an agent needs to work with either side of the stack.
 
 ## Installation
-Covenant currently only supports typescript projects and is built to work best with bun.
 
 ```bash
-# pick your favorite:
+bun add @covenant-rpc/core @covenant-rpc/server @covenant-rpc/client
 
-npm install @covenant/rpc
-pnpm install @covenant/rpc
-bun add @covenant/rpc
+# For React
+bun add @covenant-rpc/react
+
+# Pick a schema validator (any Standard Schema compliant library works)
+bun add zod
 ```
 
+## Quick Start
 
-## Server Setup
-
-Start by defining your covenant. This is all of the functions your frontend can call from your backend. This module should remain isolated from the rest of your code (although I use the database schema here, which is fine since drizzle isolates that file).
+**1. Define the covenant** — a shared file imported by both frontend and backend:
 
 ```ts
+// covenant.ts
+import { declareCovenant, query, mutation } from "@covenant-rpc/core";
 import { z } from "zod";
-import { declareCovenant, query, mutation } from "@covenant/rpc";
-import { todosSelectSchema } from "@/db/schema";
 
+const todoSchema = z.object({ id: z.string(), text: z.string() });
 
 export const covenant = declareCovenant({
-    channels: {},
-    procedures: {
-        hello: query({
-            input: z.object({
-                name: z.string(),
-            }),
-            output: z.object({
-                message: z.string(),
-            })
-        })
-
-    },
-})
-```
-
-You can use any validation library you'd like that implements [Standard Schema](https://github.com/standard-schema/standard-schema). In this example I am using zod, but you could also use arctype or even mix and match.
-
-
-Now, define your server in another file. You can use the `contextGenerator` to attach data like the user making the request to each procedure, and use the `derivation` to provide useful functions to your procedures.
-
-```ts
-import { db } from "@/db";
-import { getUserAndSession } from "@/db/user";
-import { covenant } from "@/lib/covenant";
-import { CovenantServer } from "@covenant/rpc/server";
-import { emptyServerToSidekick } from "@covenant/rpc/interfaces/empty";
-import type { User } from "@/db/schema";
-
-
-export const covenantServer = new CovenantServer(
-    covenant,
-    {
-        // sidekick connection left empty for this simple demo. Sidekick
-        // is used for realtime channels and remote resource listening
-        sidekickConnection: emptyServerToSidekick(),
-        contextGenerator: async () => {
-            // replace `getUserAndSesssion` with whatever your actual
-            const auth = await getUserAndSession(db);
-            return {
-                // could be null
-                user: auth.user,
-            }
-        },
-        derivation: ({ error, ctx }) => {
-            return {
-                forceAuthenticated: async (): Promise<User> => {
-                    const user = ctx.user;
-
-                    if (!user) {
-                        // throwing an error like this is how we "return early" from a function
-                        throw error("Not authenticated", 401);
-                    }
-
-                    return user;
-                },
-            }
-        },
-    }
-)
-
-
-// when you have a lot of procedures, it can be best to move the definitions to multiple files
-// and call a function to define each one
-covenantServer.defineProcedure("hello", {
-    // the resources is used by remote listeners to know when to refetch
-    // see the docs on remote listeners for more info
-    resources: ({ inputs }) => {
-        return [`greeting/${inputs.name}`];
-    },
-    // this is the actual function that's run to query hello
-    procedure: ({ inputs, derivation: { forceAuthenticated } }) => {
-        // user is typed to be not null here. The procedure will
-        // return early if the user is failed to be logged in
-        const user = forceAuthenticated();
-
-        return {
-            message: `${user.username} says: hello, ${inputs.name}`
-        }
-    },
+  procedures: {
+    getTodos: query({
+      input: z.null(),
+      output: z.array(todoSchema),
+    }),
+    addTodo: mutation({
+      input: z.object({ text: z.string() }),
+      output: todoSchema,
+    }),
+  },
+  channels: {},
 });
-
-
-// makes sure that we can't forget a definition
-covenantServer.assertAllDefined();
 ```
 
-
-Then, you want to hook up your server to some route. Here's how it would be done in Next.js:
-
-```ts
-// file: app/api/covenant/route.ts
-import { covenantServer } from "@/lib/server";
-import { vanillaAdapter } from "@covenant/rpc/adapters/vanilla";
-
-
-// takes in a Request, returns a Response 
-const handler = vanillaAdapter(covenantServer);
-
-export { handler as GET, handler as POST }; 
-```
-
-
-## Frontend Setup
-
-Now create the client on the frontend:
+**2. Implement the server:**
 
 ```ts
-import { CovenantClient } from "@covenant/rpc/client";
+// server.ts
+import { CovenantServer } from "@covenant-rpc/server";
+import { emptyServerToSidekick } from "@covenant-rpc/server/interfaces/empty";
 import { covenant } from "./covenant";
-import { httpClientToServer } from "@covenant/rpc/interfaces/http";
-import { emptyClientToSidekick } from "@covenant/rpc/interfaces/empty";
 
+const todos: { id: string; text: string }[] = [];
 
-export const covenantClient = new CovenantClient(covenant, {
-    // maybe smart to use an environment variable here to use a different url in production
-    //
-    // second arg is any headers you would like to attach to every request. This is useful
-    // if you're doing bearer token authentication
-    serverConnection: httpClientToServer("http://localhost:3000/api/covenant", {}),
-
-    // sidekick is unnecessary for this example. If included, it would allow for realtime
-    // communication
-    sidekickConnection: emptyClientToSidekick()
+export const server = new CovenantServer(covenant, {
+  contextGenerator: async ({ request }) => ({
+    authHeader: request.headers.get("Authorization"),
+  }),
+  derivation: ({ ctx, error }) => ({
+    requireAuth: () => {
+      if (!ctx.authHeader) error("Unauthorized", 401);
+      return ctx.authHeader!;
+    },
+  }),
+  sidekickConnection: emptyServerToSidekick(),
 });
+
+server.defineProcedure("getTodos", {
+  resources: () => ["todos"],
+  procedure: () => todos,
+});
+
+server.defineProcedure("addTodo", {
+  resources: ({ outputs }) => ["todos", `todo/${outputs.id}`],
+  procedure: ({ inputs }) => {
+    const todo = { id: crypto.randomUUID(), text: inputs.text };
+    todos.push(todo);
+    return todo;
+  },
+});
+
+server.assertAllDefined();
 ```
 
-You can then call procedures anywhere in your frontend code:
+**3. Mount in your framework** (Next.js example):
 
 ```ts
-import { covenantClient } from "@/lib/client";
+// app/api/covenant/route.ts
+import { vanillaAdapter } from "@covenant-rpc/server/adapters/vanilla";
+import { server } from "@/lib/server";
 
-export function sayHello(to: string) {
-    // autocomplete is given for the query name and arguments
-    const { data, error, success } = await covenantClient.query("hello", {
-        name: to,
-    });
+const handler = vanillaAdapter(server);
+export { handler as GET, handler as POST };
+```
 
-    if (success) {
-        console.log(data.message);
-        //           ^ typed as: { message: string } since success is true
-    } else {
-        console.error(`Error: ${error.code} - ${error.message}`);
-    }
+**4. Call from the client:**
+
+```ts
+// client.ts
+import { CovenantClient } from "@covenant-rpc/client";
+import { httpClientToServer } from "@covenant-rpc/client/interfaces/http";
+import { emptyClientToSidekick } from "@covenant-rpc/client/interfaces/empty";
+import { covenant } from "./covenant";
+
+export const client = new CovenantClient(covenant, {
+  serverConnection: httpClientToServer("/api/covenant", {}),
+  sidekickConnection: emptyClientToSidekick(),
+});
+
+const result = await client.query("getTodos", null);
+if (result.success) {
+  console.log(result.data); // { id: string, text: string }[]
 }
+
+await client.mutate("addTodo", { text: "Buy milk" });
 ```
 
 ## React
-TODO - react and other frontend specific query libraries. For now, you'll just have to write your own hooks. Expect `@covenant/react` to be in the works and finished first, with `@covenant/vue`, `@covenant/svelte` and others coming after (although I am not an expert any either vue or svelte so if you are help would be greatly appreciated).
 
-# Documentation
-Covenant is still very much in the oven so documentation is still not up. If you're interested in helping out development, email `me@jdeiss.com`.
+```ts
+import { CovenantReactClient } from "@covenant-rpc/react";
 
-# Current Pain Points
+export const client = new CovenantReactClient(covenant, { /* connections */ });
 
-- Drizzle ORM sucks to use with covenant. It ends up messing up the validation with dates.
+function TodoList() {
+  const { loading, data, error } = client.useQuery("getTodos", null);
 
+  if (loading) return <Spinner />;
+  if (error) return <p>{error.message}</p>;
+  return <ul>{data.map(t => <li key={t.id}>{t.text}</li>)}</ul>;
+}
+
+function AddTodo() {
+  const [addTodo, { loading }] = client.useMutation("addTodo");
+  return (
+    <button onClick={() => addTodo({ text: "New todo" })} disabled={loading}>
+      Add
+    </button>
+  );
+}
+```
+
+## Documentation
+
+Full docs in `docs/`. Start with the [Handbook Overview](docs/src/content/docs/handbook/overview.mdx) or run the docs site:
+
+```bash
+cd docs && bun install && bun dev
+```
+
+## Packages
+
+| Package | Purpose |
+|---------|---------|
+| `@covenant-rpc/core` | `declareCovenant`, `query`, `mutation`, `channel` |
+| `@covenant-rpc/server` | `CovenantServer`, `vanillaAdapter`, Sidekick |
+| `@covenant-rpc/client` | `CovenantClient` |
+| `@covenant-rpc/react` | `CovenantReactClient` with React hooks |

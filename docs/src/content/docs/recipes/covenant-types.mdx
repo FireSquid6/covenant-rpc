@@ -1,0 +1,70 @@
+---
+title: Using Covenant Types
+description: Extracting TypeScript types from your covenant
+---
+
+The covenant is the source of truth for your API's types. Covenant exports utility types to extract TypeScript types from any procedure or channel declaration.
+
+## Procedure types
+
+```ts
+import type { InferProcedureInputs, InferProcedureOutputs } from "@covenant-rpc/core/procedure";
+import { covenant } from "./covenant";
+
+type GetTodosInput = InferProcedureInputs<typeof covenant.procedures.getTodos>;
+type GetTodosOutput = InferProcedureOutputs<typeof covenant.procedures.getTodos>;
+```
+
+## Channel types
+
+```ts
+import type {
+  InferChannelClientMessage,
+  InferChannelServerMessage,
+  InferChannelParams,
+  InferChannelConnectionRequest,
+  InferChannelConnectionContext,
+} from "@covenant-rpc/core/channel";
+import { covenant } from "./covenant";
+
+type ChatClientMessage = InferChannelClientMessage<typeof covenant.channels.chat>;
+type ChatServerMessage = InferChannelServerMessage<typeof covenant.channels.chat>;
+type ChatParams = InferChannelParams<typeof covenant.channels.chat>;
+```
+
+## Sharing types alongside the covenant
+
+The typical pattern is to export inferred types from the same covenant file so they stay in sync automatically:
+
+```ts
+// covenant.ts
+import { declareCovenant, query, mutation } from "@covenant-rpc/core";
+import type { InferProcedureOutputs } from "@covenant-rpc/core/procedure";
+import { z } from "zod";
+
+const todoSchema = z.object({ id: z.string(), text: z.string() });
+
+export const covenant = declareCovenant({
+  procedures: {
+    getTodos: query({ input: z.null(), output: z.array(todoSchema) }),
+    addTodo: mutation({ input: z.object({ text: z.string() }), output: todoSchema }),
+  },
+  channels: {},
+});
+
+// Export inferred types for use across the app
+export type Todo = InferProcedureOutputs<typeof covenant.procedures.addTodo>;
+```
+
+Then import `Todo` wherever you need it — it automatically tracks your schema.
+
+## Zod's own inference
+
+For schemas defined inline with Zod, `z.infer<typeof schema>` is equivalent and sometimes more convenient when working directly with schemas:
+
+```ts
+const todoSchema = z.object({ id: z.string(), text: z.string() });
+type Todo = z.infer<typeof todoSchema>;
+```
+
+Use Covenant's inference types (`InferProcedureOutputs`) when you want the type to follow the procedure definition, and `z.infer` when working directly with a schema that's also used elsewhere.

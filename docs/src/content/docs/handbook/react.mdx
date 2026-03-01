@@ -1,6 +1,120 @@
 ---
 title: React
-description: Use react with a covenant client
+description: Use React with a Covenant client
 ---
 
-CLAUDE TODO: explain how the react client works
+`@covenant-rpc/react` exports `CovenantReactClient`, which extends `CovenantClient` with React hooks.
+
+## Setup
+
+```bash
+bun add @covenant-rpc/react
+```
+
+```ts
+// lib/client.ts
+import { CovenantReactClient } from "@covenant-rpc/react";
+import { httpClientToServer } from "@covenant-rpc/client/interfaces/http";
+import { emptyClientToSidekick } from "@covenant-rpc/client/interfaces/empty";
+import { covenant } from "./covenant";
+
+export const client = new CovenantReactClient(covenant, {
+  serverConnection: httpClientToServer("/api/covenant", {}),
+  sidekickConnection: emptyClientToSidekick(),
+});
+```
+
+## useQuery
+
+Fetches on mount and refetches whenever `inputs` changes. Good for most read operations.
+
+```tsx
+function TodoList() {
+  const { loading, data, error } = client.useQuery("getTodos", null);
+
+  if (loading) return <Spinner />;
+  if (error) return <p>Error: {error.message}</p>;
+  return (
+    <ul>
+      {data.map(todo => <li key={todo.id}>{todo.text}</li>)}
+    </ul>
+  );
+}
+```
+
+The state is a discriminated union: when `loading` is true, `data` is null. When `loading` is false and `error` is null, `data` is present.
+
+## useMutation
+
+Returns `[mutate, state]`. Mutations are called manually, not on mount.
+
+```tsx
+function AddTodo() {
+  const [addTodo, { loading, error }] = client.useMutation("addTodo", {
+    onSuccess: (todo) => console.log("Added:", todo.id),
+    onError: (err) => console.log("Failed:", err.message),
+  });
+
+  return (
+    <button onClick={() => addTodo({ text: "New todo" })} disabled={loading}>
+      {loading ? "Adding..." : "Add Todo"}
+    </button>
+  );
+}
+```
+
+### Optimistic updates
+
+Show data immediately before the server responds, then roll back on error:
+
+```tsx
+const [addTodo] = client.useMutation("addTodo", {
+  optimisticData: (input) => ({ id: "temp", text: input.text }),
+  onError: () => { /* state automatically rolls back */ },
+});
+```
+
+## useListenedQuery
+
+Like `useQuery`, but automatically refetches whenever a mutation touches the same resources. This is how you keep UI in sync without polling.
+
+```tsx
+function LiveTodoList() {
+  // Refetches when any mutation returns "todos" in its resources
+  const { loading, data } = client.useListenedQuery("getTodos", null);
+  // ...
+}
+```
+
+Pass `true` as the third argument to also listen for updates from other clients via Sidekick:
+
+```tsx
+const { data } = client.useListenedQuery("getTodos", null, true);
+```
+
+## useCachedQuery
+
+Shares a single cache entry across all component instances using the same procedure and inputs. Only makes one network request regardless of how many components use it.
+
+```tsx
+// Both components share the same data and make only one fetch
+function Header() {
+  const { data } = client.useCachedQuery("getUser", { id: userId });
+}
+
+function Sidebar() {
+  const { data } = client.useCachedQuery("getUser", { id: userId });
+}
+```
+
+The cache is automatically cleaned up when all components unmount.
+
+## Manual cache control
+
+```ts
+// Invalidate a specific entry
+client.invalidateCache("getTodos", null);
+
+// Clear everything
+client.clearCache();
+```
