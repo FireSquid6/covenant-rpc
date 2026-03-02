@@ -1,0 +1,161 @@
+---
+title: Adapters
+description: Connect CovenantServer to your HTTP framework
+sidebar:
+  order: 7
+---
+
+`CovenantServer` exposes a single method: `handle(request: Request): Promise<Response>`. Any runtime or framework that works with the web-standard `Request` and `Response` types can serve Covenant with no extra code.
+
+## Generic usage
+
+```ts
+const response = await server.handle(request);
+```
+
+`vanillaAdapter` wraps this into a plain handler function:
+
+```ts
+import { vanillaAdapter } from "@covenant-rpc/server/adapters/vanilla";
+
+const handler = vanillaAdapter(server);
+// handler: (request: Request) => Promise<Response>
+```
+
+Both are equivalent. `vanillaAdapter` is just a convenience for frameworks that want a function to register rather than calling `server.handle()` inline.
+
+## Bun
+
+Bun's built-in HTTP server accepts `Request → Response` directly:
+
+```ts
+import { vanillaAdapter } from "@covenant-rpc/server/adapters/vanilla";
+import { server } from "./server";
+
+const handler = vanillaAdapter(server);
+
+Bun.serve({
+  port: 3000,
+  routes: {
+    "/api/covenant": handler,
+  },
+});
+```
+
+Or using the `fetch` handler if you need to control routing yourself:
+
+```ts
+Bun.serve({
+  port: 3000,
+  fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith("/api/covenant")) {
+      return server.handle(request);
+    }
+    return new Response("Not found", { status: 404 });
+  },
+});
+```
+
+## Next.js
+
+Export `GET` and `POST` from your App Router route handler:
+
+```ts
+// app/api/covenant/route.ts
+import { vanillaAdapter } from "@covenant-rpc/server/adapters/vanilla";
+import { server } from "@/lib/server";
+
+const handler = vanillaAdapter(server);
+export { handler as GET, handler as POST };
+```
+
+Next.js passes a web-standard `Request` and expects a `Response`, so no glue code is needed.
+
+## Elysia
+
+Elysia is built on Bun and uses web-standard types natively:
+
+```ts
+import { Elysia } from "elysia";
+import { vanillaAdapter } from "@covenant-rpc/server/adapters/vanilla";
+import { server } from "./server";
+
+const handler = vanillaAdapter(server);
+
+new Elysia()
+  .all("/api/covenant", ({ request }) => handler(request))
+  .listen(3000);
+```
+
+## Hono
+
+Hono runs everywhere (Bun, Deno, Cloudflare Workers, Node.js) and exposes the raw `Request` via `c.req.raw`:
+
+```ts
+import { Hono } from "hono";
+import { vanillaAdapter } from "@covenant-rpc/server/adapters/vanilla";
+import { server } from "./server";
+
+const handler = vanillaAdapter(server);
+const app = new Hono();
+
+app.all("/api/covenant", (c) => handler(c.req.raw));
+
+export default app;
+```
+
+## Express
+
+Express uses Node.js `IncomingMessage`/`ServerResponse` rather than web-standard `Request`/`Response`. You need to bridge between them.
+
+The cleanest approach uses [`@whatwg-node/server`](https://github.com/ardatan/whatwg-node), which handles the conversion:
+
+```bash
+npm install @whatwg-node/server
+```
+
+```ts
+import express from "express";
+import { createServerAdapter } from "@whatwg-node/server";
+import { vanillaAdapter } from "@covenant-rpc/server/adapters/vanilla";
+import { server } from "./server";
+
+const app = express();
+const handler = vanillaAdapter(server);
+
+app.use("/api/covenant", createServerAdapter(handler));
+
+app.listen(3000);
+```
+
+Without a helper library, you can convert manually:
+
+```ts
+import express from "express";
+import { server } from "./server";
+
+const app = express();
+app.use(express.raw({ type: "*/*" }));
+
+app.all("/api/covenant", async (req, res) => {
+  const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (value) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+  }
+
+  const request = new Request(url, {
+    method: req.method,
+    headers,
+    body: ["GET", "HEAD"].includes(req.method) ? undefined : req.body,
+  });
+
+  const response = await server.handle(request);
+  res.status(response.status);
+  response.headers.forEach((value, key) => res.setHeader(key, value));
+  res.send(Buffer.from(await response.arrayBuffer()));
+});
+
+app.listen(3000);
+```

@@ -1,7 +1,153 @@
 ---
 title: Procedures
 description: Understand how procedures work
+sidebar:
+  order: 3
 ---
 
+Procedures are the core building block of Covenant — typed functions you call on the server from the client.
 
-CLAUDE TODO: explain how to create procedures on the server and explain how to call them on the client. Make sure to explain how resources work as well. 
+## Declaring procedures
+
+In your covenant file:
+
+```ts
+import { query, mutation } from "@covenant-rpc/core";
+import { z } from "zod";
+
+// Queries: read-only, can be listened to
+getTodos: query({
+  input: z.object({ userId: z.string() }),
+  output: z.array(todoSchema),
+}),
+
+// Mutations: write operations, trigger cache invalidation
+addTodo: mutation({
+  input: z.object({ text: z.string() }),
+  output: todoSchema,
+}),
+```
+
+The distinction only matters for client side cache invalidation. There's no actual difference in server side capabilities.
+
+## Defining procedures on the server
+
+```ts
+server.defineProcedure("getTodos", {
+  resources: ({ inputs, ctx }) => [`user/${ctx.userId}/todos`],
+  procedure: async ({ inputs, ctx, derived, error, logger, setHeader }) => {
+    return derived.db.getTodos(ctx.userId);
+  },
+});
+```
+
+The `procedure` function receives:
+- `inputs` — validated input from the client
+- `ctx` — per-request context (auth data, etc.)
+- `derived` — shared utilities from your `derivation` function
+- `error(message, code)` — throws a typed error that becomes an HTTP error response
+- `logger` — structured logging
+- `setHeader(name, value)` — set response headers
+- `request` — the raw `Request` object
+
+## Resources
+
+Resources are the key to automatic cache invalidation. Every procedure declares which resources it touches.
+
+```ts
+server.defineProcedure("addTodo", {
+  resources: ({ inputs, ctx, outputs }) => [
+    "todos",                     // invalidates any listener on "todos"
+    `user/${ctx.userId}/todos`,  // user-specific list
+    `todo/${outputs.id}`,        // specific item (using the return value)
+  ],
+  procedure: async ({ inputs, ctx }) => {
+    return db.createTodo(ctx.userId, inputs.text);
+  },
+});
+```
+
+Resources are strings you define. When a mutation completes, Covenant finds every `listen()` call watching any of those resource strings and refetches them.
+
+For cross-client invalidation (when another user's mutation should update your UI), you need [Sidekick](/handbook/sidekick).
+
+## Context and derivation
+
+Context is per-request data (typically auth). Derivation is shared utilities derived from context. Authentication data is probably the most common use case for this. Under the hood, each procedure call is just a POST request to a route with a specific body. Headers and cookies can be used as well. 
+
+```ts
+const server = new CovenantServer(covenant, {
+  contextGenerator: async ({ request }) => {
+    const session = await getSession(request);
+    return { userId: session?.userId ?? null };
+  },
+  derivation: ({ ctx, error }) => ({
+    requireAuth: () => {
+      if (!ctx.userId) error("Unauthorized", 401);
+      return ctx.userId!;
+    },
+    db: getDb(),
+  }),
+  sidekickConnection: emptyServerToSidekick(),
+});
+
+server.defineProcedure("getMyTodos", {
+  resources: ({ ctx }) => [`user/${ctx.userId}/todos`],
+  procedure: async ({ derived }) => {
+    const userId = derived.requireAuth(); // throws 401 if not logged in
+    return derived.db.getTodos(userId);
+  },
+});
+```
+
+The `derivation` function runs once per request. Use it to consolidate auth guards, database access, and other shared logic. As a rule of thumb: `context` has data, `derivation` has helpers.
+
+## Error handling
+
+Throw errors using the `error` function — it never returns, so TypeScript knows execution stops:
+
+```ts
+procedure: async ({ inputs, error }) => {
+  const item = await db.find(inputs.id);
+  if (!item) error("Not found", 404);
+  return item; // typed correctly — item is not null here
+},
+```
+
+The client receives a typed error object:
+
+```ts
+const result = await client.query("getTodo", { id: "123" });
+if (!result.success) {
+  console.log(result.error.code);    // 404
+  console.log(result.error.message); // "Not found"
+}
+```
+
+## Calling from the client
+
+```ts
+// Queries
+const result = await client.query("getTodos", { userId: "u1" });
+
+// Mutations — also triggers local listeners
+const result = await client.mutate("addTodo", { text: "Buy milk" });
+
+// Listen — auto-refetches when resources change
+const unsubscribe = client.listen("getTodos", { userId: "u1" }, (result) => {
+  if (result.success) setTodos(result.data);
+});
+
+// Cleanup
+unsubscribe();
+```
+
+`listen()` immediately fetches and calls your callback, then refetches whenever a mutation touches the same resources. Pass `true` as the fourth argument to also listen for remote changes via Sidekick.
+
+## Ensure all procedures are defined
+
+Call `assertAllDefined()` after defining all procedures. It throws at startup if any are missing, so you never ship an incomplete implementation.
+
+```ts
+server.assertAllDefined();
+```

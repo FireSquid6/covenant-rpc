@@ -1,22 +1,57 @@
 ---
 title: Overview
 description: An overview to quickly get started with covenant
+sidebar:
+  order: 1
 ---
-
-
 
 # Purpose
 
-Covenant RPC is meant to simply and elegantly solve a couple of problems:
-- I want to do things on the server from the client and get consistent responses
-- I want my app to be able to automatically refresh outdated info
-- I want to have a simple, scalable, realtime channel system
+Covenant solves the most common friction in full-stack development: calling your backend from your frontend without losing type safety, duplicating types, or guessing at API shapes.
 
-Its non-functional goals are to:
-- Be simple for AI agents (and therefore, humans as well) to use and understand
-- Move as many errors as possible to the type layer
+It accomplishes this with three core ideas:
+
+- **Covenant files** — a shared contract imported by both frontend and backend. It only contains validation schemas, never implementation. This means an AI agent (or human) can work on either side knowing only the covenant.
+- **Resources** — every procedure declares which data it touches. When a mutation runs, listeners automatically refetch. Cache invalidation becomes declarative.
+- **Sidekick** — an optional WebSocket service that extends resource invalidation across clients and enables realtime bidirectional channels.
 
 # Architecture
 
-CLAUDE TODO: explain the architecture of covenant. Use a mermaid diagram if necessary. A sequence diagram between server, client, and   
+A Covenant app has three parts:
 
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+    participant SK as Sidekick (optional)
+
+    C->>S: POST /api/covenant (procedure call)
+    S->>C: Response + resource list
+
+    Note over C: Mutation triggers local refetch of listeners
+
+    C->>SK: WebSocket subscribe to resources
+    SK->>C: Push update when resource changes
+    C->>S: Refetch procedure
+```
+
+The **covenant file** sits at the center — both sides import it for types, but they never import each other:
+
+```
+      covenant.ts
+     /            \
+  server.ts     client.ts
+  (backend)     (frontend)
+```
+
+This hard separation makes Covenant AI-friendly: an agent working on the frontend only needs to read `covenant.ts`, not the server implementation.
+
+# Three Steps
+
+Every Covenant app follows the same pattern:
+
+1. **Declare** — `declareCovenant({ procedures, channels })` in a shared file
+2. **Implement** — `CovenantServer` with `defineProcedure()` / `defineChannel()` on the server
+3. **Call** — `CovenantClient` or `CovenantReactClient` on the frontend
+
+See [Quickstart](/handbook/quickstart) for a complete working example.

@@ -1,0 +1,455 @@
+---
+import { Code } from 'astro:components';
+
+const covenantCode = `import { declareCovenant, channel } from "@covenant-rpc/core";
+import { z } from "zod";
+
+export const covenant = declareCovenant({
+  procedures: {},
+  channels: {
+    chat: channel({
+      // Messages the client sends
+      clientMessage: z.object({ text: z.string() }),
+      // Messages the server broadcasts
+      serverMessage: z.object({ username: z.string(), text: z.string() }),
+      // Data sent when connecting (e.g. auth token or display name)
+      connectionRequest: z.object({ username: z.string() }),
+      // Per-connection data returned from onConnect
+      connectionContext: z.object({ username: z.string() }),
+      // URL-style params that scope the channel
+      params: ["roomId"],
+    }),
+  },
+});`;
+
+const serverCode = `import { CovenantServer } from "@covenant-rpc/server";
+import { httpServerToSidekick } from "@covenant-rpc/server/interfaces/http";
+import { covenant } from "./covenant";
+
+export const server = new CovenantServer(covenant, {
+  contextGenerator: () => undefined,
+  derivation: () => ({}),
+  sidekickConnection: httpServerToSidekick("http://localhost:4001", "secret"),
+});
+
+server.defineChannel("chat", {
+  onConnect: ({ inputs }) => {
+    // Return value becomes the per-connection context
+    return { username: inputs.username };
+  },
+
+  onMessage: async ({ inputs, params, context }) => {
+    // Broadcast to every client connected to this room
+    await server.sendMessage(
+      "chat",
+      { roomId: params.roomId },
+      { username: context.username, text: inputs.text }
+    );
+  },
+});
+
+server.assertAllDefined();`;
+
+const clientCode = `import { CovenantClient } from "@covenant-rpc/client";
+import { httpClientToServer, httpClientToSidekick } from "@covenant-rpc/client/interfaces/http";
+import { covenant } from "./covenant";
+
+const client = new CovenantClient(covenant, {
+  serverConnection: httpClientToServer("/api/covenant", {}),
+  sidekickConnection: httpClientToSidekick("ws://localhost:4001"),
+});
+
+// Connect — runs onConnect on the server
+const result = await client.connect(
+  "chat",
+  { roomId: "general" },
+  { username: "alice" }
+);
+if (!result.success) throw new Error(result.error.message);
+
+// Subscribe to incoming messages (fully typed)
+const unsubscribe = await client.subscribe(
+  "chat",
+  { roomId: "general" },
+  result.token,
+  (msg) => console.log(\`\${msg.username}: \${msg.text}\`)
+);
+
+// Send a message — triggers onMessage on the server
+await client.send("chat", { roomId: "general" }, result.token, {
+  text: "Hello!",
+});
+
+// Disconnect
+unsubscribe();`;
+---
+
+<div class="chat-demo">
+  <div class="demo-header">
+    <span class="demo-label">Realtime channels</span>
+    <span class="demo-hint">Bidirectional WebSocket channels with typed messages and params-based routing — powered by Sidekick</span>
+  </div>
+
+  <div class="demo-code">
+    <div class="tab-bar" role="tablist">
+      <button class="tab-btn active" role="tab" data-target="chat-tab-covenant">covenant.ts</button>
+      <button class="tab-btn" role="tab" data-target="chat-tab-server">server.ts</button>
+      <button class="tab-btn" role="tab" data-target="chat-tab-client">client.ts</button>
+    </div>
+    <div class="tab-panels">
+      <div id="chat-tab-covenant" class="tab-panel active">
+        <Code code={covenantCode} lang="ts" />
+      </div>
+      <div id="chat-tab-server" class="tab-panel">
+        <Code code={serverCode} lang="ts" />
+      </div>
+      <div id="chat-tab-client" class="tab-panel">
+        <Code code={clientCode} lang="ts" />
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-app">
+    <div class="live-header">
+      <span class="demo-label">Simulated demo</span>
+      <span class="demo-hint">Messages route through onMessage and are broadcast to all subscribers in the room</span>
+    </div>
+
+    <div class="demo-body">
+      <div class="demo-panel">
+        <div class="panel-title">Channel activity</div>
+        <div class="channel-log" id="channel-log"></div>
+      </div>
+
+      <div class="demo-panel chat-panel">
+        <div class="panel-title">Room: general</div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <form class="chat-form" id="chat-form">
+          <input
+            id="chat-input"
+            type="text"
+            placeholder="Message…"
+            autocomplete="off"
+          />
+          <button type="submit">Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Tab switching ──────────────────────────────────────────────────────────
+
+  document.querySelectorAll<HTMLButtonElement>(".chat-demo .tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const demo = btn.closest(".chat-demo")!;
+      demo.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      demo.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.target!)!.classList.add("active");
+    });
+  });
+
+  // ── Simulation ─────────────────────────────────────────────────────────────
+
+  type ChatMsg = { username: string; text: string };
+
+  const initialMessages: ChatMsg[] = [
+    { username: "alice", text: "Hey, what's everyone working on?" },
+    { username: "bob",   text: "Setting up Covenant. The type inference is super nice." },
+  ];
+
+  const botReplies = [
+    "Nice! Have you tried the React hooks yet?",
+    "Same here, way cleaner than writing REST endpoints",
+    "The channel API is really ergonomic",
+    "Agreed. What are you building with it?",
+    "Don't forget to spin up Sidekick for real channels!",
+  ];
+
+  let botReplyIndex = 0;
+
+  const chatMessages = document.getElementById("chat-messages")!;
+  const channelLog   = document.getElementById("channel-log")!;
+  const chatForm     = document.getElementById("chat-form")! as HTMLFormElement;
+  const chatInput    = document.getElementById("chat-input")! as HTMLInputElement;
+
+  function escapeHtml(s: string) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function addMessage(username: string, text: string, isSelf = false) {
+    const div = document.createElement("div");
+    div.className = "chat-msg" + (isSelf ? " chat-msg-self" : "");
+    div.innerHTML =
+      `<span class="chat-username">${escapeHtml(username)}: </span>` +
+      `<span class="chat-text">${escapeHtml(text)}</span>`;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function addLogEvent(type: "connect" | "send" | "receive", username: string, text?: string) {
+    const div = document.createElement("div");
+    div.className = `log-event log-${type}`;
+    if (type === "connect") {
+      div.innerHTML =
+        `<span class="log-dot">●</span> ` +
+        `<span class="log-user">${escapeHtml(username)}</span> joined`;
+    } else {
+      const arrow = type === "send" ? "→" : "←";
+      div.innerHTML =
+        `<span class="log-arrow">${arrow}</span> ` +
+        `<span class="log-user">${escapeHtml(username)}</span>: ` +
+        escapeHtml(text ?? "");
+    }
+    channelLog.appendChild(div);
+    channelLog.scrollTop = channelLog.scrollHeight;
+  }
+
+  // Populate initial state
+  addLogEvent("connect", "alice");
+  addLogEvent("connect", "bob");
+  for (const msg of initialMessages) {
+    addMessage(msg.username, msg.text);
+    addLogEvent("receive", msg.username, msg.text);
+  }
+
+  // Handle send
+  chatForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    if (!text) return;
+    chatInput.value = "";
+
+    addMessage("you", text, true);
+    addLogEvent("send", "you", text);
+
+    const reply = botReplies[botReplyIndex % botReplies.length];
+    botReplyIndex++;
+    setTimeout(() => {
+      addMessage("alice", reply);
+      addLogEvent("receive", "alice", reply);
+    }, 900);
+  });
+</script>
+
+<style>
+  .chat-demo {
+    margin-block: 2.5rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: var(--sl-color-bg-sidebar);
+  }
+
+  /* ── Top label bar ──────────────────────────────────────────────── */
+
+  .demo-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--sl-color-gray-5);
+  }
+
+  .demo-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sl-color-text-accent);
+    flex-shrink: 0;
+  }
+
+  .demo-hint {
+    font-size: 0.78rem;
+    color: var(--sl-color-gray-3);
+  }
+
+  /* ── Code tabs ──────────────────────────────────────────────────── */
+
+  .tab-bar {
+    display: flex;
+    background: var(--sl-color-bg-nav);
+    border-bottom: 1px solid var(--sl-color-gray-5);
+    padding: 0 0.75rem;
+  }
+
+  .tab-btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono, monospace);
+    color: var(--sl-color-gray-2);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+  }
+
+  .tab-btn:hover { color: var(--sl-color-text); }
+  .tab-btn.active {
+    color: var(--sl-color-text-accent);
+    border-bottom-color: var(--sl-color-text-accent);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .tab-panel :global(pre) {
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* ── Live demo ──────────────────────────────────────────────────── */
+
+  .demo-app {
+    border-top: 1px solid var(--sl-color-gray-5);
+    padding: 1rem 1.25rem 1.25rem;
+  }
+
+  .live-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.875rem;
+  }
+
+  .demo-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.875rem;
+  }
+
+  @media (max-width: 600px) {
+    .demo-body { grid-template-columns: 1fr; }
+  }
+
+  .demo-panel {
+    background: var(--sl-color-bg);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .panel-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sl-color-gray-3);
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid var(--sl-color-gray-5);
+    background: var(--sl-color-bg-sidebar);
+  }
+
+  /* ── Channel log ────────────────────────────────────────────────── */
+
+  .channel-log {
+    padding: 0.6rem 0.75rem;
+    height: 168px;
+    overflow-y: auto;
+    font-size: 0.78rem;
+    font-family: var(--sl-font-mono, monospace);
+  }
+
+  .log-event {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    margin-bottom: 0.3rem;
+    line-height: 1.45;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .log-dot { color: var(--sl-color-gray-4); flex-shrink: 0; }
+  .log-arrow { flex-shrink: 0; }
+
+  .log-event.log-connect { color: var(--sl-color-gray-4); }
+  .log-event.log-connect .log-user { color: var(--sl-color-gray-3); }
+
+  .log-event.log-send .log-arrow { color: var(--sl-color-text-accent); }
+  .log-event.log-send .log-user  { color: var(--sl-color-text-accent); }
+
+  .log-event.log-receive .log-arrow { color: var(--sl-color-gray-3); }
+  .log-event.log-receive .log-user  { color: var(--sl-color-text); font-weight: 600; }
+
+  /* ── Chat UI ────────────────────────────────────────────────────── */
+
+  .chat-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-messages {
+    padding: 0.6rem 0.75rem;
+    height: 168px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .chat-msg {
+    font-size: 0.83rem;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .chat-username {
+    font-weight: 600;
+    color: var(--sl-color-text-accent);
+    margin-right: 0.3rem;
+  }
+
+  .chat-msg-self .chat-username {
+    color: var(--sl-color-text);
+  }
+
+  .chat-text { color: var(--sl-color-text); }
+
+  .chat-form {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--sl-color-gray-5);
+    background: var(--sl-color-bg-sidebar);
+  }
+
+  .chat-form input {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.35rem;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-text);
+    outline: none;
+    transition: border-color 0.15s;
+    min-width: 0;
+  }
+
+  .chat-form input:focus { border-color: var(--sl-color-text-accent); }
+
+  .chat-form button {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: var(--sl-color-text-accent);
+    color: var(--sl-color-bg);
+    border: none;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .chat-form button:hover { opacity: 0.85; }
+</style>

@@ -1,0 +1,552 @@
+---
+import { Code } from 'astro:components';
+
+const covenantCode = `import { declareCovenant, query, mutation } from "@covenant-rpc/core";
+import { z } from "zod";
+
+const todoSchema = z.object({ id: z.string(), text: z.string() });
+
+export const covenant = declareCovenant({
+  procedures: {
+    getTodos: query({
+      input: z.null(),
+      output: z.array(todoSchema),
+    }),
+    addTodo: mutation({
+      input: z.object({ text: z.string() }),
+      output: todoSchema,
+    }),
+    deleteTodo: mutation({
+      input: z.object({ id: z.string() }),
+      output: z.null(),
+    }),
+  },
+  channels: {},
+});`;
+
+const serverCode = `import { CovenantServer } from "@covenant-rpc/server";
+import { emptyServerToSidekick } from "@covenant-rpc/server/interfaces/empty";
+import { covenant } from "./covenant";
+
+type Todo = { id: string; text: string };
+
+const todos: Todo[] = [
+  { id: "1", text: "Read the overview" },
+  { id: "2", text: "Try the quickstart" },
+];
+
+export const server = new CovenantServer(covenant, {
+  contextGenerator: () => undefined,
+  derivation: () => ({}),
+  sidekickConnection: emptyServerToSidekick(),
+});
+
+server.defineProcedure("getTodos", {
+  resources: () => ["todos"],
+  procedure: () => todos,
+});
+
+server.defineProcedure("addTodo", {
+  resources: ({ outputs }) => ["todos", \`todo/\${outputs.id}\`],
+  procedure: ({ inputs }) => {
+    const todo: Todo = { id: crypto.randomUUID(), text: inputs.text };
+    todos.push(todo);
+    return todo;
+  },
+});
+
+server.defineProcedure("deleteTodo", {
+  resources: ({ inputs }) => ["todos", \`todo/\${inputs.id}\`],
+  procedure: ({ inputs, error }) => {
+    const i = todos.findIndex((t) => t.id === inputs.id);
+    if (i === -1) error("Not found", 404);
+    todos.splice(i, 1);
+    return null;
+  },
+});
+
+server.assertAllDefined();`;
+
+const routeCode = `import type { APIRoute } from "astro";
+import { server } from "../../lib/server";
+
+export const prerender = false;
+
+// server.handle() accepts a Request and returns a Response —
+// the same interface that Astro API routes, Next.js route handlers,
+// and any other WinterTC-compatible framework expects.
+export const GET: APIRoute = ({ request }) => server.handle(request);
+export const POST: APIRoute = ({ request }) => server.handle(request);`;
+---
+
+<div class="covenant-demo">
+  <div class="top-header">
+    <span class="demo-label">Typesafe procedures</span>
+    <span class="demo-hint">Type-safe queries and mutations with automatic resource tracking and cache invalidation</span>
+  </div>
+  <div class="demo-code">
+    <div class="tab-bar" role="tablist">
+      <button class="tab-btn active" role="tab" data-target="tab-covenant">covenant.ts</button>
+      <button class="tab-btn" role="tab" data-target="tab-server">server.ts</button>
+      <button class="tab-btn" role="tab" data-target="tab-route">api/covenant.ts</button>
+    </div>
+    <div class="tab-panels">
+      <div id="tab-covenant" class="tab-panel active">
+        <Code code={covenantCode} lang="ts" />
+      </div>
+      <div id="tab-server" class="tab-panel">
+        <Code code={serverCode} lang="ts" />
+      </div>
+      <div id="tab-route" class="tab-panel">
+        <Code code={routeCode} lang="ts" />
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-app">
+    <div class="demo-header">
+      <span class="demo-label">Live Demo</span>
+      <span class="demo-hint">Hitting a real Covenant API route — mutations return resources that trigger listener refetches</span>
+    </div>
+
+    <div class="demo-body">
+      <div class="demo-panel server-panel">
+        <div class="panel-title">Server response</div>
+        <div class="server-log" id="server-log">
+          <div class="log-idle">Waiting for requests…</div>
+        </div>
+      </div>
+
+      <div class="demo-panel client-panel">
+        <div class="panel-title">Client</div>
+        <div class="todo-ui">
+          <form class="add-form" id="add-form">
+            <input
+              id="todo-input"
+              type="text"
+              placeholder="New todo…"
+              autocomplete="off"
+            />
+            <button type="submit">Add</button>
+          </form>
+          <ul class="todo-list" id="todo-list">
+            <li class="todo-loading">Loading…</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  type Todo = { id: string; text: string };
+
+  type ProcedureResult<T> =
+    | { status: "OK"; data: T; resources: string[] }
+    | { status: "ERR"; error: { message: string; code: number } };
+
+  // ── Covenant wire protocol ─────────────────────────────────────────────────
+  // POST /api/covenant?type=procedure  body: { procedure, inputs }
+  // Response: { status: "OK", data, resources } | { status: "ERR", error }
+  // ION serialization is a superset of JSON, so JSON.parse works for simple types.
+
+  async function callProcedure<T>(
+    procedure: string,
+    inputs: unknown
+  ): Promise<ProcedureResult<T>> {
+    const res = await fetch("/api/covenant?type=procedure", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ procedure, inputs }),
+    });
+    return res.json();
+  }
+
+  // ── Resource-based listener (mirrors CovenantClient.listen) ───────────────
+
+  const listeners = new Map<string, Set<() => void>>();
+
+  function registerListener(resources: string[], fn: () => void) {
+    for (const r of resources) {
+      if (!listeners.has(r)) listeners.set(r, new Set());
+      listeners.get(r)!.add(fn);
+    }
+  }
+
+  function triggerListeners(resources: string[]) {
+    const called = new Set<() => void>();
+    for (const r of resources) {
+      for (const fn of listeners.get(r) ?? []) {
+        if (!called.has(fn)) { called.add(fn); fn(); }
+      }
+    }
+  }
+
+  // ── DOM ───────────────────────────────────────────────────────────────────
+
+  const todoList  = document.getElementById("todo-list")! as HTMLUListElement;
+  const serverLog = document.getElementById("server-log")!;
+  const addForm   = document.getElementById("add-form")! as HTMLFormElement;
+  const todoInput = document.getElementById("todo-input")! as HTMLInputElement;
+
+  function escapeHtml(s: string) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function renderTodos(todos: Todo[]) {
+    todoList.innerHTML = "";
+    if (todos.length === 0) {
+      todoList.innerHTML = '<li class="todo-empty">No todos yet</li>';
+      return;
+    }
+    for (const todo of todos) {
+      const li = document.createElement("li");
+      li.className = "todo-item";
+      li.innerHTML = `
+        <span class="todo-text">${escapeHtml(todo.text)}</span>
+        <button class="delete-btn" data-id="${todo.id}" aria-label="Delete">✕</button>
+      `;
+      todoList.appendChild(li);
+    }
+  }
+
+  let logTimer: ReturnType<typeof setTimeout>;
+  function logResponse(procedure: string, resources: string[]) {
+    clearTimeout(logTimer);
+    serverLog.innerHTML = `
+      <div class="log-entry">
+        <span class="log-proc">${procedure}()</span>
+        <span class="log-arrow">→</span>
+        <span class="log-resources">${resources.map(r => `<code>${escapeHtml(r)}</code>`).join(" ")}</span>
+      </div>
+      <div class="log-invalidate flash">listener refetching getTodos…</div>
+    `;
+    logTimer = setTimeout(() => {
+      serverLog.querySelector(".log-invalidate")?.classList.remove("flash");
+    }, 700);
+  }
+
+  function logError(procedure: string, message: string) {
+    serverLog.innerHTML = `
+      <div class="log-entry log-err">
+        <span class="log-proc">${procedure}()</span>
+        <span class="log-arrow">→</span>
+        <span class="log-errmsg">${escapeHtml(message)}</span>
+      </div>
+    `;
+  }
+
+  // ── App logic ─────────────────────────────────────────────────────────────
+
+  async function fetchTodos() {
+    const result = await callProcedure<Todo[]>("getTodos", null);
+    if (result.status === "OK") {
+      renderTodos(result.data);
+      // Register listener against the returned resources.
+      // On next mutation that touches "todos", this will be called.
+      registerListener(result.resources, fetchTodos);
+    }
+  }
+
+  addForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = todoInput.value.trim();
+    if (!text) return;
+    todoInput.value = "";
+
+    const result = await callProcedure<Todo>("addTodo", { text });
+    if (result.status === "OK") {
+      logResponse("addTodo", result.resources);
+      triggerListeners(result.resources); // mirrors CovenantClient.mutate()
+    } else {
+      logError("addTodo", result.error.message);
+    }
+  });
+
+  todoList.addEventListener("click", async (e) => {
+    const btn = (e.target as Element).closest(".delete-btn") as HTMLElement | null;
+    if (!btn) return;
+    const id = btn.dataset.id!;
+
+    const result = await callProcedure<null>("deleteTodo", { id });
+    if (result.status === "OK") {
+      logResponse("deleteTodo", result.resources);
+      triggerListeners(result.resources);
+    } else {
+      logError("deleteTodo", result.error.message);
+    }
+  });
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+
+  document.querySelectorAll<HTMLButtonElement>(".covenant-demo .tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const demo = btn.closest(".covenant-demo")!;
+      demo.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      demo.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.target!)!.classList.add("active");
+    });
+  });
+
+  // Initial fetch
+  fetchTodos();
+</script>
+
+<style>
+  .covenant-demo {
+    margin-block: 2.5rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: var(--sl-color-bg-sidebar);
+  }
+
+  /* ── Top label bar ──────────────────────────────────────────────── */
+
+  .top-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--sl-color-gray-5);
+  }
+
+  .demo-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sl-color-text-accent);
+    flex-shrink: 0;
+  }
+
+  .demo-hint {
+    font-size: 0.78rem;
+    color: var(--sl-color-gray-3);
+  }
+
+  /* ── Code tabs ─────────────────────────────────────────────────── */
+
+  .demo-code {
+    border-bottom: 1px solid var(--sl-color-gray-5);
+  }
+
+  .tab-bar {
+    display: flex;
+    background: var(--sl-color-bg-nav);
+    border-bottom: 1px solid var(--sl-color-gray-5);
+    padding: 0 0.75rem;
+  }
+
+  .tab-btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono, monospace);
+    color: var(--sl-color-gray-2);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+  }
+
+  .tab-btn:hover { color: var(--sl-color-text); }
+  .tab-btn.active {
+    color: var(--sl-color-text-accent);
+    border-bottom-color: var(--sl-color-text-accent);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .tab-panel :global(pre) {
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* ── Live demo ─────────────────────────────────────────────────── */
+
+  .demo-app {
+    padding: 1rem 1.25rem 1.25rem;
+  }
+
+  .demo-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.875rem;
+  }
+
+  .demo-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.875rem;
+  }
+
+  @media (max-width: 600px) {
+    .demo-body { grid-template-columns: 1fr; }
+  }
+
+  .demo-panel {
+    background: var(--sl-color-bg);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .panel-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sl-color-gray-3);
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid var(--sl-color-gray-5);
+    background: var(--sl-color-bg-sidebar);
+  }
+
+  /* ── Server log ────────────────────────────────────────────────── */
+
+  .server-log {
+    padding: 0.75rem;
+    min-height: 80px;
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono, monospace);
+  }
+
+  .log-idle {
+    color: var(--sl-color-gray-4);
+    font-style: italic;
+  }
+
+  .log-entry {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .log-proc { color: var(--sl-color-text-accent); font-weight: 600; }
+  .log-arrow { color: var(--sl-color-gray-3); }
+
+  .log-resources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .log-resources code {
+    background: var(--sl-color-bg-sidebar);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 3px;
+    padding: 0.1em 0.35em;
+    font-size: 0.75rem;
+    color: var(--sl-color-text);
+  }
+
+  .log-invalidate {
+    color: var(--sl-color-gray-4);
+    font-style: italic;
+    transition: color 0.1s;
+  }
+
+  .log-invalidate.flash { color: var(--sl-color-text-accent); }
+
+  .log-err .log-proc { color: var(--sl-color-red, #f87171); }
+  .log-errmsg { color: var(--sl-color-red, #f87171); }
+
+  /* ── Todo UI ───────────────────────────────────────────────────── */
+
+  .todo-ui { padding: 0.75rem; }
+
+  .add-form {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .add-form input {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.35rem;
+    background: var(--sl-color-bg-sidebar);
+    color: var(--sl-color-text);
+    outline: none;
+    transition: border-color 0.15s;
+    min-width: 0;
+  }
+
+  .add-form input:focus { border-color: var(--sl-color-text-accent); }
+
+  .add-form button {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: var(--sl-color-text-accent);
+    color: var(--sl-color-bg);
+    border: none;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .add-form button:hover { opacity: 0.85; }
+
+  .todo-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .todo-empty,
+  .todo-loading {
+    font-size: 0.82rem;
+    color: var(--sl-color-gray-4);
+    font-style: italic;
+    padding: 0.25rem 0;
+  }
+
+  .todo-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--sl-color-text);
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.3rem;
+    background: var(--sl-color-bg-sidebar);
+  }
+
+  .todo-text { flex: 1; word-break: break-word; }
+
+  .delete-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--sl-color-gray-3);
+    font-size: 0.75rem;
+    line-height: 1;
+    padding: 0.15rem 0.3rem;
+    border-radius: 0.2rem;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .delete-btn:hover {
+    color: var(--sl-color-text);
+    background: var(--sl-color-gray-6);
+  }
+</style>

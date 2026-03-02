@@ -235,14 +235,17 @@ test("WS: connection rejected on wrong path", async () => {
   try {
     const ws = new WebSocket(`ws://localhost:${server.port}/other`);
 
+    // Add persistent error handler to prevent unhandled errors
+    ws.on("error", () => {});
+
     // Should be closed/errored, not open
     await new Promise<void>((resolve) => {
       ws.once("close", () => resolve());
-      ws.once("error", () => resolve());
       setTimeout(() => resolve(), 1000);
     });
 
     expect(ws.readyState).not.toBe(WebSocket.OPEN);
+    ws.removeAllListeners();
   } finally {
     await server.close();
   }

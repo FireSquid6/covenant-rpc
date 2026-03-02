@@ -1,7 +1,112 @@
 ---
 title: Sidekick
-description: Understand how sidekick works
+description: Understand how Sidekick works
+sidebar:
+  order: 5
 ---
 
+Sidekick is an optional WebSocket service that enables two things:
 
-CLAUDE TODO: explain how sidekick works with covenant
+1. **Cross-client resource invalidation** — when user A mutates data, user B's listeners refetch automatically
+2. **Realtime channels** — bidirectional WebSocket communication between clients and server
+
+Without Sidekick, cache invalidation only works within the same client instance. With Sidekick, any mutation can trigger a refetch in any other connected client.
+
+## Skip it if you don't need it
+
+If you don't need realtime features or cross-client invalidation, use the empty connections:
+
+```ts
+import { emptyServerToSidekick } from "@covenant-rpc/server/interfaces/empty";
+import { emptyClientToSidekick } from "@covenant-rpc/client/interfaces/empty";
+```
+
+These are no-ops. Nothing breaks — cache invalidation still works locally within each client session.
+
+## Running Sidekick
+
+Sidekick is a standalone service bundled with `@covenant-rpc/server`:
+
+```bash
+bunx @covenant-rpc/server covenant-sidekick \
+  --port 3001 \
+  --secret your-shared-secret \
+  --server-url http://localhost:3000/api/covenant \
+  --server-secret your-server-secret
+```
+
+Or via environment variables:
+
+```bash
+SIDEKICK_PORT=3001
+SIDEKICK_SECRET=your-shared-secret
+SIDEKICK_SERVER_URL=http://localhost:3000/api/covenant
+SIDEKICK_SERVER_SECRET=your-server-secret
+```
+
+`--server-url` is where Sidekick forwards incoming channel messages to your server for processing. Required for channels.
+
+## Connecting server and client
+
+Once Sidekick is running, swap the empty connections for real ones:
+
+```ts
+// server.ts
+import { httpServerToSidekick } from "@covenant-rpc/server/interfaces/http";
+
+const server = new CovenantServer(covenant, {
+  // ...
+  sidekickConnection: httpServerToSidekick(
+    "http://localhost:3001",
+    "your-shared-secret"
+  ),
+});
+```
+
+```ts
+// client.ts
+import { httpClientToSidekick } from "@covenant-rpc/client/interfaces/http";
+
+export const client = new CovenantClient(covenant, {
+  serverConnection: httpClientToServer("/api/covenant", {}),
+  sidekickConnection: httpClientToSidekick("http://localhost:3001"),
+});
+```
+
+The client automatically upgrades to `wss://` when connecting to an `https://` Sidekick URL.
+
+## How resource invalidation works
+
+When a mutation runs:
+1. Server computes the resource list from `resources()`
+2. Server notifies Sidekick: "these resources changed"
+3. Sidekick pushes `updated` events to all subscribed clients
+4. Clients refetch any `listen()` / `useListenedQuery()` calls matching those resources
+
+Clients subscribe to specific resources with `listen(..., true)` or `useListenedQuery(..., true)` — the `true` argument enables remote (cross-client) listening.
+
+## Testing with InternalSidekick
+
+For tests, use `InternalSidekick` to get full channel behavior without HTTP:
+
+```ts
+import { InternalSidekick } from "@covenant-rpc/server/sidekick/internal";
+import { directClientToServer } from "@covenant-rpc/server/interfaces/direct";
+
+const sidekick = new InternalSidekick();
+
+const server = new CovenantServer(covenant, {
+  contextGenerator: () => undefined,
+  derivation: () => ({}),
+  sidekickConnection: sidekick.getConnectionFromServer(),
+});
+
+sidekick.setServerCallback((channel, params, data, context) =>
+  server.processChannelMessage(channel, params, data, context)
+);
+
+const client = new CovenantClient(covenant, {
+  serverConnection: directClientToServer(server, {}),
+  sidekickConnection: sidekick.getConnectionFromClient(),
+});
+```

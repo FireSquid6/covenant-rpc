@@ -25,5 +25,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+  "include": ["packages/**/*", "examples/**/*"],
+  "exclude": ["node_modules/**"]
 }

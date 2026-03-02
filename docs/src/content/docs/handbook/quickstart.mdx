@@ -1,6 +1,8 @@
 ---
 title: Quickstart
 description: Get started with the basics of covenant
+sidebar:
+  order: 2
 ---
 
 First, create a new empty project:
@@ -9,17 +11,116 @@ First, create a new empty project:
 bun init
 ```
 
-Then install the base packages for covenant
+Install the packages:
 
 ```bash
-# bun is recommended, but you can use whatever you want
-bun add @covenant-rpc/core @covenant-rpc/client @covenant-rpc/server
-
-# pick your favorite schema validator--any will do
-bun add zod
+bun add @covenant-rpc/core @covenant-rpc/client @covenant-rpc/server zod
 ```
 
+Create three files: `covenant.ts`, `server.ts`, and `client.ts`.
 
-Now create three files: `covenant.ts`, `server.ts`, and `client.ts`.
+## covenant.ts
 
-CLAUDE TODO: show a simple "todo list" prodcedure system in three files. The simplest version to get started with
+The covenant is the shared contract between your frontend and backend. It only imports schemas — never backend code.
+
+```ts
+import { declareCovenant, query, mutation } from "@covenant-rpc/core";
+import { z } from "zod";
+
+const todoSchema = z.object({ id: z.string(), text: z.string() });
+
+export const covenant = declareCovenant({
+  procedures: {
+    getTodos: query({
+      input: z.null(),
+      output: z.array(todoSchema),
+    }),
+    addTodo: mutation({
+      input: z.object({ text: z.string() }),
+      output: todoSchema,
+    }),
+  },
+  channels: {},
+});
+```
+
+## server.ts
+
+```ts
+import { CovenantServer } from "@covenant-rpc/server";
+import { emptyServerToSidekick } from "@covenant-rpc/server/interfaces/empty";
+import { covenant } from "./covenant";
+
+const todos: { id: string; text: string }[] = [];
+
+export const server = new CovenantServer(covenant, {
+  contextGenerator: () => undefined,
+  derivation: () => ({}),
+  sidekickConnection: emptyServerToSidekick(),
+});
+
+server.defineProcedure("getTodos", {
+  resources: () => ["todos"],
+  procedure: () => todos,
+});
+
+server.defineProcedure("addTodo", {
+  resources: ({ outputs }) => ["todos", `todo/${outputs.id}`],
+  procedure: ({ inputs }) => {
+    const todo = { id: crypto.randomUUID(), text: inputs.text };
+    todos.push(todo);
+    return todo;
+  },
+});
+
+server.assertAllDefined();
+```
+
+`emptyServerToSidekick()` disables realtime features. See [Sidekick](/handbook/sidekick) when you're ready.
+
+## client.ts
+
+```ts
+import { CovenantClient } from "@covenant-rpc/client";
+import { httpClientToServer } from "@covenant-rpc/client/interfaces/http";
+import { emptyClientToSidekick } from "@covenant-rpc/client/interfaces/empty";
+import { covenant } from "./covenant";
+
+export const client = new CovenantClient(covenant, {
+  serverConnection: httpClientToServer("http://localhost:3000/api/covenant", {}),
+  sidekickConnection: emptyClientToSidekick(),
+});
+```
+
+## Calling procedures
+
+```ts
+import { client } from "./client";
+
+// Query — typed input and output
+const result = await client.query("getTodos", null);
+if (result.success) {
+  console.log(result.data); // { id: string, text: string }[]
+}
+
+// Mutation — triggers local cache invalidation after success
+const added = await client.mutate("addTodo", { text: "Buy milk" });
+if (added.success) {
+  console.log(added.data.id); // string
+}
+```
+
+## Mounting in a framework
+
+Point your framework's route handler at `server.handle()`. Here's Next.js:
+
+```ts
+// app/api/covenant/route.ts
+import { vanillaAdapter } from "@covenant-rpc/server/adapters/vanilla";
+import { server } from "@/lib/server";
+
+const handler = vanillaAdapter(server);
+export { handler as GET, handler as POST };
+```
+
+`vanillaAdapter` turns `CovenantServer` into `(Request) => Response`, compatible with any WinterTC-style runtime.

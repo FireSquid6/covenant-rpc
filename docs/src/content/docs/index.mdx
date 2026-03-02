@@ -1,40 +1,48 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: Covenant RPC
+description: Typed RPC for full-stack TypeScript with automatic cache invalidation and realtime channels
+template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
-  image:
-    file: ../../assets/houston.webp
+  tagline: Full-stack TypeScript RPC with automatic cache invalidation and realtime channels.
   actions:
-    - text: Quickstart
+    - text: Get started
       link: /handbook/quickstart/
       icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
-      icon: external
+    - text: Read the overview
+      link: /handbook/overview/
+      icon: open-book
       variant: minimal
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
+import TodoDemo from '../../components/TodoDemo.astro';
+import ChatDemo from '../../components/ChatDemo.astro';
 
-## Next steps
+<TodoDemo />
+
+<ChatDemo />
+
+## Why Covenant
 
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
-	</Card>
-	<Card title="Change page layout" icon="document">
-		Delete `template: splash` in `src/content/docs/index.mdx` to display a
-		sidebar on this page.
-	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
-	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
-	</Card>
+  <Card title="Type-safe by default" icon="approve-check">
+    Full TypeScript inference from your schema validators to every call site. No `any`, no hand-written API types, no drift between frontend and backend.
+  </Card>
+  <Card title="Automatic cache invalidation" icon="rocket">
+    Declare which resources a procedure touches. Mutations automatically trigger refetches in every matching listener — no manual cache management.
+  </Card>
+  <Card title="Realtime channels" icon="random">
+    Bidirectional WebSocket channels with typed messages, params-based routing, and per-connection context. Powered by Sidekick.
+  </Card>
+  <Card title="AI-agent friendly" icon="document">
+    The covenant file is the only context an agent needs to work on either side of the stack. Both frontend and backend derive their types from the same source.
+  </Card>
 </CardGrid>
+
+## Install
+
+```bash
+bun add @covenant-rpc/core @covenant-rpc/server @covenant-rpc/client @covenant-rpc/react zod
+```
+
+Works with any [Standard Schema](https://github.com/standard-schema/standard-schema) compatible validator (Zod, Valibot, ArkType, etc.).

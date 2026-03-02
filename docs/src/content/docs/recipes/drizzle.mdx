@@ -1,0 +1,72 @@
+---
+title: Using Drizzle Schemas
+description: How to use Drizzle table schemas with Covenant
+---
+
+Drizzle's `createSelectSchema` and `createInsertSchema` helpers (from `drizzle-zod`) produce Zod schemas that work directly in Covenant declarations.
+
+## Installation
+
+```bash
+bun add drizzle-zod
+```
+
+## Basic usage
+
+```ts
+// db/schema.ts
+import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { createSelectSchema, createInsertSchema } from "drizzle-zod";
+
+export const todos = pgTable("todos", {
+  id: text("id").primaryKey(),
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const todoSelectSchema = createSelectSchema(todos);
+export const todoInsertSchema = createInsertSchema(todos, {
+  // Exclude auto-generated fields from inserts
+  id: (s) => s.optional(),
+  createdAt: (s) => s.optional(),
+});
+```
+
+Then import the schemas into your covenant:
+
+```ts
+// covenant.ts
+import { declareCovenant, query, mutation } from "@covenant-rpc/core";
+import { z } from "zod";
+import { todoSelectSchema, todoInsertSchema } from "@/db/schema";
+
+export const covenant = declareCovenant({
+  procedures: {
+    getTodos: query({
+      input: z.null(),
+      output: z.array(todoSelectSchema),
+    }),
+    createTodo: mutation({
+      input: todoInsertSchema,
+      output: todoSelectSchema,
+    }),
+  },
+  channels: {},
+});
+```
+
+## Handling dates
+
+Drizzle timestamps come back as `Date` objects. Covenant's ION serialization handles `Date` natively, so they round-trip correctly between server and client without any manual parsing.
+
+## Excluding sensitive columns
+
+If your table has columns you don't want to expose to the client (password hashes, internal flags), exclude them from the schema:
+
+```ts
+export const publicTodoSchema = createSelectSchema(todos).omit({
+  internalFlag: true,
+});
+```
+
+Use `publicTodoSchema` as the output schema instead of the full `todoSelectSchema`.
