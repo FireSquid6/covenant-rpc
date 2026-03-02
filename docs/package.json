@@ -18,6 +18,6 @@
     "zod": "^3.0.0"
   },
   "devDependencies": {
-    "@astrojs/node": "^9.0.0"
+    "@astrojs/vercel": "^8.0.0"
   }
 }
