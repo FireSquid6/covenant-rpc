@@ -1,6 +1,8 @@
 ---
 title: Channels
 description: Creating channels in Covenant
+sidebar:
+  order: 4
 ---
 
 Channels enable bidirectional realtime communication. Unlike procedures, channels maintain a persistent WebSocket connection through [Sidekick](/handbook/sidekick).
@@ -38,7 +40,9 @@ const covenant = declareCovenant({
 server.defineChannel("chat", {
   onConnect: async ({ inputs, params, reject }) => {
     const user = await verifyToken(inputs.token);
-    if (!user) reject("Invalid token", "client");
+    if (!user) {
+      reject("Invalid token", "client");
+    }
 
     return { userId: user.id }; // becomes the connection context
   },
@@ -55,7 +59,7 @@ server.defineChannel("chat", {
 
 - `onConnect` runs once when a client connects. Return the connection context — data you want accessible when handling messages.
 - `onMessage` runs each time the client sends a message.
-- Use `reject()` in `onConnect` or `error()` in `onMessage` to terminate with a typed error.
+- Use `reject()` in `onConnect` or `error()` in `onMessage` to terminate with a typed error. You can specify the reason (string) and the cause (either client or server).
 
 ## Connecting from the client
 

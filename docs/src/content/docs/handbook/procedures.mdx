@@ -1,6 +1,8 @@
 ---
 title: Procedures
 description: Understand how procedures work
+sidebar:
+  order: 3
 ---
 
 Procedures are the core building block of Covenant — typed functions you call on the server from the client.
@@ -26,7 +28,7 @@ addTodo: mutation({
 }),
 ```
 
-The distinction matters: when a mutation succeeds, Covenant automatically refetches all listeners watching the same resources.
+The distinction only matters for client side cache invalidation. There's no actual difference in server side capabilities.
 
 ## Defining procedures on the server
 
@@ -71,7 +73,7 @@ For cross-client invalidation (when another user's mutation should update your U
 
 ## Context and derivation
 
-Context is per-request data (typically auth). Derivation is shared utilities derived from context.
+Context is per-request data (typically auth). Derivation is shared utilities derived from context. Authentication data is probably the most common use case for this. Under the hood, each procedure call is just a POST request to a route with a specific body. Headers and cookies can be used as well. 
 
 ```ts
 const server = new CovenantServer(covenant, {
@@ -98,7 +100,7 @@ server.defineProcedure("getMyTodos", {
 });
 ```
 
-The `derivation` function runs once per request. Use it to consolidate auth guards, database access, and other shared logic.
+The `derivation` function runs once per request. Use it to consolidate auth guards, database access, and other shared logic. As a rule of thumb: `context` has data, `derivation` has helpers.
 
 ## Error handling
 
