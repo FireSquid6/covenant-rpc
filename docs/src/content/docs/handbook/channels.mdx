@@ -7,6 +7,38 @@ sidebar:
 
 Channels enable bidirectional realtime communication. Unlike procedures, channels maintain a persistent WebSocket connection through [Sidekick](/handbook/sidekick).
 
+```mermaid
+sequenceDiagram
+    participant C1 as Client A
+    participant C2 as Client B
+    participant SK as Sidekick
+    participant S as Server
+
+    Note over C1,S: Connection Phase
+    C1->>SK: WebSocket connect("chat", {roomId: "room1"}, {token})
+    SK->>S: Forward connectionRequest
+    S->>S: onConnect validates token
+    S->>SK: Return connection context
+    SK->>C1: Connection token
+
+    C2->>SK: WebSocket connect("chat", {roomId: "room1"}, {token})
+    SK->>S: Forward connectionRequest
+    S->>S: onConnect validates token
+    S->>SK: Return connection context
+    SK->>C2: Connection token
+
+    Note over C1,S: Bidirectional Messaging
+    C1->>SK: send({text: "Hello"})
+    SK->>S: onMessage with client message
+    S->>SK: sendMessage to all in room1
+    SK->>C1: Server message (broadcast)
+    SK->>C2: Server message (broadcast)
+
+    S->>SK: sendMessage from procedure/external trigger
+    SK->>C1: Push message to subscribed clients
+    SK->>C2: Push message to subscribed clients
+```
+
 ## Declaring a channel
 
 ```ts
