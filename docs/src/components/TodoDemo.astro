@@ -80,6 +80,10 @@ export const POST: APIRoute = ({ request }) => server.handle(request);`;
 ---
 
 <div class="covenant-demo">
+  <div class="top-header">
+    <span class="demo-label">Typesafe procedures</span>
+    <span class="demo-hint">Type-safe queries and mutations with automatic resource tracking and cache invalidation</span>
+  </div>
   <div class="demo-code">
     <div class="tab-bar" role="tablist">
       <button class="tab-btn active" role="tab" data-target="tab-covenant">covenant.ts</button>
@@ -275,10 +279,11 @@ export const POST: APIRoute = ({ request }) => server.handle(request);`;
 
   // ── Tab switching ─────────────────────────────────────────────────────────
 
-  document.querySelectorAll<HTMLButtonElement>(".tab-btn").forEach((btn) => {
+  document.querySelectorAll<HTMLButtonElement>(".covenant-demo .tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
-      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      const demo = btn.closest(".covenant-demo")!;
+      demo.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      demo.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
       btn.classList.add("active");
       document.getElementById(btn.dataset.target!)!.classList.add("active");
     });
@@ -295,6 +300,30 @@ export const POST: APIRoute = ({ request }) => server.handle(request);`;
     border-radius: 0.75rem;
     overflow: hidden;
     background: var(--sl-color-bg-sidebar);
+  }
+
+  /* ── Top label bar ──────────────────────────────────────────────── */
+
+  .top-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--sl-color-gray-5);
+  }
+
+  .demo-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sl-color-text-accent);
+    flex-shrink: 0;
+  }
+
+  .demo-hint {
+    font-size: 0.78rem;
+    color: var(--sl-color-gray-3);
   }
 
   /* ── Code tabs ─────────────────────────────────────────────────── */
@@ -351,20 +380,6 @@ export const POST: APIRoute = ({ request }) => server.handle(request);`;
     align-items: baseline;
     gap: 0.75rem;
     margin-bottom: 0.875rem;
-  }
-
-  .demo-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--sl-color-text-accent);
-    flex-shrink: 0;
-  }
-
-  .demo-hint {
-    font-size: 0.78rem;
-    color: var(--sl-color-gray-3);
   }
 
   .demo-body {
