@@ -65,6 +65,7 @@ export function bunSidekickAdapter({
   }
 
   async function handleResources(req: Request): Promise<Response> {
+    if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
     if (!await validateKey(req)) return new Response("Key didn't match", { status: 401 });
 
     let parsed: unknown;
@@ -82,6 +83,7 @@ export function bunSidekickAdapter({
   }
 
   async function handleConnection(req: Request): Promise<Response> {
+    if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
     if (!await validateKey(req)) return new Response("Key didn't match", { status: 401 });
 
     let ionParsed: unknown;
@@ -99,6 +101,7 @@ export function bunSidekickAdapter({
   }
 
   async function handleMessage(req: Request): Promise<Response> {
+    if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
     if (!await validateKey(req)) return new Response("Key didn't match", { status: 401 });
 
     let ionParsed: unknown;
@@ -141,9 +144,9 @@ export function bunSidekickAdapter({
 
   function routes(basePath: string = "") {
     return {
-      [`POST ${basePath}/resources`]: handleResources,
-      [`POST ${basePath}/connection`]: handleConnection,
-      [`POST ${basePath}/message`]: handleMessage,
+      [`${basePath}/resources`]: handleResources,
+      [`${basePath}/connection`]: handleConnection,
+      [`${basePath}/message`]: handleMessage,
       [`${basePath}/socket`]: handleSocket,
     };
   }
