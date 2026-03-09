@@ -1,0 +1,29 @@
+{
+  "name": "@covenant-rpc/sidekick-bun-adapter",
+  "module": "./index.ts",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun ../../scripts/build-package.ts ."
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@covenant-rpc/core": "^2.0.0",
+    "@covenant-rpc/ion": "^2.1.0",
+    "@covenant-rpc/server": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.9"
+  }
+}
