@@ -9,6 +9,9 @@ import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelErr
 import { Logger } from "./logger";
 import ION from "@covenant-rpc/ion";
 import type { LoggerLevel } from "@covenant-rpc/core/logger";
+import { Sidekick } from "./sidekick";
+import type { SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
+import { directSidekickToServer, directServerToSidekick } from "./interfaces/direct";
 
 
 export type ProcedureDefinitionMap<T extends ProcedureMap, Context, Derivation> = {
@@ -19,7 +22,7 @@ export type ChannelDefinitionMap<T extends ChannelMap> = {
   [key in keyof T]: ChannelDefinition<T[key]>
 }
 
-export type ContextGenerator<Context> = 
+export type ContextGenerator<Context> =
   (i: ProcedureInputs<unknown, undefined, undefined>) => MaybePromise<Context>
 
 export type Derivation<Context, Derived> = (i: ProcedureInputs<undefined, Context, undefined>) => MaybePromise<Derived>;
@@ -31,14 +34,14 @@ export class CovenantServer<
   Context,
   Derived,
 > {
-  private covenant: Covenant<P, C>;
-  private contextGenerator: ContextGenerator<Context>;
-  private derivation: Derivation<Context, Derived>;
-  private sidekickConnection: ServerToSidekickConnection
+  protected covenant: Covenant<P, C>;
+  protected contextGenerator: ContextGenerator<Context>;
+  protected derivation: Derivation<Context, Derived>;
+  protected sidekickConnection: ServerToSidekickConnection
 
-  private procedureDefinitions: ProcedureDefinitionMap<P, Context, Derived>;
-  private channelDefinitions: ChannelDefinitionMap<C>;
-  private logger: Logger;
+  protected procedureDefinitions: ProcedureDefinitionMap<P, Context, Derived>;
+  protected channelDefinitions: ChannelDefinitionMap<C>;
+  protected logger: Logger;
 
   constructor(covenant: Covenant<P, C>, {
     contextGenerator,
@@ -433,7 +436,7 @@ export async function parseRequest(request: Request): AsyncResult<ProcedureReque
     const bodyText = await request.text();
     const body = ION.parse(bodyText);
     const result = v.parseSafe(body, procedureRequestBodySchema);
-    
+
     if (result === null) {
       throw new Error(`Failed to parse body as a ProcedureRequestBody: ${JSON.stringify(body)}`);
     }
@@ -452,3 +455,5 @@ export async function parseRequest(request: Request): AsyncResult<ProcedureReque
   }
 
 }
+
+

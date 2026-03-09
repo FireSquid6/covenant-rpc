@@ -3,7 +3,7 @@ import { channel, declareCovenant, mutation, query } from "@covenant-rpc/core";
 import { SidekickIntegratedCovenantServer } from "..";
 
 
-const covenant = declareCovenant({
+export const covenant = declareCovenant({
   procedures: {
     hello: query({
       input: z.object({
@@ -41,22 +41,28 @@ const covenant = declareCovenant({
 });
 
 
-const covenantServer = new SidekickIntegratedCovenantServer(covenant, {
-  contextGenerator: () => {},
-  derivation: () => {},
-});
+export function main() {
+  const covenantServer = new SidekickIntegratedCovenantServer(covenant, {
+    contextGenerator: () => {},
+    derivation: () => {},
+  });
 
 
 
 
-const bunServer = Bun.serve({
-  routes: {
-    "/api/covenant": (req) => {
-      return covenantServer.handle(req);
+  const bunServer = Bun.serve({
+    routes: {
+      "/api/covenant": (req) => {
+        return covenantServer.handle(req);
+      },
+      "/sidekick/socket": (req) => {
+        return covenantServer.handleSocket(req);
+      }
     },
-    "/sidekick/socket": (req) => {
-      return covenantServer.handleSocket(req);
-    }
-  },
-  websocket: covenantServer.getWebsocket(),
-})
+    websocket: covenantServer.getWebsocket(),
+    port: 6739,
+  })
+
+  covenantServer.setServer(bunServer);
+  console.log(`Running on port: ${6739}`)
+}
