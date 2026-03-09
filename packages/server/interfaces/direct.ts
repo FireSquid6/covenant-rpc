@@ -1,4 +1,4 @@
-import type { ClientToServerConnection, ServerToSidekickConnection, ClientToSidekickConnection } from "@covenant-rpc/core/interfaces";
+import type { ClientToServerConnection, SidekickToServerConnection } from "@covenant-rpc/core/interfaces";
 import type { ProcedureRequestBody, ProcedureResponse } from "@covenant-rpc/core/procedure";
 import type { CovenantServer } from "../server";
 import { v } from "@covenant-rpc/core/validation";
@@ -113,4 +113,41 @@ export function directClientToServer(
 
 }
 
+export function directSidekickToServer(
+  server: CovenantServer<any, any, any, any>,
+): SidekickToServerConnection {
+  return {
+    async sendMessage(message) {
+      try {
+        const url = new URL("http://localhost");
+        url.searchParams.set("type", "channel");
 
+        const request = new Request(url.toString(), {
+          method: "POST",
+          body: ION.stringify(message),
+          headers: { "Content-Type": "application/json" },
+        });
+
+        const response = await server.handle(request);
+
+        if (response.ok) {
+          return null;
+        }
+
+        return {
+          channel: message.channel,
+          params: message.params,
+          fault: "server",
+          message: `Failed to send message to server. Received: ${response.status} - ${response.statusText}`,
+        };
+      } catch (e) {
+        return {
+          channel: message.channel,
+          params: message.params,
+          fault: "server",
+          message: `Unknown error sending message to server: ${e}`,
+        };
+      }
+    },
+  };
+}
