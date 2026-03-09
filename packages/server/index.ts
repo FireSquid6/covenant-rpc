@@ -4,7 +4,7 @@ export { vanillaAdapter } from "./adapters/vanilla";
 export { Sidekick, type SidekickClient } from "./sidekick";
 export { httpServerToSidekick, httpSidekickToServer } from "./interfaces/http";
 export { emptyServerToSidekick } from "./interfaces/empty";
-export { directClientToServer, directSidekickToServer } from "./interfaces/direct";
+export { directClientToServer, directSidekickToServer, directServerToSidekick } from "./interfaces/direct";
 
 // Re-export types from core for convenience
 export type { LoggerLevel, Prefix } from "@covenant-rpc/core/logger";

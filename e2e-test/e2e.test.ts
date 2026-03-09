@@ -2,6 +2,8 @@ import { test, expect, describe, beforeAll } from "bun:test";
 import { startCovenant } from "./server";
 import { startSidekick } from "./sidekick";
 import { getNewClient } from "./client";
+import { startBunSidekickServer } from "./bun-sidekick-server";
+import { getBunSidekickClient } from "./bun-sidekick-client";
 import { type Server } from "node:http";
 
 
@@ -326,4 +328,103 @@ describe("covenant rpc e2e test", () => {
   //   unlistenA();
   //   unlistenB();
   // });
+});
+
+describe("bun sidekick adapter (single-server)", () => {
+  beforeAll(() => {
+    startBunSidekickServer();
+  });
+
+  test("simple procedure response", async () => {
+    const client = getBunSidekickClient();
+    const res = await client.query("helloWorld", "TestClient");
+
+    expect(res.success).toBe(true);
+    expect(res.error).toBe(null);
+    expect(res.data).toBe("Hello, TestClient");
+  });
+
+  test("procedure returns an error", async () => {
+    const client = getBunSidekickClient();
+
+    const successRes = await client.query("failingQuery", false);
+    expect(successRes.success).toBe(true);
+    expect(successRes.data).toBe("success");
+
+    const errorRes = await client.query("failingQuery", true);
+    expect(errorRes.success).toBe(false);
+    expect(errorRes.error).toEqual({ message: "Intentional failure", code: 400 });
+  });
+
+  test("query result includes correct resources", async () => {
+    const client = getBunSidekickClient();
+    const res = await client.query("getData", "my-key");
+
+    expect(res.success).toBe(true);
+    expect(res.resources).toEqual(["/data/my-key"]);
+  });
+
+  test("listening client receives update when another client mutates", async () => {
+    const aClient = getBunSidekickClient();
+    const bClient = getBunSidekickClient();
+
+    let callCount = 0;
+    let resolveUpdate: () => void;
+    const updateReceived = new Promise<void>((resolve) => { resolveUpdate = resolve; });
+
+    const unlisten = aClient.listen(
+      "getData",
+      "bun-test-key",
+      (result) => {
+        callCount++;
+        expect(result.success).toBe(true);
+        if (callCount >= 2) resolveUpdate();
+      },
+      true,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await bClient.mutate("updateData", "bun-test-key");
+
+    await Promise.race([
+      updateReceived,
+      new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout: aClient did not receive update")), 3000),
+      ),
+    ]);
+
+    expect(callCount).toBeGreaterThanOrEqual(2);
+    unlisten();
+  });
+
+  test("chatroom channel: subscriber receives message sent by another client", async () => {
+    const subscriber = getBunSidekickClient();
+    const sender = getBunSidekickClient();
+    const params = { chatChannel: "bun-room-1" };
+
+    const subResult = await subscriber.connect("chatroom", params, { connectionId: 1 });
+    expect(subResult.success).toBe(true);
+
+    let resolveMessage: (msg: unknown) => void;
+    const messageReceived = new Promise((resolve) => { resolveMessage = resolve; });
+
+    const unsubscribe = await subscriber.subscribe("chatroom", params, subResult.token!, (msg) => {
+      resolveMessage(msg);
+    });
+
+    const sendResult = await sender.connect("chatroom", params, { connectionId: 2 });
+    expect(sendResult.success).toBe(true);
+
+    await sender.send("chatroom", params, sendResult.token!, { message: "hello from bun" });
+
+    const received = await Promise.race([
+      messageReceived,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout: subscriber did not receive message")), 3000),
+      ),
+    ]);
+
+    expect(received).toEqual({ senderId: 2, message: "hello from bun" });
+    unsubscribe();
+  });
 });

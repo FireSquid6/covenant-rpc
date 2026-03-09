@@ -212,5 +212,5 @@ export function bunSidekickAdapter({
     },
   };
 
-  return { fetch, routes, websocket };
+  return { fetch, routes, websocket, sidekick };
 }

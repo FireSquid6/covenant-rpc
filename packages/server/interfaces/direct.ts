@@ -1,6 +1,7 @@
-import type { ClientToServerConnection, SidekickToServerConnection } from "@covenant-rpc/core/interfaces";
+import type { ClientToServerConnection, ServerToSidekickConnection, SidekickToServerConnection } from "@covenant-rpc/core/interfaces";
 import type { ProcedureRequestBody, ProcedureResponse } from "@covenant-rpc/core/procedure";
 import type { CovenantServer } from "../server";
+import type { Sidekick } from "../sidekick";
 import { v } from "@covenant-rpc/core/validation";
 import { procedureResponseSchema } from "@covenant-rpc/core/procedure";
 import { channelConnectionRequestSchema, channelConnectionResponseSchema, type ChannelConnectionRequest, type ChannelConnectionResponse } from "@covenant-rpc/core/channel";
@@ -148,6 +149,23 @@ export function directSidekickToServer(
           message: `Unknown error sending message to server: ${e}`,
         };
       }
+    },
+  };
+}
+
+export function directServerToSidekick(sidekick: Sidekick): ServerToSidekickConnection {
+  return {
+    addConnection(payload) {
+      sidekick.addConnection(payload);
+      return Promise.resolve(null);
+    },
+    async update(resources) {
+      await sidekick.updateResources(resources);
+      return null;
+    },
+    async postMessage(message) {
+      await sidekick.postServerMessage(message);
+      return null;
     },
   };
 }
