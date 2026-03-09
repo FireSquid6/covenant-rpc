@@ -6,7 +6,7 @@ import { channelConnectionPayload, serverMessageSchema } from "@covenant-rpc/cor
 import { sidekickIncomingMessageSchema, type SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
 import ION from "@covenant-rpc/ion";
 
-interface WebSocketData {
+export interface WebSocketData {
   id: string;
   topics: Set<string>;
 }
@@ -64,79 +64,88 @@ export function bunSidekickAdapter({
     return true;
   }
 
+  async function handleResources(req: Request): Promise<Response> {
+    if (!await validateKey(req)) return new Response("Key didn't match", { status: 401 });
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await req.text());
+    } catch {
+      return new Response("Invalid JSON", { status: 400 });
+    }
+
+    const result = v.parseSafe(parsed, v.obj({ resources: v.array(v.string()) }));
+    if (!result) return new Response("Invalid body schema", { status: 400 });
+
+    await sidekick.updateResources(result.resources);
+    return new Response("OK");
+  }
+
+  async function handleConnection(req: Request): Promise<Response> {
+    if (!await validateKey(req)) return new Response("Key didn't match", { status: 401 });
+
+    let ionParsed: unknown;
+    try {
+      ionParsed = ION.parse(await req.text());
+    } catch (e) {
+      return new Response(`Error parsing ION: ${e}`, { status: 400 });
+    }
+
+    const payload = v.parseSafe(ionParsed, channelConnectionPayload);
+    if (!payload) return new Response("Did not receive payload in correct schema", { status: 400 });
+
+    sidekick.addConnection(payload);
+    return new Response("OK");
+  }
+
+  async function handleMessage(req: Request): Promise<Response> {
+    if (!await validateKey(req)) return new Response("Key didn't match", { status: 401 });
+
+    let ionParsed: unknown;
+    try {
+      ionParsed = ION.parse(await req.text());
+    } catch (e) {
+      return new Response(`Error parsing ION: ${e}`, { status: 400 });
+    }
+
+    const message = v.parseSafe(ionParsed, serverMessageSchema);
+    if (!message) return new Response("Did not receive message in correct schema", { status: 400 });
+
+    await sidekick.postServerMessage(message);
+    return new Response("OK");
+  }
+
+  function handleSocket(req: Request, server: Server<WebSocketData>): Response | undefined {
+    const upgraded = server.upgrade(req, {
+      data: {
+        id: crypto.randomUUID(),
+        topics: new Set<string>(),
+      },
+    });
+    if (upgraded) return undefined;
+    return new Response("WebSocket upgrade failed", { status: 400 });
+  }
+
   async function fetch(req: Request, server: Server<WebSocketData>, basePath: string = ""): Promise<Response | undefined> {
     const url = new URL(req.url);
     const path = url.pathname.slice(basePath.length) || "/";
 
-    if (path === "/socket") {
-      const upgraded = server.upgrade(req, {
-        data: {
-          id: crypto.randomUUID(),
-          topics: new Set<string>(),
-        },
-      });
-      if (upgraded) return undefined;
-      return new Response("WebSocket upgrade failed", { status: 400 });
-    }
-
-    if (req.method !== "POST") {
-      return new Response("Not Found", { status: 404 });
-    }
-
-    const body = await req.text();
-
-    if (path === "/resources") {
-      if (!await validateKey(req)) return new Response("Key didn't match", { status: 401 });
-
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(body);
-      } catch {
-        return new Response("Invalid JSON", { status: 400 });
-      }
-
-      const result = v.parseSafe(parsed, v.obj({ resources: v.array(v.string()) }));
-      if (!result) return new Response("Invalid body schema", { status: 400 });
-
-      await sidekick.updateResources(result.resources);
-      return new Response("OK");
-    }
-
-    if (path === "/connection") {
-      if (!await validateKey(req)) return new Response("Key didn't match", { status: 401 });
-
-      let ionParsed: unknown;
-      try {
-        ionParsed = ION.parse(body);
-      } catch (e) {
-        return new Response(`Error parsing ION: ${e}`, { status: 400 });
-      }
-
-      const payload = v.parseSafe(ionParsed, channelConnectionPayload);
-      if (!payload) return new Response("Did not receive payload in correct schema", { status: 400 });
-
-      sidekick.addConnection(payload);
-      return new Response("OK");
-    }
-
-    if (path === "/message") {
-      if (!await validateKey(req)) return new Response("Key didn't match", { status: 401 });
-
-      let ionParsed: unknown;
-      try {
-        ionParsed = ION.parse(body);
-      } catch (e) {
-        return new Response(`Error parsing ION: ${e}`, { status: 400 });
-      }
-
-      const message = v.parseSafe(ionParsed, serverMessageSchema);
-      if (!message) return new Response("Did not receive message in correct schema", { status: 400 });
-
-      await sidekick.postServerMessage(message);
-      return new Response("OK");
-    }
+    if (path === "/socket") return handleSocket(req, server);
+    if (req.method !== "POST") return new Response("Not Found", { status: 404 });
+    if (path === "/resources") return handleResources(req);
+    if (path === "/connection") return handleConnection(req);
+    if (path === "/message") return handleMessage(req);
 
     return new Response("Not Found", { status: 404 });
+  }
+
+  function routes(basePath: string = "") {
+    return {
+      [`POST ${basePath}/resources`]: handleResources,
+      [`POST ${basePath}/connection`]: handleConnection,
+      [`POST ${basePath}/message`]: handleMessage,
+      [`${basePath}/socket`]: handleSocket,
+    };
   }
 
   const websocket = {
@@ -200,5 +209,5 @@ export function bunSidekickAdapter({
     },
   };
 
-  return { fetch, websocket };
+  return { fetch, routes, websocket };
 }
