@@ -48,8 +48,6 @@ export class SidekickIntegratedCovenantServer<
     this.server.publish(topic, ION.stringify(message));
   }
 
-  // Accept server as a parameter so callers don't need a separate setServer() call.
-  // The server instance is captured on the first socket upgrade and reused for publishing.
   handleSocket(request: Request, server: Server<WebSocketData>): Response | undefined {
     if (this.server === null) this.server = server;
 
