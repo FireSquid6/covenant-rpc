@@ -1,7 +1,7 @@
 {
   "name": "@covenant-rpc/server",
   "module": "./index.ts",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "type": "module",
   "bin": {
     "covenant-sidekick": "./bin/sidekick.ts"
