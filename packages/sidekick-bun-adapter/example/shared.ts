@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { channel, declareCovenant, mutation, query } from "@covenant-rpc/core";
+import { channel, declareCovenant, query } from "@covenant-rpc/core";
 import { SidekickIntegratedCovenantServer } from "..";
-
 
 export const covenant = declareCovenant({
   procedures: {
@@ -11,13 +10,7 @@ export const covenant = declareCovenant({
       }),
       output: z.object({
         message: z.string(),
-      })
-    }),
-    update: mutation({
-      input: z.object({
-        name: z.string(),
       }),
-      output: z.null(),
     }),
   },
   channels: {
@@ -25,12 +18,14 @@ export const covenant = declareCovenant({
       params: ["channelId"],
       connectionRequest: z.object({
         password: z.string(),
+        username: z.string(),
       }),
       connectionContext: z.object({
         id: z.string(),
+        username: z.string(),
       }),
       clientMessage: z.object({
-        content: z.string(), 
+        content: z.string(),
       }),
       serverMessage: z.object({
         content: z.string(),
@@ -40,6 +35,7 @@ export const covenant = declareCovenant({
   },
 });
 
+const PASSWORD = "open-sesame";
 
 export function main() {
   const covenantServer = new SidekickIntegratedCovenantServer(covenant, {
@@ -47,22 +43,38 @@ export function main() {
     derivation: () => {},
   });
 
+  covenantServer.defineProcedure("hello", {
+    procedure: ({ inputs }) => ({ message: `Hello, ${inputs.name}!` }),
+    resources: () => [],
+  });
 
-
-
-  const bunServer = Bun.serve({
-    routes: {
-      "/api/covenant": (req) => {
-        return covenantServer.handle(req);
-      },
-      "/sidekick/socket": (req) => {
-        return covenantServer.handleSocket(req);
+  covenantServer.defineChannel("chatChannel", {
+    onConnect({ inputs, reject }) {
+      if (inputs.password !== PASSWORD) {
+        reject("Wrong password", "client");
       }
+      return { id: crypto.randomUUID(), username: inputs.username };
+    },
+    onMessage({ inputs, context, params }) {
+      covenantServer.sendMessage("chatChannel", params, {
+        content: inputs.content,
+        sender: context.username,
+      });
+    },
+  });
+
+  covenantServer.assertAllDefined();
+
+  Bun.serve({
+    routes: {
+      "/api/covenant": (req) => covenantServer.handle(req),
+      "/socket": (req, server) => covenantServer.handleSocket(req, server),
     },
     websocket: covenantServer.getWebsocket(),
     port: 6739,
-  })
+  });
 
-  covenantServer.setServer(bunServer);
-  console.log(`Running on port: ${6739}`)
+  console.log("Server running on port 6739");
+  console.log(`Password: "${PASSWORD}"`);
+  console.log("Usage: bun example/client.ts [channelId] [username] [password]");
 }

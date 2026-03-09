@@ -1,22 +1,10 @@
 import { covenant } from "./covenant";
-import { CovenantServer, vanillaAdapter, directSidekickToServer, directServerToSidekick } from "@covenant-rpc/server";
-import type { ServerToSidekickConnection } from "@covenant-rpc/core/interfaces";
-import { bunSidekickAdapter } from "@covenant-rpc/sidekick-bun-adapter";
+import { vanillaAdapter } from "@covenant-rpc/server";
+import { SidekickIntegratedCovenantServer } from "@covenant-rpc/sidekick-bun-adapter";
 
-const PORT = 8122;
-const SECRET = "bun-sidekick-key";
-
-// Mutable proxy — filled in by startBunSidekickServer() once both sides exist.
-const serverToSidekickProxy: ServerToSidekickConnection = {
-  addConnection: () => Promise.resolve(null),
-  update: () => Promise.resolve(null),
-  postMessage: () => Promise.resolve(null),
-};
-
-const server = new CovenantServer(covenant, {
+const server = new SidekickIntegratedCovenantServer(covenant, {
   contextGenerator: () => {},
   derivation: () => {},
-  sidekickConnection: serverToSidekickProxy,
   logLevel: "debug",
 });
 
@@ -66,24 +54,12 @@ server.defineChannel("chatroom", {
 server.assertAllDefined();
 
 export function startBunSidekickServer() {
-  const adapter = bunSidekickAdapter({
-    secret: SECRET,
-    serverConnection: directSidekickToServer(server),
-    authFailureDelayMs: 0,
-  });
-
-  // Both sides now exist — wire up server → sidekick direction.
-  const real = directServerToSidekick(adapter.sidekick);
-  serverToSidekickProxy.addConnection = real.addConnection.bind(real);
-  serverToSidekickProxy.update = real.update.bind(real);
-  serverToSidekickProxy.postMessage = real.postMessage.bind(real);
-
   return Bun.serve({
-    port: PORT,
+    port: 8122,
     routes: {
       "/api/covenant": vanillaAdapter(server),
-      ...adapter.routes(""),
+      "/socket": (req, bunServer) => server.handleSocket(req, bunServer),
     },
-    websocket: adapter.websocket,
+    websocket: server.getWebsocket(),
   });
 }
