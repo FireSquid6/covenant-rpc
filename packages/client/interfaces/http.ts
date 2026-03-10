@@ -123,6 +123,10 @@ class HttpClientToSidekick implements ClientToSidekickConnection {
       this.listeners = newListeners;
     }
   }
+
+  disconnect(): void {
+    this.socket.close();
+  }
 }
 
 

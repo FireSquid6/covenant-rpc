@@ -86,6 +86,7 @@ export class InternalSidekick {
       onMessage(handler) {
         return client.addHandler(handler);
       },
+      disconnect() {},
     }
   }
 }

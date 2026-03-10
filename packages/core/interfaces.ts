@@ -13,6 +13,7 @@ export interface ClientToServerConnection {
 export interface ClientToSidekickConnection {
   sendMessage(message: SidekickIncomingMessage): void;
   onMessage(handler: (m: SidekickOutgoingMessage) => MaybePromise<void>): () => void;
+  disconnect(): void;
 }
 
 

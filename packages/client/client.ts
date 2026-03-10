@@ -243,6 +243,10 @@ export class CovenantClient<
   }
 
 
+  disconnect(): void {
+    this.sidekickConnection.disconnect();
+  }
+
   listen<K extends QueryKey<P>>(
     procedure: K,
     inputs: InferProcedureInputs<P[K]>,

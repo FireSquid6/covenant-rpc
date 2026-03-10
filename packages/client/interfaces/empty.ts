@@ -2,12 +2,11 @@ import type { ClientToServerConnection, ClientToSidekickConnection } from "@cove
 
 export function emptyClientToSidekick(): ClientToSidekickConnection {
   return {
-    sendMessage() {
-
-    },
+    sendMessage() {},
     onMessage() {
-      return () => { };
+      return () => {};
     },
+    disconnect() {},
   }
 }
 
