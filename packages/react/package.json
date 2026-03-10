@@ -21,7 +21,7 @@
   "dependencies": {
     "react": "^19.1.1",
     "@covenant-rpc/core": "^2.0.0",
-    "@covenant-rpc/client": "^2.0.0"
+    "@covenant-rpc/client": "^2.1.0"
   },
   "devDependencies": {
     "@covenant-rpc/server": "workspace:*",
