@@ -56,9 +56,19 @@
         "typescript": "^5",
       },
     },
+    "packages/annotator": {
+      "name": "@covenant-rpc/annotator",
+      "dependencies": {
+        "@covenant-rpc/core": "workspace:*",
+        "@standard-schema/spec": "^1.1.0",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/client": {
       "name": "@covenant-rpc/client",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "dependencies": {
         "@covenant-rpc/core": "^2.0.0",
         "@covenant-rpc/ion": "^2.1.0",
@@ -112,7 +122,7 @@
     },
     "packages/server": {
       "name": "@covenant-rpc/server",
-      "version": "2.1.0",
+      "version": "2.3.0",
       "bin": {
         "covenant-sidekick": "./bin/sidekick.ts",
       },
@@ -132,7 +142,7 @@
     },
     "packages/sidekick-bun-adapter": {
       "name": "@covenant-rpc/sidekick-bun-adapter",
-      "version": "1.2.0",
+      "version": "2.0.0",
       "dependencies": {
         "@covenant-rpc/core": "^2.0.0",
         "@covenant-rpc/ion": "^2.1.0",
@@ -186,6 +196,8 @@
     "@babel/types": ["@babel/types@7.29.0", "", { "dependencies": { "@babel/helper-string-parser": "^7.27.1", "@babel/helper-validator-identifier": "^7.28.5" } }, "sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A=="],
 
     "@capsizecss/unpack": ["@capsizecss/unpack@4.0.0", "", { "dependencies": { "fontkitten": "^1.0.0" } }, "sha512-VERIM64vtTP1C4mxQ5thVT9fK0apjPFobqybMtA1UdUujWka24ERHbRHFGmpbbhp73MhV+KSsHQH9C6uOTdEQA=="],
+
+    "@covenant-rpc/annotator": ["@covenant-rpc/annotator@workspace:packages/annotator"],
 
     "@covenant-rpc/client": ["@covenant-rpc/client@workspace:packages/client"],
 
@@ -423,7 +435,7 @@
 
     "@shikijs/vscode-textmate": ["@shikijs/vscode-textmate@10.0.2", "", {}, "sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg=="],
 
-    "@standard-schema/spec": ["@standard-schema/spec@1.0.0", "", {}, "sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA=="],
+    "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
     "@testing-library/dom": ["@testing-library/dom@9.3.4", "", { "dependencies": { "@babel/code-frame": "^7.10.4", "@babel/runtime": "^7.12.5", "@types/aria-query": "^5.0.1", "aria-query": "5.1.3", "chalk": "^4.1.0", "dom-accessibility-api": "^0.5.9", "lz-string": "^1.5.0", "pretty-format": "^27.0.2" } }, "sha512-FlS4ZWlp97iiNWig0Muq8p+3rVDjRiYE+YKGbAqXOu9nwJFFOdL00kFpz42M+4huzYi86vAK1sOOfyOG45muIQ=="],
 
