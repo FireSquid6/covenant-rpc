@@ -63,20 +63,22 @@ export const serverMessageWithContext = v.obj({
 });
 export type ServerMessageWithContext = v.Infer<typeof serverMessageWithContext>;
 
-export interface ConnectionHandlerInputs<T, Params> {
+export interface ConnectionHandlerInputs<T, Params, Store> {
   inputs: T,
   params: Params,
+  store: Store,
   reject(reason: string, cause: "client" | "server"): never,
 }
 
-export interface MessageHandlerInputs<T, Params, Context> {
+export interface MessageHandlerInputs<T, Params, Context, Store> {
   inputs: T,
   params: Params,
   context: Context,
+  store: Store,
   error(reason: string, cause: "client" | "server"): never,
 }
 
-export type ChannelDefinition<T> = T extends ChannelDeclaration<
+export type ChannelDefinition<T, Store> = T extends ChannelDeclaration<
   infer ClientMessage,
   any,
   infer ConnectionRequest,
@@ -85,14 +87,16 @@ export type ChannelDefinition<T> = T extends ChannelDeclaration<
 > ? {
   onConnect: (i: ConnectionHandlerInputs<
     StandardSchemaV1.InferOutput<ConnectionRequest>,
-    ArrayToMap<Params>
+    ArrayToMap<Params>,
+    Store
   >) => MaybePromise<
     StandardSchemaV1.InferOutput<ConnectionContext>
   >;
   onMessage: (i: MessageHandlerInputs<
     StandardSchemaV1.InferOutput<ClientMessage>,
     ArrayToMap<Params>,
-    StandardSchemaV1.InferOutput<ConnectionContext>
+    StandardSchemaV1.InferOutput<ConnectionContext>,
+    Store
   >) => MaybePromise<
     void
   >

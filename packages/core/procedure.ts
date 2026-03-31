@@ -13,12 +13,13 @@ export interface ProcedureRequest {
   req: Request;
 }
 
-export interface ProcedureInputs<Inputs, Context, Derivation> {
+export interface ProcedureInputs<Inputs, Context, Derivation, Store> {
   inputs: Inputs,
   ctx: Context,
   derived: Derivation,
   request: ProcedureRequest,
   logger: Logger,
+  store: Store,
   setHeader: (name: string, value: string) => void;
   deleteHeader: (name: string) => void;
   error: (message: string, code: number) => never;
@@ -31,14 +32,15 @@ export interface ResourceInputs<Inputs, Context, Outputs> {
   outputs: Outputs,
 }
 
-export type ProcedureDefinition<T, Context, Derivation> = T extends ProcedureDeclaration<
+export type ProcedureDefinition<T, Context, Derivation, Store> = T extends ProcedureDeclaration<
   infer InputSchema,
   infer OutputSchema,
   ProcedureType> ? {
     procedure: (i: ProcedureInputs<
       StandardSchemaV1.InferOutput<InputSchema>,
       Context,
-      Derivation
+      Derivation,
+      Store
     >) => MaybePromise<StandardSchemaV1.InferOutput<OutputSchema>>
     resources: (i: ResourceInputs<
       StandardSchemaV1.InferOutput<InputSchema>,

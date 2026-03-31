@@ -9,23 +9,20 @@ import { procedureErrorFromUnknown, ThrowableProcedureError, ThrowableChannelErr
 import { Logger } from "./logger";
 import ION from "@covenant-rpc/ion";
 import type { LoggerLevel } from "@covenant-rpc/core/logger";
-import { Sidekick } from "./sidekick";
-import type { SidekickOutgoingMessage } from "@covenant-rpc/core/sidekick/protocol";
-import { directSidekickToServer, directServerToSidekick } from "./interfaces/direct";
 
 
-export type ProcedureDefinitionMap<T extends ProcedureMap, Context, Derivation> = {
-  [key in keyof T]: ProcedureDefinition<T[key], Context, Derivation> | undefined
+export type ProcedureDefinitionMap<T extends ProcedureMap, Context, Derivation, Store> = {
+  [key in keyof T]: ProcedureDefinition<T[key], Context, Derivation, Store> | undefined
 }
 
-export type ChannelDefinitionMap<T extends ChannelMap> = {
-  [key in keyof T]: ChannelDefinition<T[key]>
+export type ChannelDefinitionMap<T extends ChannelMap, Store> = {
+  [key in keyof T]: ChannelDefinition<T[key], Store>
 }
 
-export type ContextGenerator<Context> =
-  (i: ProcedureInputs<unknown, undefined, undefined>) => MaybePromise<Context>
+export type ContextGenerator<Context, Store> =
+  (i: ProcedureInputs<unknown, undefined, undefined, Store>) => MaybePromise<Context>
 
-export type Derivation<Context, Derived> = (i: ProcedureInputs<undefined, Context, undefined>) => MaybePromise<Derived>;
+export type Derivation<Context, Derived, Store> = (i: ProcedureInputs<undefined, Context, undefined, Store>) => MaybePromise<Derived>;
 
 
 export class CovenantServer<
@@ -33,14 +30,16 @@ export class CovenantServer<
   C extends ChannelMap,
   Context,
   Derived,
+  Store,
 > {
   protected covenant: Covenant<P, C>;
-  protected contextGenerator: ContextGenerator<Context>;
-  protected derivation: Derivation<Context, Derived>;
-  protected sidekickConnection: ServerToSidekickConnection
+  protected contextGenerator: ContextGenerator<Context, Store>;
+  protected derivation: Derivation<Context, Derived, Store>;
+  protected sidekickConnection: ServerToSidekickConnection;
+  protected store: Store | undefined;
 
-  protected procedureDefinitions: ProcedureDefinitionMap<P, Context, Derived>;
-  protected channelDefinitions: ChannelDefinitionMap<C>;
+  protected procedureDefinitions: ProcedureDefinitionMap<P, Context, Derived, Store>;
+  protected channelDefinitions: ChannelDefinitionMap<C, Store>;
   protected logger: Logger;
 
   constructor(covenant: Covenant<P, C>, {
@@ -49,8 +48,8 @@ export class CovenantServer<
     sidekickConnection,
     logLevel,
   }: {
-    contextGenerator: ContextGenerator<Context>,
-    derivation: Derivation<Context, Derived>,
+    contextGenerator: ContextGenerator<Context, Store>,
+    derivation: Derivation<Context, Derived, Store>,
     sidekickConnection: ServerToSidekickConnection,
     logLevel?: LoggerLevel,
   }) {
@@ -73,7 +72,7 @@ export class CovenantServer<
     this.channelDefinitions = {};
   }
 
-  defineProcedure<N extends keyof P>(name: N, definition: ProcedureDefinition<P[N], Context, Derived>) {
+  defineProcedure<N extends keyof P>(name: N, definition: ProcedureDefinition<P[N], Context, Derived, Store>) {
     if (this.procedureDefinitions[name] !== undefined) {
       throw new Error(`Tried to define ${String(name)} twice!`);
     }
@@ -81,7 +80,7 @@ export class CovenantServer<
     this.procedureDefinitions[name] = definition;
   }
 
-  defineChannel<N extends keyof C>(name: N, definition: ChannelDefinition<C[N]>) {
+  defineChannel<N extends keyof C>(name: N, definition: ChannelDefinition<C[N], Store>) {
     if (this.channelDefinitions[name] !== undefined) {
       throw new Error(`Tried to define ${String(name)} twice!`);
     }
@@ -133,12 +132,17 @@ export class CovenantServer<
         };
       }
 
+      if (this.store === undefined) {
+        this.logger.fatal(`ERROR: Forgot to define the store`);
+      }
+
       // Call onMessage handler
       try {
         await definition.onMessage({
           inputs: validation.value,
           params: params as any,
           context,
+          store: this.store,
           error(reason: string, cause: "client" | "server"): never {
             throw new ThrowableChannelError(reason, channelName, params, cause);
           },
@@ -162,6 +166,10 @@ export class CovenantServer<
         message: error,
       };
     }
+  }
+
+  setStore(s: Store) {
+    this.store = s;
   }
 
   assertAllDefined(): void {
@@ -194,11 +202,16 @@ export class CovenantServer<
         throw new ThrowableProcedureError(`Error parsing procedure inputs: ${issuesToString(validationResult.issues)}`, 404);
       }
 
-      const initialInputs: ProcedureInputs<any, undefined, undefined> = {
+      if (this.store === undefined) {
+        this.logger.fatal(`ERROR: Forgot to define the store`);
+      }
+
+      const initialInputs: ProcedureInputs<any, undefined, undefined, Store> = {
         inputs: validationResult.value,
         request,
         ctx: undefined,
         derived: undefined,
+        store: this.store,
         logger: l,
         setHeader(name: string, value: string) {
           newHeaders.set(name, value);
@@ -340,10 +353,15 @@ export class CovenantServer<
         );
       }
 
+      if (this.store === undefined) {
+        this.logger.fatal(`ERROR: Forgot to define the store`);
+      }
+
       // Call onConnect handler
       const context = await definition.onConnect({
         inputs: connectionRequestValidation.value,
         params: params as any,
+        store: this.store,
         reject(reason: string, cause: "client" | "server"): never {
           throw new ThrowableChannelError(reason, channelName, params, cause);
         },
