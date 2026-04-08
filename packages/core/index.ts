@@ -108,5 +108,5 @@ export function channel<
 }
 
 
-export type ContextGenerator<Context extends StandardSchemaV1> = 
-  (i: ProcedureInputs<unknown, undefined, undefined>) => MaybePromise<StandardSchemaV1.InferOutput<Context>>
+export type ContextGenerator<Context extends StandardSchemaV1, Store> = 
+  (i: ProcedureInputs<unknown, undefined, undefined, Store>) => MaybePromise<StandardSchemaV1.InferOutput<Context>>
